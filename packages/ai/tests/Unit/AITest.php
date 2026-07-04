@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace FerryAI\Tests\Unit;
 
 use FerryAI\AI;
+use FerryAI\Core\Contracts\Tokenizer;
 use FerryAI\Core\Enums\BackendType;
 use FerryAI\Core\Enums\Device;
 use FerryAI\Core\Exception\BackendNotAvailableException;
@@ -49,13 +50,13 @@ final class AITest extends TestCase
         $this->expectNotToPerformAssertions();
     }
 
-    public function testSwitchToUnavailableBackendThrows(): void
+    public function testSwitchToUnregisteredBackendThrows(): void
     {
         AI::config(['backend' => 'onnx']);
 
         $this->expectException(BackendNotAvailableException::class);
 
-        AI::backend('llama');
+        AI::backend('cpu');
     }
 
     public function testSetDevice(): void
@@ -75,14 +76,39 @@ final class AITest extends TestCase
         AI::device('not-a-device');
     }
 
-    public function testChatRequiresLaterPhase(): void
+    public function testChatRequiresAvailableLlama(): void
     {
         AI::config(['backend' => 'onnx']);
 
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessageMatches('/Phase 2|llama/i');
+        $this->expectException(BackendNotAvailableException::class);
 
-        AI::chat([]);
+        AI::chat([['role' => 'user', 'content' => 'Hi']]);
+    }
+
+    public function testStreamRequiresAvailableLlama(): void
+    {
+        AI::config(['backend' => 'onnx']);
+
+        $this->expectException(BackendNotAvailableException::class);
+
+        AI::stream([['role' => 'user', 'content' => 'Hi']]);
+    }
+
+    public function testTokenizerFromFile(): void
+    {
+        AI::config(['backend' => 'onnx']);
+
+        $path = (string) tempnam(sys_get_temp_dir(), 'ferry_ai_tok_');
+        file_put_contents($path, '{"model":{"type":"BPE","vocab":{"a":0,"b":1},"merges":[]}}');
+
+        try {
+            $tokenizer = AI::tokenizer($path);
+
+            self::assertInstanceOf(Tokenizer::class, $tokenizer);
+            self::assertSame(2, $tokenizer->vocabSize());
+        } finally {
+            unlink($path);
+        }
     }
 
     public function testEmbedRequiresLaterPhase(): void

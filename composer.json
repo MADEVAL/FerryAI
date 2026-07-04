@@ -33,6 +33,8 @@
             "FerryAI\\Core\\": "packages/core/src/",
             "FerryAI\\Tensor\\": "packages/tensor/src/",
             "FerryAI\\OnnxBackend\\": "packages/onnx-backend/src/",
+            "FerryAI\\LlamaBackend\\": "packages/llama-backend/src/",
+            "FerryAI\\Tokenizer\\": "packages/tokenizer/src/",
             "FerryAI\\": "packages/ai/src/"
         }
     },
@@ -41,6 +43,8 @@
             "FerryAI\\Core\\Tests\\": "packages/core/tests/",
             "FerryAI\\Tensor\\Tests\\": "packages/tensor/tests/",
             "FerryAI\\OnnxBackend\\Tests\\": "packages/onnx-backend/tests/",
+            "FerryAI\\LlamaBackend\\Tests\\": "packages/llama-backend/tests/",
+            "FerryAI\\Tokenizer\\Tests\\": "packages/tokenizer/tests/",
             "FerryAI\\Tests\\": ["tests/", "packages/ai/tests/"]
         }
     },

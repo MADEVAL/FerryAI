@@ -4,6 +4,8 @@ parameters:
         - packages/core/src
         - packages/tensor/src
         - packages/onnx-backend/src
+        - packages/llama-backend/src
+        - packages/tokenizer/src
         - packages/ai/src
     excludePaths:
         analyseAndScan:
@@ -15,6 +17,14 @@ parameters:
             - packages/onnx-backend/src/OnnxRuntimeFactory.php
             - packages/onnx-backend/src/Runtime/NativeOnnxRuntime.php
             - packages/onnx-backend/src/Runtime/NativeOnnxSession.php
+            # Native tokenizers-cpp FFI boundary
+            - packages/tokenizer/src/HuggingFaceTokenizer.php
+            # Native llama.cpp FFI boundary
+            - packages/llama-backend/src/FFI/LlamaCpp.php
+            - packages/llama-backend/src/FFI/LlamaContext.php
+            - packages/llama-backend/src/FFI/LlamaBatch.php
+            - packages/llama-backend/src/Runtime/NativeLlamaRuntime.php
+            - packages/llama-backend/src/Runtime/NativeLlamaSession.php
     treatPhpDocTypesAsCertain: false
     reportUnmatchedIgnoredErrors: false
     parallel:

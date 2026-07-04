@@ -13,7 +13,9 @@ use FerryAI\Core\Contracts\Tokenizer;
 use FerryAI\Core\Contracts\VectorStore;
 use FerryAI\Core\Enums\BackendType;
 use FerryAI\Core\Exception\BackendNotAvailableException;
+use FerryAI\LlamaBackend\LlamaBackend;
 use FerryAI\OnnxBackend\OnnxBackend;
+use FerryAI\Tokenizer\TokenizerFactory;
 
 /**
  * Creates platform components from configuration.
@@ -41,10 +43,7 @@ final class AIFactory
     {
         return match ($type) {
             BackendType::Onnx => new OnnxBackend(),
-            BackendType::Llama => throw new BackendNotAvailableException(
-                $type->value,
-                'the llama-backend package is introduced in Phase 2',
-            ),
+            BackendType::Llama => new LlamaBackend(),
             BackendType::CpuNative => throw new BackendNotAvailableException(
                 $type->value,
                 'the cpu-backend package is introduced in Phase 3',
@@ -54,7 +53,7 @@ final class AIFactory
 
     public function createTokenizer(string $modelName): Tokenizer
     {
-        throw new \RuntimeException('Tokenizers are introduced in Phase 2 (tokenizer package).');
+        return (new TokenizerFactory())->create($modelName);
     }
 
     public function createVectorStore(string $collection, int $dimension): VectorStore

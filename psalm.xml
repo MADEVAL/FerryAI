@@ -11,6 +11,8 @@
         <directory name="packages/core/src"/>
         <directory name="packages/tensor/src"/>
         <directory name="packages/onnx-backend/src"/>
+        <directory name="packages/llama-backend/src"/>
+        <directory name="packages/tokenizer/src"/>
         <directory name="packages/ai/src"/>
         <ignoreFiles>
             <directory name="packages/*/tests"/>
@@ -19,6 +21,12 @@
             <file name="packages/onnx-backend/src/OnnxRuntimeFactory.php"/>
             <file name="packages/onnx-backend/src/Runtime/NativeOnnxRuntime.php"/>
             <file name="packages/onnx-backend/src/Runtime/NativeOnnxSession.php"/>
+            <file name="packages/tokenizer/src/HuggingFaceTokenizer.php"/>
+            <file name="packages/llama-backend/src/FFI/LlamaCpp.php"/>
+            <file name="packages/llama-backend/src/FFI/LlamaContext.php"/>
+            <file name="packages/llama-backend/src/FFI/LlamaBatch.php"/>
+            <file name="packages/llama-backend/src/Runtime/NativeLlamaRuntime.php"/>
+            <file name="packages/llama-backend/src/Runtime/NativeLlamaSession.php"/>
         </ignoreFiles>
     </projectFiles>
 

@@ -372,3 +372,108 @@ PHPUnit 217/217 (445 assertions). Integration suite skips cleanly without the na
 `OpenVINO`/`ROCm` providers are Phase 4; the extra dev tooling (Pest, Infection, CaptainHook,
 monorepo-builder, composer-normalize) can be added when needed. The native ONNX Runtime binding is
 `ankane/onnxruntime` (the documented fallback; `phpmlkit/onnxruntime` does not exist on Packagist).
+
+---
+
+# Phase 2 (LLM) — in progress
+
+Packages `llama-backend` and `tokenizer` created (`FerryAI\LlamaBackend`, `FerryAI\Tokenizer`);
+root autoload and analyser paths extended.
+
+## Package `llama-backend` — pure-PHP layer
+
+### 2026-07-04 — Steps 53–54, 58–66: value objects, grammar, sampling, chat formatting
+
+**What (all TDD, pure PHP):**
+- **Value objects** (53, 54): `LlamaContextParams`, `LlamaModelParams` with `toArray()`.
+- **Grammar** (64, 65): `GbnfGrammar` (string holder + `fromJsonSchema`), `JsonSchemaConverter`
+  (JSON Schema → GBNF: object/array/string/number/integer/boolean/null, enum, const; reusable
+  terminal rules; stateless via by-reference accumulators).
+- **Sampling** (58–63): `Sampler` interface, `SamplerMath` (argmax/softmax/seeded weighted pick),
+  `GreedySampler`, `TopKSampler`, `TopPSampler` (seed-reproducible), `GrammarSampler` (carries the
+  grammar for the native sampler chain, delegates selection in pure PHP), `SamplerFactory`.
+- **ChatFormatter** (66): llama3 / chatml / mistral / gemma / phi templates + `detectFormat()`.
+
+**Notes:** Real GBNF enforcement and true grammar-masked sampling are applied natively by llama.cpp;
+the pure-PHP `GrammarSampler` delegates and exposes the grammar. Samplers use `\Random\Randomizer`
+(Mt19937 when a seed is set) for reproducibility.
+
+**Verification:** `composer check` — green after each step (up to PHPUnit 273/273).
+
+## Package `tokenizer` — pure-PHP layer
+
+### 2026-07-04 — Steps 69, 71–73: loader, pure BPE/WordPiece, factory
+
+**What (all TDD, pure PHP):**
+- `TokenizerLoader` (69): `loadFromFile`, `detectType` (BPE/WordPiece/Unigram/SentencePiece);
+  `loadFromModel` gated to Phase 3 (model-hub).
+- `PureBpeTokenizer` (71): whitespace pre-tokenisation, char + end-of-word symbols, greedy merges
+  by rank; full `Tokenizer` contract incl. `encodeBatch` (padding + attention mask), `chunk`
+  (overlap), special tokens; round-trips on its own vocab.
+- `PureWordPieceTokenizer` (72): greedy longest-match subwords with `##` continuation.
+- `SpecialTokens`: role extraction (bos/eos/unk/pad/cls/sep/mask) from `added_tokens`.
+- `TokenizerFactory` (73): `createFromFile` (native if available, else pure BPE/WordPiece);
+  `create(name)` delegates to a path or is gated to Phase 3 for remote resolution.
+
+**Native boundary (excluded from static analysis):** `HuggingFaceTokenizer` (70) — tokenizers-cpp
+via FFI; `isAvailable()` probes `FERRY_AI_TOKENIZERS_LIB` and returns false when absent, so the
+factory falls back to pure PHP.
+
+**Verification:** `composer check` — cs-check OK, PHPStan lvl8 OK, Psalm lvl3 No errors,
+PHPUnit 273/273 (547 assertions).
+
+## Package `llama-backend` — runtime seam, model, backend
+
+### 2026-07-04 — Steps 55–57, 67–68: llama seam, model, backend
+
+**Seam + tested orchestration (pure PHP over a mockable seam):**
+- `Runtime/LlamaSession` (handle marker) + `Runtime/LlamaRuntimeInterface` (seam: availability,
+  version, GPU support, session lifecycle, `tokenize`/`tokenToPiece`/`evaluate`/`resetState`/`eosToken`).
+- `LlamaModel` (67): `run()` (one token), `runComplete()` (full `GenerationResult`), `runStream()`
+  (Generator of pieces); pure-PHP autoregressive loop driving the sampler over the seam; `unload()`.
+- `LlamaBackend` (68): device mapping (GPU→[CUDA,CPU] else [CPU]), `load()` (remote→`ModelLoadException`,
+  missing→`ModelNotFoundException`, unavailable→`BackendNotAvailableException`, device resolution),
+  builds `ChatFormatter` from the model name.
+- Test doubles `MockLlamaRuntime`/`MockLlamaSession` script a deterministic token sequence so the
+  generation loop is fully unit-tested with `GreedySampler`.
+
+**Native FFI boundary (excluded from static analysis):** `FFI/LlamaCpp` (library resolution +
+ABI-safe loadability/version probe), `FFI/LlamaContext`, `FFI/LlamaBatch`,
+`Runtime/NativeLlamaRuntime`, `Runtime/NativeLlamaSession`. The raw llama.cpp binding uses
+struct-by-value params whose layout varies by build; no stable maintained PHP binding exists
+(`kambo/llama-cpp-php` is alpha only), so the ABI binding is a target-specific integration task.
+`NativeLlamaRuntime::isAvailable()` conservatively returns false until a validated binding is wired,
+so `LlamaBackend` cleanly reports unavailability; development/testing use the mock.
+
+## Package `ai` — Phase 2 wiring
+
+### 2026-07-04 — Steps 74–75: AIFactory + AI facade (chat/stream/tokenizer)
+
+- `AIFactory`: `createBackend(Llama)` → `LlamaBackend`; `createTokenizer()` → `TokenizerFactory::create`.
+- `AI`: `config()` registers Onnx **and** Llama; `chat()`/`stream()` resolve an available llama chat
+  model (`backends.llama.model_path`) and delegate to `LlamaModel::runComplete`/`runStream`
+  (`BackendNotAvailableException` when llama is unavailable, `ConfigurationException` when the model
+  path is missing); `tokenizer(path)` returns a working pure-PHP tokenizer.
+
+**Verification:** `composer check` — cs-check OK, PHPStan lvl8 OK, Psalm lvl3 No errors,
+PHPUnit 291/291 (574 assertions). `composer test-integration` — 5 skipped (ONNX + llama), 0 failures.
+Runtime smoke: `AI::tokenizer(path)` round-trips "Hello world"; `AI::chat()` raises a clear
+`BackendNotAvailableException`.
+
+---
+
+## Phase 2 (LLM) — COMPLETE
+
+| Package | Highlights |
+|---|---|
+| `llama-backend` | context/model params, GBNF grammar + JSON-Schema→GBNF, samplers (greedy/top-k/top-p/grammar), ChatFormatter (5 templates), runtime seam + `LlamaModel` (run/complete/stream) + `LlamaBackend`, native FFI scaffold |
+| `tokenizer` | `TokenizerLoader`, pure-PHP BPE & WordPiece (round-tripping, chunking, special tokens), `TokenizerFactory`, native tokenizers-cpp boundary |
+| `ai` (updated) | llama backend + tokenizer wired into `AIFactory`/`AI`; `chat`/`stream`/`tokenizer` live |
+
+**Genuinely working now:** pure-PHP tokenization end-to-end (`AI::tokenizer()`), the full LLM
+generation orchestration (formatting → tokenize → sample loop → detokenize) verified via the mock
+runtime, samplers, grammars. **Honestly gated:** real llama.cpp inference requires a validated native
+ABI binding (integration suite); until then `AI::chat()/stream()` raise clear exceptions.
+
+**Gate (fresh run):** `composer check` → cs-check OK · PHPStan level 8 OK · Psalm level 3 No errors ·
+PHPUnit 291/291 (574 assertions).
