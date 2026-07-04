@@ -4,6 +4,7 @@ parameters:
         - packages/core/src
         - packages/tensor/src
         - packages/onnx-backend/src
+        - packages/ai/src
     excludePaths:
         analyseAndScan:
             - packages/*/tests/*

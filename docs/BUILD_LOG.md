@@ -312,3 +312,63 @@ docs **does not exist on Packagist**. The documented fallback (`SKILL.md` §What
 
 **Status:** `onnx-backend` Phase 1 complete (10 files + seam/doubles). The `ROCm`/`OpenVINO` providers
 remain Phase 4.
+
+---
+
+## Package `ai`
+
+### 2026-07-04 — Steps 49–52: ai package (BackendRegistry, TaskRouter, AIFactory, AI, StreamResponse)
+
+**What:** The `ferry-ai/inference-ai` package (namespace `FerryAI`) — the facade and its supporting
+services (TDD).
+
+**Why:** `IMPLEMENTATION_PHASE_1.md` Steps 49–52; `AI`/`AIFactory` signatures in
+`INTERFACE_CONTRACTS.md §6–§7`.
+
+**Setup:** `packages/ai/composer.json` (requires core, tensor, onnx-backend, `psr/http-message`).
+Root autoload maps `FerryAI\ → packages/ai/src/` (PSR-4 longest-prefix keeps `FerryAI\Core\` etc. intact);
+test namespace `FerryAI\Tests\` searches both `tests/` and `packages/ai/tests/`. Analyser paths extended.
+
+**Files (src + matching test):**
+- `BackendRegistry.php` — `register`/`has`/`get` (throws `BackendNotAvailableException`)/`all`/`autoDetect`
+  (Llama → Onnx → CpuNative, availability-checked).
+- `TaskRouter.php` — `routeForChat`/`routeForEmbedding`/`routeForClassification`/`routeForPrediction`
+  and `routeFor(task)` (unknown → `autoDetect`).
+- `AIFactory.php` — `createBackend` (Onnx real; Llama/CpuNative → `BackendNotAvailableException`);
+  tokenizer/vector/hub/pipeline/embedder gated to Phase 2/3.
+- `AI.php` — static facade. Fully working: `config`/`backend`/`device`/`reset`/`resetBackend`/`warmup`
+  (+ `activeBackend`/`activeDevice` accessors). NLP helpers (chat/stream/embed/similarity/classify/
+  moderate/predict) and subsystem accessors (pipeline/vector/hub/tokenizer/streamResponse) throw
+  actionable, phase-gated exceptions.
+- `StreamResponse.php` — Phase 1 stub (throws; SSE/NDJSON finalised in Phase 4).
+
+**Notes:** Honesty over aspiration — high-level NLP helpers genuinely require the tokenizer (Phase 2)
+and embedding/model-hub (Phase 3) packages, so they throw clear messages rather than pretending to
+work. The ONNX inference engine itself is fully functional at the `OnnxBackend`/`OnnxModel` level.
+`AI::stream` carries a targeted `@psalm-suppress InvalidReturnType` (Phase 1 stub throws; the
+`Generator` type is the Phase 2 contract). Runtime smoke test confirms config/selection/gating behave
+as designed.
+
+**Verification:** `composer check` — cs-check OK, PHPStan lvl8 OK, Psalm lvl3 No errors,
+PHPUnit 217/217 (445 assertions). `composer validate` — valid. `composer test-integration` — 3 skipped.
+
+---
+
+## Phase 1 (MVP) — COMPLETE
+
+All four Phase 1 packages are implemented, statically clean and unit-tested:
+
+| Package | Composer | Highlights |
+|---|---|---|
+| `core` | `ferry-ai/inference-core` | 8 enums, 9 exceptions, 7 value objects, `AIConfig`, 10 contracts |
+| `tensor` | `ferry-ai/inference-tensor` | `ArrayTensor` (pure PHP), `BackedTensor`, `TensorFactory` |
+| `onnx-backend` | `ferry-ai/inference-onnx-backend` | 5 providers + mockable runtime seam over `ankane/onnxruntime` |
+| `ai` | `ferry-ai/inference-ai` | `BackendRegistry`, `TaskRouter`, `AIFactory`, `AI` facade, `StreamResponse` |
+
+**Gate (fresh run):** `composer check` → cs-check OK · PHPStan level 8 OK · Psalm level 3 No errors ·
+PHPUnit 217/217 (445 assertions). Integration suite skips cleanly without the native ONNX Runtime.
+
+**Deferred by design:** `core` `PlatformDetector`/`Logger`/`RetryHandler` and `onnx-backend`
+`OpenVINO`/`ROCm` providers are Phase 4; the extra dev tooling (Pest, Infection, CaptainHook,
+monorepo-builder, composer-normalize) can be added when needed. The native ONNX Runtime binding is
+`ankane/onnxruntime` (the documented fallback; `phpmlkit/onnxruntime` does not exist on Packagist).
