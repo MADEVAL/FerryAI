@@ -1,4 +1,4 @@
-# Глубокое исследование: PHP AI Platform — архитектурный анализ
+# Глубокое исследование: FerryAI — архитектурный анализ
 
 > Дата: 30 июня 2026  
 > Источник: анализ исходной переписки + независимый веб-ресёрч  
@@ -33,7 +33,7 @@
 - **Стратегия внедрения** — FFI-прототип → нативное расширение
 - **Пакетная архитектура** — 20+ независимых пакетов
 
-Финальный вывод переписки: строить не «TensorFlow для PHP», а унифицированную **PHP AI Platform** с подключаемыми бэкендами.
+Финальный вывод переписки: строить не «TensorFlow для PHP», а унифицированную платформу **FerryAI** с подключаемыми бэкендами.
 
 ---
 
@@ -243,7 +243,7 @@ class BERT extends Model { ... }
 ```
 **Применение:** декларативная конфигурация моделей через атрибуты.
 
-### 4.5. `#[\Override]` на свойствах + `#[\Deprecated]` на traits
+### 4.5. `#[\Override]` на свойствах + атрибуты на константах (вкл. `#[\Deprecated]`)
 
 ### 4.6. Backtraces в Fatal Errors
 Упрощает отладку долгих вычислений.
@@ -267,7 +267,7 @@ class Model {
 
 ## 5. Архитектурный анализ: что реально, что нет
 
-### 5.1. Концепция «PHP AI Platform» — оценка реализуемости
+### 5.1. Концепция «FerryAI» — оценка реализуемости
 
 | Компонент | Реализуемость | Обоснование |
 |---|---|---|
@@ -288,7 +288,7 @@ class Model {
 ПРЕДЛАГАЕМАЯ АРХИТЕКТУРА БЭКЕНДОВ:
 
 ┌──────────────────────────────────────────────┐
-│               PHP AI Platform API             │
+│               FerryAI API                    │
 │  (единый интерфейс для пользователя)          │
 └──────────────────┬───────────────────────────┘
                    │
@@ -316,24 +316,28 @@ class Model {
 4. **НЕ включаем FANN** — слишком старый, не даёт преимуществ перед CPU Native бэкендом.
 5. **НЕ делаем свой autograd** — это работа для Python, не для PHP.
 
-### 5.3. Пакетная структура (рекомендованная)
+### 5.3. Пакетная структура (финальная — канон в `FILE_TREE.md`)
 
 ```
 php-inference/
 ├── packages/
-│   ├── core/              # Базовые интерфейсы, Device, DType, Backend enum
+│   ├── core/              # Базовые контракты, enum'ы (Device, DType, BackendType…), исключения
 │   ├── tensor/            # Tensor API (обёртка над бэкендами)
 │   ├── onnx-backend/      # ONNX Runtime backend (использует phpmlkit/onnxruntime)
 │   ├── llama-backend/     # llama.cpp backend (новый, через FFI)
 │   ├── cpu-backend/       # CPU-native backend (интеграция с RubixML/Tensor C-расширением)
-│   ├── dataframe/         # DataFrame API
 │   ├── tokenizer/         # Токенизация (бэкенд-независимо)
 │   ├── embedding/         # Эмбеддинги через модели
 │   ├── pipeline/          # Pipeline API (Fibers-based)
-│   ├── model-hub/         # Загрузка, кэширование, верификация моделей
-│   ├── vector/            # Vector store (SQLite-based)
-│   └── huggingface/       # Интеграция с HF Hub
+│   ├── model-hub/         # Загрузка, кэширование, верификация моделей (в т.ч. HuggingFace Hub)
+│   ├── vector/            # Vector store (SQLite + sqlite-vec)
+│   ├── dataframe/         # DataFrame API (Фаза 4, отложен)
+│   ├── ai/                # Унифицированный фасад (точка входа)
+│   ├── laravel/           # Интеграция с Laravel (Фаза 4)
+│   └── symfony/           # Интеграция с Symfony (Фаза 4)
 ```
+
+> Ранняя идея отдельного пакета `huggingface/` реализована внутри `model-hub`. Итог — **14 пакетов**; ядро платформы (фазы 1–3) — 11, ещё 3 (`dataframe`, `laravel`, `symfony`) добавляются последними в Фазе 4.
 
 **Что НЕ нужно делать отдельными пакетами (YAGNI):**
 - math/ — достаточно tensor/
@@ -459,42 +463,54 @@ php-inference/
 
 ### 8.2. Ключевые интерфейсы
 
+> Ниже — концептуальные эскизы ранней проработки. **Канонические (актуальные) сигнатуры** — в `INTERFACE_CONTRACTS.md`; здесь оставлены упрощённые формы для наглядности идеи, но enum'ы приведены к актуальному виду.
+
 ```php
-// core/src/Contracts/Backend.php
+// core/src/Contracts/Backend.php  (полная сигнатура — INTERFACE_CONTRACTS.md §1.1)
 interface Backend
 {
     /** @return Device[] */
     public function availableDevices(): array;
-    public function load(string $path, ?Device $device = null): Model;
+    public function load(string $source, ?Device $device = null): Model;
+    public function version(): string;
+    public function isAvailable(): bool;
 }
 
-// core/src/Contracts/Model.php
+// core/src/Contracts/Model.php  (полная сигнатура — INTERFACE_CONTRACTS.md §1.2)
 interface Model
 {
     /** @return array<string, mixed> */
     public function run(array $inputs): array;
     public function inputs(): array;
     public function outputs(): array;
-    public function metadata(): array;
+    public function metadata(): ModelMetadata;
+    public function device(): Device;
+    public function unload(): void;
 }
 
-// core/src/Contracts/Tensor.php
-interface Tensor
+// core/src/Contracts/Tensor.php  (полная сигнатура — INTERFACE_CONTRACTS.md §1.3)
+interface Tensor extends ArrayAccess, Countable, JsonSerializable
 {
-    public function shape(): array;
+    public function shape(): Shape;
     public function dtype(): DType;
     public function to(Device $device): self;
     public function toArray(): array;
     public function data(): mixed; // FFI buffer
+    // + арифметика, reshape, slice и т.д.
 }
 
 // core/src/Enums/Device.php
 enum Device: string
 {
-    case CPU = 'cpu';
-    case CUDA = 'cuda';
-    case METAL = 'metal';
-    case AUTO = 'auto';
+    case CPU      = 'cpu';
+    case CUDA     = 'cuda';
+    case ROCM     = 'rocm';
+    case METAL    = 'metal';
+    case VULKAN   = 'vulkan';
+    case DIRECTML = 'directml';
+    case OPENVINO = 'openvino';
+    case OPENCL   = 'opencl';
+    case AUTO     = 'auto';
 }
 
 // core/src/Enums/DType.php
@@ -628,7 +644,7 @@ $response = AI::chat($messages);  // тот же код, другой движо
 
 ### 10.4. Финальная мысль
 
-Этот проект имеет реальный смысл и рыночную нишу. PHP — язык 75%+ веба. Миллионы PHP-разработчиков хотят использовать AI, но вынуждены писать микросервисы на Python. Унифицированная PHP AI Platform, позволяющая делать инференс прямо в PHP-приложении — это не «TensorFlow для PHP», это **«AI для PHP-разработчика»**.
+Этот проект имеет реальный смысл и рыночную нишу. PHP — язык 75%+ веба. Миллионы PHP-разработчиков хотят использовать AI, но вынуждены писать микросервисы на Python. Унифицированная платформа FerryAI, позволяющая делать инференс прямо в PHP-приложении — это не «TensorFlow для PHP», это **«AI для PHP-разработчика»**.
 
 Главное — не изобретать велосипеды, а построить мост между зрелыми нативными движками и удобным PHP API.
 

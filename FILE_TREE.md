@@ -1,4 +1,4 @@
-# PHP AI Platform — Полное дерево файлов
+# FerryAI — Полное дерево файлов
 
 > Версия: 1.0  
 > Назначение: пофайловая карта каждого пакета, namespace'ы, зависимости  
@@ -57,10 +57,10 @@ php-inference/
 │   │       │   ├── DeviceNotAvailableException.php
 │   │       │   ├── TokenizerException.php
 │   │       │   └── ConfigurationException.php
-│   │       └── AIConfig.php
-│   │       ├── PlatformDetector.php     # Определение ОС/архитектуры
-│   │       ├── Logger.php               # PSR-3 логгер
-│   │       └── RetryHandler.php         # Retry-логика
+│   │       ├── AIConfig.php
+│   │       ├── PlatformDetector.php     # Определение ОС/архитектуры (Фаза 4)
+│   │       ├── Logger.php               # PSR-3 логгер (Фаза 4)
+│   │       └── RetryHandler.php         # Retry-логика (Фаза 4)
 │   ├── tensor/
 │   │   ├── composer.json
 │   │   ├── phpunit.xml.dist
@@ -81,7 +81,9 @@ php-inference/
 │   │       │   ├── CudaProvider.php
 │   │       │   ├── TensorRtProvider.php
 │   │       │   ├── CoreMlProvider.php
-│   │       │   └── DirectMlProvider.php
+│   │       │   ├── DirectMlProvider.php
+│   │       │   ├── OpenVinoProvider.php         # Intel OpenVINO (Фаза 4)
+│   │       │   └── RocmProvider.php             # AMD ROCm (Фаза 4)
 │   │       └── OnnxRuntimeFactory.php          # Фабрика для создания OrtEnvironment/OrtSession
 │   ├── llama-backend/
 │   │   ├── composer.json
@@ -160,7 +162,7 @@ php-inference/
 │   │       ├── ModelVerifier.php          # SHA-256, Ed25519, magic bytes
 │   │       ├── ModelIntrospector.php      # Чтение метаданных без загрузки
 │   │       ├── Downloader.php             # Загрузка с прогрессом, ретраями, resume
-│   │       ├── StreamLoader.php           # Потоковая/mmap загрузка больших моделей
+│   │       ├── StreamLoader.php           # Потоковая/mmap загрузка больших моделей (Фаза 4)
 │   │       ├── Format/
 │   │       │   ├── FormatDetector.php     # Определение формата (.onnx, .gguf, .safetensors, .ai)
 │   │       │   ├── AiArchive.php          # Чтение/запись .ai архивов
@@ -199,13 +201,13 @@ php-inference/
 │   │       ├── AIFactory.php              # Фабрика
 │   │       ├── BackendRegistry.php        # Реестр бэкендов
 │   │       ├── TaskRouter.php             # Роутинг задач по бэкендам
-│   │       ├── StreamResponse.php         # Готовый HTTP streaming response
-│   │       ├── SharedMemoryManager.php    # System V shared memory
-│   │       ├── ModelPool.php              # Пул предзагруженных моделей
-│   │       ├── AsyncInference.php         # Fibers-based асинхронный инференс
-│   │       ├── NativeBinaryManager.php    # Автоскачивание нативных бинарников
-│   │       ├── Metrics.php                # Prometheus/StatsD метрики
-│   │       └── Profiler.php               # Профилирование и бенчмарки
+│   │       ├── StreamResponse.php        # Готовый HTTP streaming response (заглушка Фаза 1 → доработка Фаза 4)
+│   │       ├── SharedMemoryManager.php    # System V shared memory (Фаза 4)
+│   │       ├── ModelPool.php              # Пул предзагруженных моделей (Фаза 4)
+│   │       ├── AsyncInference.php         # Fibers-based асинхронный инференс (Фаза 4)
+│   │       ├── NativeBinaryManager.php    # Автоскачивание нативных бинарников (Фаза 4)
+│   │       ├── Metrics.php                # Prometheus/StatsD метрики (Фаза 4)
+│   │       └── Profiler.php               # Профилирование и бенчмарки (Фаза 4)
 │   ├── laravel/                           # Интеграция с Laravel
 │   │   ├── composer.json
 │   │   └── src/
@@ -239,7 +241,7 @@ php-inference/
 | 8 | `Contracts/Stage.php` | Интерфейс `Stage` | (нет) |
 | 9 | `Contracts/ModelHub.php` | Интерфейс `ModelHub` | ValueObjects\ModelMetadata |
 | 10 | `Contracts/DataFrame.php` | Интерфейс `DataFrame` (extends Iterator, Countable) | Contracts\Tensor |
-| 11 | `Enums/Device.php` | Enum `Device` (CPU, CUDA, METAL, AUTO) | (нет) |
+| 11 | `Enums/Device.php` | Enum `Device` (CPU, CUDA, ROCM, METAL, VULKAN, DIRECTML, OPENVINO, OPENCL, AUTO) | (нет) |
 | 12 | `Enums/DType.php` | Enum `DType` (Float32, Float16, Int32, Int64, String) | (нет) |
 | 13 | `Enums/BackendType.php` | Enum `BackendType` (Onnx, Llama, CpuNative) | (нет) |
 | 14 | `Enums/TokenizerType.php` | Enum `TokenizerType` (BPE, WordPiece, SentencePiece, Unigram) | (нет) |
@@ -264,9 +266,9 @@ php-inference/
 | 33 | `Exception/TokenizerException.php` | Исключение | Exception\FerryAIException |
 | 34 | `Exception/ConfigurationException.php` | Исключение | Exception\FerryAIException |
 | 35 | `AIConfig.php` | final class `AIConfig` (implements ArrayAccess) | Enums\Device, Enums\BackendType |
-| 36 | `PlatformDetector.php` | class `PlatformDetector` — OS/arch detection | (нет) |
-| 37 | `Logger.php` | class `Logger` — PSR-3 compatible | (нет) |
-| 38 | `RetryHandler.php` | class `RetryHandler` — retry logic | (нет) |
+| 36 | `PlatformDetector.php` | class `PlatformDetector` — OS/arch detection (Фаза 4) | (нет) |
+| 37 | `Logger.php` | class `Logger` — PSR-3 compatible (Фаза 4) | (нет) |
+| 38 | `RetryHandler.php` | class `RetryHandler` — retry logic (Фаза 4) | (нет) |
 
 **Всего: 38 файлов**
 
@@ -284,7 +286,7 @@ php-inference/
 
 ---
 
-### Пакет `onnx-backend` (10 файлов)
+### Пакет `onnx-backend` (12 файлов)
 
 | # | Путь | Содержит | Зависит от |
 |---|---|---|---|
@@ -297,9 +299,11 @@ php-inference/
 | 7 | `Provider/CudaProvider.php` | class `CudaProvider` implements ExecutionProvider | Provider\ExecutionProvider |
 | 8 | `Provider/TensorRtProvider.php` | class `TensorRtProvider` implements ExecutionProvider | Provider\ExecutionProvider |
 | 9 | `Provider/CoreMlProvider.php` | class `CoreMlProvider` implements ExecutionProvider | Provider\ExecutionProvider |
-| 10 | `Provider/DirectMlProvider.php` | class `DirectMlProvider` implements ExecutionProvider | Provider\ExecutionProvider |
+| 10 | `Provider/DirectMlProvider.php` | class `DirectMlProvider` implements ExecutionProvider (планируется — phpmlkit не отдаёт DirectML) | Provider\ExecutionProvider |
+| 11 | `Provider/OpenVinoProvider.php` | class `OpenVinoProvider` implements ExecutionProvider (Фаза 4, планируется) | Provider\ExecutionProvider |
+| 12 | `Provider/RocmProvider.php` | class `RocmProvider` implements ExecutionProvider (Фаза 4, планируется) | Provider\ExecutionProvider |
 
-**Всего: 10 файлов**
+**Всего: 12 файлов**
 
 ---
 
@@ -392,6 +396,8 @@ php-inference/
 
 ### Пакет `model-hub` (13 файлов)
 
+> Примечание: 12 файлов создаются в Фазе 3; `StreamLoader.php` — в Фазе 4 (потоковая загрузка >18GB моделей, production-доработка).
+
 | # | Путь | Содержит | Зависит от |
 |---|---|---|---|
 | 1 | `Hub.php` | class `Hub` implements ModelHubContract | core Contracts\ModelHub |
@@ -400,7 +406,7 @@ php-inference/
 | 4 | `ModelVerifier.php` | class `ModelVerifier` | Signature\*, Format\* |
 | 5 | `ModelIntrospector.php` | class `ModelIntrospector` | Format\* |
 | 6 | `Downloader.php` | class `Downloader` — прогресс, ретраи, resume | HuggingFaceClient |
-| 7 | `StreamLoader.php` | class `StreamLoader` — mmap/stream для >18GB моделей | (нет) |
+| 7 | `StreamLoader.php` | class `StreamLoader` — mmap/stream для >18GB моделей (Фаза 4) | (нет) |
 | 8 | `Format/FormatDetector.php` | class `FormatDetector` — определение формата по magic bytes | (нет) |
 | 9 | `Format/AiArchive.php` | class `AiArchive` — чтение/запись .ai | ext-zip |
 | 10 | `Format/OnnxInspector.php` | class `OnnxInspector` — интроспекция .onnx | (нет) |
@@ -436,13 +442,13 @@ php-inference/
 | 2 | `AIFactory.php` | class `AIFactory` — фабрика | Все бэкенды, токенизатор, embedding, pipeline, model-hub, vector |
 | 3 | `BackendRegistry.php` | class `BackendRegistry` — реестр бэкендов | core Contracts\Backend, core Enums\BackendType |
 | 4 | `TaskRouter.php` | class `TaskRouter` — роутинг задач | BackendRegistry |
-| 5 | `StreamResponse.php` | class `StreamResponse` — PSR-7 streaming response | (PSR-7 интерфейс) |
-| 6 | `SharedMemoryManager.php` | class `SharedMemoryManager` — System V shared memory | ext-shmop |
-| 7 | `ModelPool.php` | class `ModelPool` — пул предзагруженных моделей | core Contracts\Model |
-| 8 | `AsyncInference.php` | class `AsyncInference` — Fibers-based async | (нет) |
-| 9 | `NativeBinaryManager.php` | class `NativeBinaryManager` — автоскачивание бинарников | core PlatformDetector |
-| 10 | `Metrics.php` | class `Metrics` — Prometheus/StatsD метрики | (нет) |
-| 11 | `Profiler.php` | class `Profiler` — профилирование/бенчмарки | (нет) |
+| 5 | `StreamResponse.php` | class `StreamResponse` — PSR-7 streaming response (заглушка Фаза 1 → доработка Фаза 4) | (PSR-7 интерфейс) |
+| 6 | `SharedMemoryManager.php` | class `SharedMemoryManager` — System V shared memory (Фаза 4) | ext-shmop |
+| 7 | `ModelPool.php` | class `ModelPool` — пул предзагруженных моделей (Фаза 4) | core Contracts\Model |
+| 8 | `AsyncInference.php` | class `AsyncInference` — Fibers-based async (Фаза 4) | (нет) |
+| 9 | `NativeBinaryManager.php` | class `NativeBinaryManager` — автоскачивание бинарников (Фаза 4) | core PlatformDetector |
+| 10 | `Metrics.php` | class `Metrics` — Prometheus/StatsD метрики (Фаза 4) | (нет) |
+| 11 | `Profiler.php` | class `Profiler` — профилирование/бенчмарки (Фаза 4) | (нет) |
 
 **Всего: 11 файлов**
 
@@ -492,7 +498,7 @@ php-inference/
 |---|---|---|---|
 | `core` | 38 | **Фаза 1** | `ferry-ai/inference-core` |
 | `tensor` | 3 | **Фаза 1** | `ferry-ai/inference-tensor` |
-| `onnx-backend` | 10 | **Фаза 1** | `ferry-ai/inference-onnx-backend` |
+| `onnx-backend` | 12 | **Фаза 1** (+2 провайдера Фаза 4) | `ferry-ai/inference-onnx-backend` |
 | `ai` | 11 | **Фаза 1** | `ferry-ai/inference-ai` |
 | `llama-backend` | 16 | **Фаза 2** | `ferry-ai/inference-llama-backend` |
 | `tokenizer` | 5 | **Фаза 2** | `ferry-ai/inference-tokenizer` |
@@ -504,7 +510,17 @@ php-inference/
 | `dataframe` | 6 | **Фаза 4** | `ferry-ai/inference-dataframe` |
 | `laravel` | 2 | **Фаза 4** | `ferry-ai/inference-laravel` |
 | `symfony` | 3 | **Фаза 4** | `ferry-ai/inference-symfony` |
-| **ИТОГО** | **135** | | `ferry-ai/php-inference` (root) |
+| **ИТОГО** | **137** | | `ferry-ai/php-inference` (root) |
+
+> **Примечание о фазах отдельных файлов.** Столбец «Статус» указывает основную фазу пакета.
+> Часть файлов внутри пакетов ранних фаз реализуется в **Фазе 4** (production-доработки):
+> - `core`: `PlatformDetector.php`, `Logger.php`, `RetryHandler.php`
+> - `onnx-backend`: `Provider/OpenVinoProvider.php` (Intel), `Provider/RocmProvider.php` (AMD) — Фаза 4. Провайдеры DirectML/OpenVINO/ROCm **планируются**: `phpmlkit/onnxruntime` их не отдаёт (поддержаны CPU/CUDA/CoreML/TensorRT), потребуют собственного FFI.
+> - `ai`: `SharedMemoryManager.php`, `ModelPool.php`, `AsyncInference.php`, `NativeBinaryManager.php`, `Metrics.php`, `Profiler.php` (`StreamResponse.php` создаётся заглушкой в Фазе 1 и дорабатывается в Фазе 4)
+> - `model-hub`: `StreamLoader.php`
+>
+> **Порядок неизменен: сперва ядро платформы (фазы 1–3).** Пакеты `dataframe`, `laravel`, `symfony`
+> создаются **последними** (Фаза 4) и только после того, как ядро готово и стабильно.
 
 ---
 

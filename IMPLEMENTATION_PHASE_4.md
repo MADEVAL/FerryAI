@@ -1,9 +1,9 @@
-# PHP AI Platform — План реализации: Фаза 4 (Production)
+# FerryAI — План реализации: Фаза 4 (Production)
 
 > Версия: 1.0  
 > Цель: стабильный, масштабируемый, production-ready продукт  
 > Длительность: 4–6 месяцев  
-> Пакеты: все существующие + dataframe + laravel + symfony + platform  
+> Пакеты: все существующие + dataframe + laravel + symfony  
 > Новых файлов: 14 основных (+ 6 DataFrame отложенных) + доработки существующих  
 > Коммит-стратегия: 1 коммит = 1 логически завершённое изменение
 
@@ -129,6 +129,33 @@
   - Сохраняет в локальный кэш
 - `verify(string $path, string $expectedSha256): bool`
 - `cleanup(): void` — удаляет старые версии бинарников
+
+---
+
+## ШАГ 122a: Расширенные ONNX-провайдеры (Intel/AMD)
+
+**Пакет:** `onnx-backend` (2 новых файла в `src/Provider/`)
+
+**Назначение:** расширение аппаратной поддержки ONNX Runtime на Intel и AMD.
+
+**Детали реализации:**
+- `class OpenVinoProvider implements ExecutionProvider`
+  - `name(): string` — `'OpenVINOExecutionProvider'`
+  - `device(): Device` — `Device::OPENVINO`
+  - `isAvailable(): bool` — проверяет сборку ONNX Runtime с OpenVINO
+  - `configure(): array` — настройки device_type (CPU/GPU/NPU)
+- `class RocmProvider implements ExecutionProvider`
+  - `name(): string` — `'ROCMExecutionProvider'`
+  - `device(): Device` — `Device::ROCM`
+  - `isAvailable(): bool` — проверяет наличие ROCm (AMD GPU)
+  - `configure(): array` — device_id, memory_limit
+
+**Изменения в `OnnxRuntimeFactory` / `OnnxBackend`:**
+- Регистрация новых провайдеров в `availableProviders()` и `availableDevices()`
+
+**Критерий приёмки:**
+- Оба класса реализуют `ExecutionProvider`
+- `device()` возвращает `Device::OPENVINO` / `Device::ROCM`
 
 ---
 
@@ -510,5 +537,5 @@ php vendor/bin/phpunit
 | Фаза 1 | 1–52 | 53 | 2–3 мес. | ONNX инференс |
 | Фаза 2 | 53–75 | 23 (21 новый + 2 обновления) | 2–3 мес. | LLM чат + стриминг |
 | Фаза 3 | 76–117 | 42 (40 новых + 2 обновления) | 3–4 мес. | Экосистема (embed, vector, pipeline, model-hub) |
-| Фаза 4 | 118–131 | 14 основных (+ 6 DataFrame отложенных) | 4–6 мес. | Production |
-| **Всего (осн.)** | **131** | **~145+** | **11–16 мес.** | PHP AI Platform v1.0 |
+| Фаза 4 | 118–131 (+122a) | 14 основных + 2 ONNX-провайдера (Intel/AMD) (+ 6 DataFrame отложенных) | 4–6 мес. | Production |
+| **Всего** | **131 (+122a)** | **137 файлов** (см. FILE_TREE.md) | **11–16 мес.** | FerryAI v1.0 |

@@ -1,4 +1,4 @@
-# PHP AI Platform — План реализации: Фаза 2 (LLM)
+# FerryAI — План реализации: Фаза 2 (LLM)
 
 > Версия: 1.0  
 > Цель: запуск LLM через llama.cpp из PHP  
@@ -80,13 +80,19 @@
   llama_context_params llama_context_default_params(void);
   llama_model* llama_model_load_from_file(const char *path, llama_model_params params);
   void llama_model_free(llama_model *model);
-  llama_context* llama_context_init_from_model(llama_model *model, llama_context_params params);
-  void llama_context_free(llama_context *ctx);
-  int llama_n_vocab(const llama_model *model);
-  int llama_n_ctx(const llama_context *ctx);
-  int llama_n_embd(const llama_model *model);
+  llama_context* llama_init_from_model(llama_model *model, llama_context_params params);
+  void llama_free(llama_context *ctx);
+  const llama_vocab* llama_model_get_vocab(const llama_model *model);
+  int32_t llama_vocab_n_tokens(const llama_vocab *vocab);
+  uint32_t llama_n_ctx(const llama_context *ctx);
+  int32_t llama_model_n_embd(const llama_model *model);
   // ... и ещё ~20 функций
   ```
+  > **Актуальность C API (сверено по `include/llama.h`, master):** используем новые имена —
+  > `llama_model_load_from_file`, `llama_init_from_model`, `llama_model_free`, `llama_free`,
+  > `llama_vocab_n_tokens`, `llama_model_n_embd`. Устаревшие алиасы (`llama_load_model_from_file`,
+  > `llama_new_context_with_model`, `llama_free_model`, `llama_n_vocab`, `llama_n_embd`) ещё
+  > присутствуют, но помечены DEPRECATED — не использовать.
 - `loadLibrary(string $libPath): void` — загружает shared library через `\FFI::cdef()`
 - `isAvailable(): bool` — проверяет, что библиотека загружена
 - Статические методы-обёртки для каждой C-функции:
@@ -122,7 +128,7 @@
 - Хранит FFI-указатели: `$model`, `$context`
 - Конструктор: `__construct(string $modelPath, LlamaModelParams $modelParams, LlamaContextParams $contextParams)`
   - Загружает модель через `llama_model_load_from_file`
-  - Создаёт контекст через `llama_context_init_from_model`
+  - Создаёт контекст через `llama_init_from_model`
 - `nVocab(): int` — размер словаря
 - `nCtx(): int` — размер контекста
 - `nEmbd(): int` — размерность эмбеддингов

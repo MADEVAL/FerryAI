@@ -78,7 +78,11 @@
 Каждая задача принадлежит фазе (`IMPLEMENTATION_PHASE_1..4.md`). Не реализовывать фичи
 поздней фазы раньше времени — заглушка: `throw new \RuntimeException('Not implemented in Phase 1.')`.
 - Phase 1 (MVP): core, tensor, onnx-backend, ai · Phase 2: llama-backend, tokenizer
-- Phase 3: embedding, vector, model-hub, pipeline, cpu-backend · Phase 4: production, laravel, symfony
+- Phase 3: embedding, vector, model-hub, pipeline, cpu-backend · Phase 4: dataframe, laravel, symfony
+
+Порядок неизменен: **сперва ядро платформы** (фазы 1–3) должно быть готово и стабильно.
+Пакеты `dataframe`, `laravel`, `symfony` создаются **последними** (Фаза 4) и только после этого —
+не начинать их раньше готовности ядра.
 
 ## Рабочий цикл (создание файла)
 

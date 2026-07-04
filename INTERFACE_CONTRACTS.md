@@ -1,4 +1,4 @@
-# PHP AI Platform — Контракты интерфейсов
+# FerryAI — Контракты интерфейсов
 
 > Версия: 1.0  
 > Назначение: исчерпывающие сигнатуры всех интерфейсов, enum'ов, value objects, исключений  
@@ -820,10 +820,15 @@ namespace FerryAI\Core\Enums;
 
 enum Device: string
 {
-    case CPU   = 'cpu';
-    case CUDA  = 'cuda';
-    case METAL = 'metal';
-    case AUTO  = 'auto';
+    case CPU      = 'cpu';
+    case CUDA     = 'cuda';       // NVIDIA GPU (провайдеры: CUDA, TensorRT)
+    case ROCM     = 'rocm';       // AMD GPU (планируется, собственный FFI)
+    case METAL    = 'metal';      // Apple GPU (провайдеры: Metal, CoreML)
+    case VULKAN   = 'vulkan';     // кроссвендорный GPU (llama.cpp)
+    case DIRECTML = 'directml';   // Windows GPU (планируется, собственный FFI)
+    case OPENVINO = 'openvino';   // Intel CPU/GPU/NPU (планируется, собственный FFI)
+    case OPENCL   = 'opencl';     // кроссвендорный GPU (llama.cpp)
+    case AUTO     = 'auto';       // автоопределение лучшего доступного
 
     /**
      * Определяет лучшее доступное устройство из переданного списка.
@@ -834,10 +839,15 @@ enum Device: string
 
     /**
      * Возвращает приоритет устройства (чем больше, тем лучше).
+     * AUTO = 0, CPU = 10, далее GPU-устройства по возрастанию производительности.
      */
     public function priority(): int;
 }
 ```
+
+**Маппинг провайдеров на Device** (провайдер → устройство): `CPUExecutionProvider`→CPU, `CUDAExecutionProvider`→CUDA, `TensorrtExecutionProvider`→CUDA, `ROCMExecutionProvider`→ROCM, `CoreMLExecutionProvider`→METAL, `DmlExecutionProvider`→DIRECTML, `OpenVINOExecutionProvider`→OPENVINO; llama.cpp GPU-сборки: Vulkan→VULKAN, OpenCL→OPENCL, Metal→METAL, CUDA→CUDA.
+
+> **Статус провайдеров ONNX.** Сейчас через адаптер `phpmlkit/onnxruntime` поддержаны **CPU, CUDA, CoreML, TensorRT**. Провайдеры **DirectML, OpenVINO, ROCm** (и соответствующие значения `Device`) — **планируются** (Фаза 4+): требуют собственного FFI поверх ONNX Runtime, `phpmlkit` их пока не отдаёт.
 
 ---
 
@@ -1339,7 +1349,7 @@ final class AIConfig implements ArrayAccess
     public function has(string $key): bool;
 
     // Типизированные геттеры
-    public function backend(): BackendType;
+    public function backend(): BackendType;   // 'onnx'→Onnx, 'llama'→Llama, 'cpu'→CpuNative, 'auto'→автоопределение
     public function device(): Device;
     public function modelCache(): string;
     public function maxTokens(): int;
@@ -1417,6 +1427,8 @@ final class AI
      * Все последующие вызовы пойдут через этот бэкенд.
      *
      * @param string $name  onnx | llama | cpu | auto
+     *                      Строка маппится в BackendType:
+     *                      onnx→Onnx, llama→Llama, cpu→CpuNative ('cpu_native'), auto→автоопределение.
      */
     public static function backend(string $name): void;
 
@@ -1894,12 +1906,6 @@ final class Hub implements ModelHubContract
     // Реализация ModelHub (см. выше) ...
 }
 ```
-
----
-
-## ПАКЕТ `platform` — мета-пакет
-
-### Пространство имён: `FerryAI\Platform`
 
 ---
 

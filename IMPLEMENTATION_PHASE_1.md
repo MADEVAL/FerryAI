@@ -1,4 +1,4 @@
-# PHP AI Platform — План реализации: Фаза 1 (MVP)
+# FerryAI — План реализации: Фаза 1 (MVP)
 
 > Версия: 1.0  
 > Цель: работающий ONNX-инференс с удобным API  
@@ -30,19 +30,20 @@
 **Зависимости:** нет.
 
 **Детали реализации:**
-- string-backed enum с кейсами: `CPU = 'cpu'`, `CUDA = 'cuda'`, `METAL = 'metal'`, `AUTO = 'auto'`
+- string-backed enum с кейсами: `CPU = 'cpu'`, `CUDA = 'cuda'`, `ROCM = 'rocm'`, `METAL = 'metal'`, `VULKAN = 'vulkan'`, `DIRECTML = 'directml'`, `OPENVINO = 'openvino'`, `OPENCL = 'opencl'`, `AUTO = 'auto'`
 - Статический метод `resolve(Device $preferred, array $available): Device`:
   - Если preferred != AUTO и preferred есть в available → вернуть preferred
-  - Если preferred == AUTO: искать в available по приоритету (CUDA > METAL > CPU)
+  - Если preferred == AUTO: выбрать из available с максимальным `priority()` (CUDA > ROCM > METAL > VULKAN > DIRECTML > OPENVINO > OPENCL > CPU)
   - Если ни одно не доступно → выбросить DeviceNotAvailableException (AUTO)
-- Метод `priority(): int` — 30 для CUDA, 20 для METAL, 10 для CPU, 0 для AUTO
+- Метод `priority(): int` — CUDA=90, ROCM=80, METAL=70, VULKAN=60, DIRECTML=50, OPENVINO=40, OPENCL=30, CPU=10, AUTO=0
 
 **Критерий приёмки:**
-- Все 4 кейса определены
+- Все 9 кейсов определены
 - `Device::CPU->value === 'cpu'`
 - `Device::tryFrom('cuda') === Device::CUDA`
 - `Device::resolve(Device::AUTO, [Device::CPU]) === Device::CPU`
 - `Device::resolve(Device::AUTO, [Device::CUDA, Device::CPU]) === Device::CUDA`
+- `Device::CUDA->priority() > Device::CPU->priority()`
 
 ---
 
@@ -492,7 +493,7 @@
 - `set(string $key, mixed $value): self` — immutable: возвращает новый экземпляр
 - `has(string $key): bool` — поддерживает dot-нотацию
 - Типизированные геттеры:
-  - `backend(): BackendType` — парсит строку в BackendType (auto → ищет доступные)
+  - `backend(): BackendType` — парсит строку в BackendType: `onnx`→Onnx, `llama`→Llama, `cpu`→CpuNative (значение enum `cpu_native`), `auto`→автоопределение доступных
   - `device(): Device` — парсит строку в Device
   - `modelCache(): string`
   - `maxTokens(): int`
@@ -787,8 +788,13 @@
 - Возвращает соответствующее имя провайдера
 - `isAvailable()` проверяет наличие через FFI
 - `configure()` возвращает настройки
+- `device(): Device` — маппинг провайдера на устройство: TensorRtProvider → `Device::CUDA`, CoreMlProvider → `Device::METAL`, DirectMlProvider → `Device::DIRECTML`
 - CoreMlProvider доступен только на macOS
 - DirectMlProvider доступен только на Windows
+
+> Провайдеры `OpenVinoProvider` (Intel → `Device::OPENVINO`) и `RocmProvider` (AMD → `Device::ROCM`) — расширение аппаратной поддержки, создаются в Фазе 4 (см. IMPLEMENTATION_PHASE_4). В Фазе 1 достаточно 5 провайдеров.
+>
+> **Важно:** `phpmlkit/onnxruntime` отдаёт только CPU/CUDA/CoreML/TensorRT. `DirectMlProvider` (как и OpenVINO/ROCm) — задел на будущее: реальная поддержка DirectML **планируется** и потребует собственного FFI поверх ONNX Runtime; до тех пор `isAvailable()` возвращает false.
 
 ---
 

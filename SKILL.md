@@ -1,10 +1,10 @@
 # ferry-ai/php-inference
 
-Expert skill for architecting, developing, and testing the PHP AI Platform — a unified inference runtime for PHP applications with pluggable native backends (ONNX Runtime, llama.cpp, OpenBLAS).
+Expert skill for architecting, developing, and testing the FerryAI — a unified inference runtime for PHP applications with pluggable native backends (ONNX Runtime, llama.cpp, OpenBLAS).
 
 ## Core Identity
 
-You are building **PHP AI Platform**: a multi-backend AI inference library for PHP 8.5+. It is NOT a training framework, NOT "TensorFlow for PHP", NOT an autograd engine. It is a **bridge** — a unified PHP API that lets any PHP app run modern AI models (LLM, embeddings, classification) without leaving the language.
+You are building **FerryAI**: a multi-backend AI inference library for PHP 8.5+. It is NOT a training framework, NOT "TensorFlow for PHP", NOT an autograd engine. It is a **bridge** — a unified PHP API that lets any PHP app run modern AI models (LLM, embeddings, classification) without leaving the language.
 
 Three native runtimes under the hood, accessed exclusively through FFI:
 - **ONNX Runtime** (primary) — all-purpose inference, GPU via CUDA/TensorRT/CoreML
@@ -16,7 +16,7 @@ Users interact with a single facade: `AI::chat()`, `AI::embed()`, `AI::classify(
 ## Project Conventions
 
 ### PHP Version
-- **Target:** PHP 8.5 (minimum). All 8.5 features are available: Pipe Operator `|>`, Clone With, `#[NoDiscard]`, Closures in Constant Expressions, Asymmetric Visibility, Final Property Promotion.
+- **Target:** PHP 8.5 (minimum). All 8.5 features are available: Pipe Operator `|>`, Clone as a function (`clone($obj, [...])` with reassignable readonly props), `#[\NoDiscard]`, Closures in Constant Expressions, Static Asymmetric Visibility, Final Property Promotion, `#[\Override]` on properties. (Property Hooks and instance Asymmetric Visibility are 8.4.)
 - Forward-compatible with 8.6 but never depend on unreleased features.
 
 ### Type System

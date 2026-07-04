@@ -1,4 +1,4 @@
-# PHP AI Platform — Инфраструктура репозитория
+# FerryAI — Инфраструктура репозитория
 
 > Версия: 1.0  
 > Назначение: полное описание инфраструктуры монорепо — composer, тестирование, CI/CD, публикация, инструменты  
@@ -90,7 +90,7 @@ php-inference/
 ```json
 {
     "name": "ferry-ai/php-inference",
-    "description": "PHP AI Platform — unified inference API for PHP applications",
+    "description": "FerryAI — unified inference API for PHP applications",
     "type": "project",
     "keywords": ["ai", "ml", "onnx", "llama", "embedding", "llm", "vector-store", "rag"],
     "homepage": "https://github.com/MADEVAL/FerryAI",
@@ -120,17 +120,17 @@ php-inference/
         "ferry-ai/inference-ai": "^1.0"
     },
     "require-dev": {
-        "phpunit/phpunit": "^11.0",
+        "phpunit/phpunit": "^13.0",
         "phpstan/phpstan": "^2.0",
         "phpstan/phpstan-strict-rules": "^2.0",
         "phpstan/phpstan-deprecation-rules": "^2.0",
         "vimeo/psalm": "^6.0",
-        "squizlabs/php_codesniffer": "^3.10",
+        "squizlabs/php_codesniffer": "^4.0",
         "php-cs-fixer/shim": "^3.0",
-        "infection/infection": "^0.29",
-        "pestphp/pest": "^3.0",
-        "pestphp/pest-plugin-parallel": "^3.0",
-        "symplify/monorepo-builder": "^11.0",
+        "infection/infection": "^0.34",
+        "pestphp/pest": "^4.0",
+        "pestphp/pest-plugin-parallel": "^4.0",
+        "symplify/monorepo-builder": "^12.0",
         "roave/security-advisories": "dev-latest",
         "ergebnis/composer-normalize": "^2.0",
         "captainhook/captainhook": "^5.0"
@@ -261,7 +261,7 @@ php-inference/
         "php": ">=8.5"
     },
     "require-dev": {
-        "phpunit/phpunit": "^11.0",
+        "phpunit/phpunit": "^13.0",
         "phpstan/phpstan": "^2.0",
         "vimeo/psalm": "^6.0"
     },
@@ -289,18 +289,18 @@ php-inference/
 |---|---|---|
 | `core` | (нет) | — |
 | `tensor` | `ferry-ai/inference-core: ^1.0` | `ext-random: *` (для random-заполнения) |
-| `onnx-backend` | `ferry-ai/inference-core: ^1.0`, `phpmlkit/onnxruntime: ^1.0` | `ankane/onnxruntime-php: ^1.0` (резервный) |
+| `onnx-backend` | `ferry-ai/inference-core: ^1.0`, `phpmlkit/onnxruntime: ^1.0` | `ankane/onnxruntime: ^0.3` (резервный) |
 | `llama-backend` | `ferry-ai/inference-core: ^1.0` | — |
-| `cpu-backend` | `ferry-ai/inference-core: ^1.0` | `rubix/ml: ^2.0`, `rubix/tensor: ^2.0` |
+| `cpu-backend` | `ferry-ai/inference-core: ^1.0` | `rubix/ml: ^2.0`, `rubix/tensor: ^3.0` |
 | `tokenizer` | `ferry-ai/inference-core: ^1.0` | — |
 | `embedding` | `ferry-ai/inference-core: ^1.0`, `ferry-ai/inference-onnx-backend: ^1.0`, `ferry-ai/inference-tokenizer: ^1.0` | — |
 | `pipeline` | `ferry-ai/inference-core: ^1.0` | — |
-| `model-hub` | `ferry-ai/inference-core: ^1.0`, `codewithkyrian/huggingface-php: ^1.0` | `ext-zip: *`, `ext-sodium: *` |
+| `model-hub` | `ferry-ai/inference-core: ^1.0`, `codewithkyrian/huggingface: ^1.0` | `ext-zip: *`, `ext-sodium: *` |
 | `vector` | `ferry-ai/inference-core: ^1.0`, `ferry-ai/inference-embedding: ^1.0` | `ext-pdo_sqlite: *` или `ext-sqlite3: *` |
 | `dataframe` | `ferry-ai/inference-core: ^1.0`, `ferry-ai/inference-tensor: ^1.0` | — |
 | `ai` | `ferry-ai/inference-core: ^1.0`, `ferry-ai/inference-onnx-backend: ^1.0`, `ferry-ai/inference-llama-backend: ^1.0`, `ferry-ai/inference-cpu-backend: ^1.0`, `ferry-ai/inference-tokenizer: ^1.0`, `ferry-ai/inference-embedding: ^1.0`, `ferry-ai/inference-pipeline: ^1.0`, `ferry-ai/inference-model-hub: ^1.0`, `ferry-ai/inference-vector: ^1.0` | `psr/http-message: ^2.0` (для StreamResponse) |
-| `laravel` | `ferry-ai/inference-ai: ^1.0`, `illuminate/support: ^11.0` | — |
-| `symfony` | `ferry-ai/inference-ai: ^1.0`, `symfony/http-kernel: ^7.0`, `symfony/config: ^7.0`, `symfony/dependency-injection: ^7.0` | — |
+| `laravel` | `ferry-ai/inference-ai: ^1.0`, `illuminate/support: ^12.0 \|\| ^13.0` | — |
+| `symfony` | `ferry-ai/inference-ai: ^1.0`, `symfony/http-kernel: ^7.4 \|\| ^8.0`, `symfony/config: ^7.4 \|\| ^8.0`, `symfony/dependency-injection: ^7.4 \|\| ^8.0` | — |
 
 ---
 
@@ -378,7 +378,7 @@ vendor/bin/monorepo-builder release v1.0.0
 <?xml version="1.0" encoding="UTF-8"?>
 <phpunit
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/11.0/phpunit.xsd"
+    xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/13.0/phpunit.xsd"
     bootstrap="vendor/autoload.php"
     colors="true"
     cacheDirectory="build/phpunit"
@@ -1182,7 +1182,7 @@ jobs:
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          name: "PHP AI Platform ${{ github.ref_name }}"
+          name: "FerryAI ${{ github.ref_name }}"
           body_path: CHANGELOG.md
           files: |
             native-binaries/**/*
@@ -1300,13 +1300,13 @@ function checkEnvironment(): void
 
 function echoVersion(): void
 {
-    echo "PHP AI Platform v1.0.0\n";
+    echo "FerryAI v1.0.0\n";
 }
 
 function showHelp(): void
 {
     echo <<<HELP
-PHP AI Platform CLI
+FerryAI CLI
 
 Usage:
   ferry-ai check     Check environment and dependencies
@@ -1383,7 +1383,7 @@ switch ($target) {
     }
     default {
         Write-Host @"
-PHP AI Platform Makefile.ps1
+FerryAI Makefile.ps1
 
 Usage: .\Makefile.ps1 <target>
 
@@ -1496,7 +1496,7 @@ We will respond within 48 hours and publish a fix as soon as possible.
 ### 10.3. `CONTRIBUTING.md`
 
 ```markdown
-# Contributing to PHP AI Platform
+# Contributing to FerryAI
 
 ## Development Setup
 
