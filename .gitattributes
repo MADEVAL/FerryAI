@@ -1,4 +1,4 @@
-# Export-ignore: не включать в архив при скачивании релиза
+# Export-ignore: excluded from release archive downloads
 /.github            export-ignore
 /tests              export-ignore
 /benchmarks         export-ignore

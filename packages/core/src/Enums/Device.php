@@ -19,11 +19,11 @@ enum Device: string
     case AUTO = 'auto';
 
     /**
-     * Определяет лучшее доступное устройство из переданного списка.
+     * Resolves the best available device from the given list.
      *
      * @param Device[] $available
      *
-     * @throws DeviceNotAvailableException когда подходящее устройство недоступно
+     * @throws DeviceNotAvailableException when no suitable device is available
      */
     public static function resolve(self $preferred, array $available): self
     {
@@ -51,7 +51,7 @@ enum Device: string
     }
 
     /**
-     * Возвращает приоритет устройства (чем больше, тем лучше).
+     * Returns the device priority (higher is better).
      */
     public function priority(): int
     {

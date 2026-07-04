@@ -28,12 +28,16 @@
     },
     "autoload": {
         "psr-4": {
-            "FerryAI\\Core\\": "packages/core/src/"
+            "FerryAI\\Core\\": "packages/core/src/",
+            "FerryAI\\Tensor\\": "packages/tensor/src/",
+            "FerryAI\\OnnxBackend\\": "packages/onnx-backend/src/"
         }
     },
     "autoload-dev": {
         "psr-4": {
-            "FerryAI\\Core\\Tests\\": "packages/core/tests/"
+            "FerryAI\\Core\\Tests\\": "packages/core/tests/",
+            "FerryAI\\Tensor\\Tests\\": "packages/tensor/tests/",
+            "FerryAI\\OnnxBackend\\Tests\\": "packages/onnx-backend/tests/"
         }
     },
     "scripts": {

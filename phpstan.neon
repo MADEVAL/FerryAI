@@ -2,6 +2,8 @@ parameters:
     level: 8
     paths:
         - packages/core/src
+        - packages/tensor/src
+        - packages/onnx-backend/src
     excludePaths:
         - packages/*/tests/*
         - packages/*/vendor/*
@@ -10,7 +12,7 @@ parameters:
     parallel:
         maximumNumberOfProcesses: 4
     ignoreErrors:
-        # FFI-вызовы не могут быть полностью типизированы
+        # FFI calls cannot be fully typed
         - '#Cannot access property \$cdata on mixed#'
         - '#Call to an undefined method .*\\FFI::new\(\)#'
         - '#Parameter \#1 \$ptr of function .* expects .*FFI\\CData#'

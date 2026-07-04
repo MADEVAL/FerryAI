@@ -13,7 +13,7 @@ enum DType: string
     case String = 'string';
 
     /**
-     * Размер одного элемента в байтах (String = 0 — переменная длина).
+     * Size of a single element in bytes (String = 0, variable length).
      */
     public function sizeInBytes(): int
     {

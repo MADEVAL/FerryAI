@@ -30,7 +30,7 @@
 
     <php>
         <env name="FERRY_AI_TESTING" value="1" force="true"/>
-        <!-- Не требуем нативные библиотеки для unit-тестов -->
+        <!-- Native libraries are not required for unit tests -->
         <env name="FERRY_AI_SKIP_NATIVE" value="1" force="false"/>
     </php>
 </phpunit>

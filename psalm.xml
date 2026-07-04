@@ -9,6 +9,8 @@
 >
     <projectFiles>
         <directory name="packages/core/src"/>
+        <directory name="packages/tensor/src"/>
+        <directory name="packages/onnx-backend/src"/>
         <ignoreFiles>
             <directory name="packages/*/tests"/>
             <directory name="vendor"/>
@@ -16,7 +18,7 @@
     </projectFiles>
 
     <issueHandlers>
-        <!-- FFI: неизбежные несоответствия типов -->
+        <!-- FFI: unavoidable type mismatches -->
         <MixedPropertyFetch errorLevel="suppress"/>
         <MixedMethodCall errorLevel="suppress"/>
         <MixedArgument errorLevel="suppress"/>
