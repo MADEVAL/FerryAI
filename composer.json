@@ -14,9 +14,10 @@
     "require": {
         "php": ">=8.5",
         "ext-ffi": "*",
-        "ext-json": "*",
+        "ext-fileinfo": "*",
         "ext-hash": "*",
-        "ext-fileinfo": "*"
+        "ext-json": "*",
+        "ankane/onnxruntime": "^0.3.0"
     },
     "require-dev": {
         "phpunit/phpunit": "^12.0 || ^13.0",
@@ -37,7 +38,8 @@
         "psr-4": {
             "FerryAI\\Core\\Tests\\": "packages/core/tests/",
             "FerryAI\\Tensor\\Tests\\": "packages/tensor/tests/",
-            "FerryAI\\OnnxBackend\\Tests\\": "packages/onnx-backend/tests/"
+            "FerryAI\\OnnxBackend\\Tests\\": "packages/onnx-backend/tests/",
+            "FerryAI\\Tests\\": "tests/"
         }
     },
     "scripts": {

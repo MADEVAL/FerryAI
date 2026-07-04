@@ -265,3 +265,50 @@ PHPUnit 161/161 (354 assertions).
 
 **Next:** FFI layer — `OnnxRuntimeFactory`, `OnnxTensor`, `OnnxModel`, `OnnxBackend` (Steps 42–45)
 via the interface-and-mock pattern over `phpmlkit/onnxruntime`.
+
+---
+
+### 2026-07-04 — Steps 42–45: ONNX FFI layer (runtime seam, tensor, model, backend)
+
+**Dependency decision (documented deviation):** `phpmlkit/onnxruntime` referenced throughout the design
+docs **does not exist on Packagist**. The documented fallback (`SKILL.md` §What We Use) —
+**`ankane/onnxruntime`** (v0.3.0) — is used instead as the native ONNX Runtime FFI binding.
+
+**Architecture — a single, mockable FFI seam:**
+- `Runtime/OnnxSession.php` — marker interface for an opaque loaded-session handle.
+- `Runtime/OnnxRuntimeInterface.php` — the seam. Every value crossing it is plain PHP data, so the
+  whole backend is unit-testable without the native library.
+- `OnnxTypeMapper.php` — ONNX element-type → `DType`, provider name → `Device`, and device →
+  ordered provider names (with CPU fallback).
+- `OnnxTensor.php` — implements `Tensor` as a value wrapper; arithmetic/transform throw
+  `BadMethodCallException` (tensor math belongs to the `tensor` package).
+- `OnnxModel.php` — implements `Model`; normalises inputs (Tensor→array), delegates to the seam,
+  wraps outputs as `OnnxTensor`; caches input/output metadata; `unload()` makes `run()` throw.
+- `OnnxBackend.php` — implements `Backend`; maps available providers → devices, resolves the target
+  device (`Device::resolve`), maps device → providers, creates the session, builds `ModelMetadata`.
+  Remote sources → `ModelLoadException`; missing file → `ModelNotFoundException`; unavailable runtime
+  → `BackendNotAvailableException`.
+
+**Native FFI boundary (excluded from static analysis, covered by integration tests):**
+- `OnnxRuntimeFactory.php` — the sole coupling point to `ankane/onnxruntime` (availability, version,
+  `GetAvailableProviders` via FFI, model creation, graph-optimisation mapping).
+- `Runtime/NativeOnnxRuntime.php` — implements the seam over the factory; normalises ankane node
+  metadata (`tensor(float)` → `float`, symbolic dims → `-1`).
+- `Runtime/NativeOnnxSession.php` — wraps ankane `Model`.
+- Excluded via `phpstan.neon` (`excludePaths.analyse`) and `psalm.xml` (`ignoreFiles`) because ankane
+  is an untyped third-party FFI library; symbols remain resolvable for reflection.
+
+**Test doubles + tests:**
+- `tests/Double/MockOnnxRuntime.php` + `tests/Double/MockOnnxSession.php` — deterministic seam doubles.
+- Unit: `OnnxTensorTest`, `OnnxModelTest`, `OnnxBackendTest`.
+- Integration: `tests/Integration/Onnx/OnnxRuntimeIntegrationTest.php` (`@group integration`,
+  `@coversNothing`) — skips gracefully when the native library is absent.
+
+**Verification:**
+- `composer check` — cs-check OK, PHPStan lvl8 OK, Psalm lvl3 No errors, PHPUnit 185/185 (404 assertions).
+- `php -l` on all three native files — no syntax errors.
+- Smoke: `new OnnxBackend()->isAvailable()` returns `false` gracefully (no native lib) — no fatal.
+- `composer test-integration` — 3 skipped, 0 failures (FFI boundary behaves as designed).
+
+**Status:** `onnx-backend` Phase 1 complete (10 files + seam/doubles). The `ROCm`/`OpenVINO` providers
+remain Phase 4.

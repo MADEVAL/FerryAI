@@ -14,6 +14,10 @@
         <ignoreFiles>
             <directory name="packages/*/tests"/>
             <directory name="vendor"/>
+            <!-- Native ONNX Runtime FFI boundary (untyped third-party FFI); covered by integration tests. -->
+            <file name="packages/onnx-backend/src/OnnxRuntimeFactory.php"/>
+            <file name="packages/onnx-backend/src/Runtime/NativeOnnxRuntime.php"/>
+            <file name="packages/onnx-backend/src/Runtime/NativeOnnxSession.php"/>
         </ignoreFiles>
     </projectFiles>
 

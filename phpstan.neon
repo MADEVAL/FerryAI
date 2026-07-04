@@ -5,8 +5,15 @@ parameters:
         - packages/tensor/src
         - packages/onnx-backend/src
     excludePaths:
-        - packages/*/tests/*
-        - packages/*/vendor/*
+        analyseAndScan:
+            - packages/*/tests/*
+            - packages/*/vendor/*
+        analyse:
+            # Native ONNX Runtime FFI boundary (ankane/onnxruntime is untyped);
+            # covered by the integration suite, not by static analysis.
+            - packages/onnx-backend/src/OnnxRuntimeFactory.php
+            - packages/onnx-backend/src/Runtime/NativeOnnxRuntime.php
+            - packages/onnx-backend/src/Runtime/NativeOnnxSession.php
     treatPhpDocTypesAsCertain: false
     reportUnmatchedIgnoredErrors: false
     parallel:
