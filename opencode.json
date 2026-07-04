@@ -1,0 +1,13 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "instructions": [
+    "AGENTS.md",
+    ".opencode/agents/brainstorming.md",
+    ".opencode/agents/systematic-debugging.md",
+    ".opencode/agents/test-driven-development.md",
+    ".opencode/agents/verification-before-completion.md"
+  ],
+  "skills": {
+    "paths": ["docs"]
+  }
+}
