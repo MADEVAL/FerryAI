@@ -1,0 +1,95 @@
+{
+    "name": "ferry-ai/php-inference",
+    "description": "FerryAI — unified inference API for PHP applications",
+    "type": "project",
+    "keywords": ["ai", "ml", "onnx", "llama", "embedding", "llm", "vector-store", "rag"],
+    "homepage": "https://github.com/MADEVAL/FerryAI",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Yevhen Leonidov",
+            "homepage": "https://github.com/MADEVAL"
+        }
+    ],
+    "require": {
+        "php": ">=8.5",
+        "ext-ffi": "*",
+        "ext-json": "*",
+        "ext-hash": "*",
+        "ext-fileinfo": "*"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^12.0 || ^13.0",
+        "phpstan/phpstan": "^2.0",
+        "phpstan/phpstan-strict-rules": "^2.0",
+        "phpstan/phpstan-deprecation-rules": "^2.0",
+        "vimeo/psalm": "^6.0",
+        "php-cs-fixer/shim": "^3.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "FerryAI\\Core\\": "packages/core/src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "FerryAI\\Core\\Tests\\": "packages/core/tests/"
+        }
+    },
+    "scripts": {
+        "test": [
+            "@putenv FERRY_AI_TESTING=1",
+            "@php vendor/bin/phpunit --testsuite unit"
+        ],
+        "test-integration": [
+            "@putenv FERRY_AI_TESTING=1",
+            "@putenv FERRY_AI_INTEGRATION=1",
+            "@php vendor/bin/phpunit --testsuite integration"
+        ],
+        "verify": [
+            "@putenv FERRY_AI_TESTING=1",
+            "@php vendor/bin/phpunit --testsuite verification"
+        ],
+        "stan": "@php vendor/bin/phpstan analyse --memory-limit=512M",
+        "psalm": "@php vendor/bin/psalm --no-cache",
+        "analyse": [
+            "@stan",
+            "@psalm"
+        ],
+        "cs-check": "@php vendor/bin/php-cs-fixer check --diff",
+        "cs-fix": "@php vendor/bin/php-cs-fixer fix",
+        "lint": [
+            "@cs-check",
+            "@analyse"
+        ],
+        "check": [
+            "@lint",
+            "@test"
+        ],
+        "coverage": [
+            "@putenv XDEBUG_MODE=coverage",
+            "@php vendor/bin/phpunit --testsuite unit --coverage-html build/coverage --coverage-text"
+        ]
+    },
+    "scripts-descriptions": {
+        "test": "Run all unit tests",
+        "test-integration": "Run integration tests (requires ONNX Runtime / llama.cpp)",
+        "verify": "Run runtime bug/audit verification tests (tests/Verification, @coversNothing)",
+        "stan": "PHPStan static analysis (level 8)",
+        "psalm": "Psalm static analysis (level 3)",
+        "analyse": "Run both PHPStan and Psalm",
+        "cs-check": "Check code style (PER-CS 2.0)",
+        "cs-fix": "Fix code style automatically",
+        "lint": "Run all linters",
+        "check": "Lint + test (pre-commit)",
+        "coverage": "Generate HTML coverage report"
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "phpstan/extension-installer": true
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

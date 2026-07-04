@@ -1,0 +1,57 @@
+# Composer
+/vendor/
+packages/*/vendor/
+composer.lock
+
+# Build
+/build/
+/native-binaries/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Test
+.phpunit.result.cache
+.phpunit.cache/
+phpunit.xml
+.psalm-cache/
+build/phpunit/
+build/psalm/
+build/coverage/
+tests/fixtures/*.onnx
+tests/fixtures/*.gguf
+tests/fixtures/*.json
+!tests/fixtures/.gitkeep
+
+# Env
+.env
+.env.*
+
+# Temp
+/tmp/
+/TEMP/
+*.tmp
+*.bak
+
+# Infection
+infection.log
+build/infection/
+
+# Benchmarks
+benchmarks/models/
+
+# Docker
+docker-compose.override.yml
+
+# Archive formats
+*.ai
+!tests/fixtures/*.ai

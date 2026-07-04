@@ -1,0 +1,36 @@
+{
+    "name": "ferry-ai/inference-core",
+    "description": "FerryAI core: contracts, enums, value objects, exceptions",
+    "type": "library",
+    "license": "MIT",
+    "homepage": "https://github.com/MADEVAL/FerryAI",
+    "authors": [
+        {
+            "name": "Yevhen Leonidov",
+            "homepage": "https://github.com/MADEVAL"
+        }
+    ],
+    "require": {
+        "php": ">=8.5"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^12.0 || ^13.0",
+        "phpstan/phpstan": "^2.0",
+        "vimeo/psalm": "^6.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "FerryAI\\Core\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "FerryAI\\Core\\Tests\\": "tests/"
+        }
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

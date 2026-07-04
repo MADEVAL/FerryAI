@@ -1,0 +1,19 @@
+parameters:
+    level: 8
+    paths:
+        - packages/core/src
+    excludePaths:
+        - packages/*/tests/*
+        - packages/*/vendor/*
+    treatPhpDocTypesAsCertain: false
+    reportUnmatchedIgnoredErrors: false
+    parallel:
+        maximumNumberOfProcesses: 4
+    ignoreErrors:
+        # FFI-вызовы не могут быть полностью типизированы
+        - '#Cannot access property \$cdata on mixed#'
+        - '#Call to an undefined method .*\\FFI::new\(\)#'
+        - '#Parameter \#1 \$ptr of function .* expects .*FFI\\CData#'
+    typeAliases:
+        TokenIds: list<int>
+        Vector: list<float>

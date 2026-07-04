@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+    bootstrap="vendor/autoload.php"
+    colors="true"
+    cacheDirectory="build/phpunit"
+    beStrictAboutOutputDuringTests="true"
+    beStrictAboutChangesToGlobalState="true"
+    failOnRisky="true"
+    failOnWarning="true"
+>
+    <testsuites>
+        <testsuite name="unit">
+            <directory>packages/*/tests/Unit</directory>
+        </testsuite>
+        <testsuite name="integration">
+            <directory>tests/Integration</directory>
+        </testsuite>
+        <testsuite name="verification">
+            <directory>tests/Verification</directory>
+        </testsuite>
+    </testsuites>
+
+    <source>
+        <include>
+            <directory>packages/*/src</directory>
+        </include>
+    </source>
+
+    <php>
+        <env name="FERRY_AI_TESTING" value="1" force="true"/>
+        <!-- Не требуем нативные библиотеки для unit-тестов -->
+        <env name="FERRY_AI_SKIP_NATIVE" value="1" force="false"/>
+    </php>
+</phpunit>
