@@ -113,7 +113,7 @@ Listed in `composer.json` scripts: Infection, Pest, CaptainHook, Monorepo-builde
 ## 10. Test Coverage Gaps — FFI Boundary
 
 8 FFI-boundary files excluded from unit tests **by design**. All pure-PHP classes are tested
-(630 unit tests).
+(639 unit tests).
 
 ---
 
@@ -127,7 +127,7 @@ Listed in `composer.json` scripts: Infection, Pest, CaptainHook, Monorepo-builde
 | sqlite-vec | ✅ Windows + Linux (native KNN). |
 | PostgreSQL vector store | ✅ Windows (pgvector 0.8.4). WSL → PG blocked by `pg_hba.conf` (environment). |
 | RubixML | ✅ Windows + Linux (isolated, subprocess harness). |
-| Pure-PHP suite | ✅ 630 unit + PHPStan L8 + Psalm L3, Windows + Linux. |
+| Pure-PHP suite | ✅ 639 unit + PHPStan L8 + Psalm L3, Windows + Linux. |
 | Safetensors | 🔴 Format detected, no loader. Requires Python conversion. |
 | HuggingFace native tokenizer | Optional accelerator; pure-PHP covers all needed types. |
 | `ferry_llama.dll/.so` | Machine-built, not committed. Build via `native/llama-wrapper/build.{ps1,sh}`. |

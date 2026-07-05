@@ -1470,3 +1470,15 @@ search failed (audit §8.1: every `getenv('FERRY_AI_*')` must be documented).
   (`FERRY_AI_PG_DSN`, `FERRY_AI_PG_USER` = `postgres`, `FERRY_AI_PG_PASSWORD` = `postgres`).
 - Verification (runtime): sweep of all 22 `getenv('FERRY_AI_*')` in `packages/*/src` against
   `docs/**/*.md` + `README.md` now reports 0 missing.
+
+---
+
+## 2026-07-05 - Docs: unit-test counter synced 630 -> 639
+
+Final consistency pass after the exception refactor (+9 unit tests). Updated the current-state
+counters that still read 630:
+- `README.md` (Verified table row "Linux / WSL"; `composer test` comment).
+- `docs/DEBT_REPORT.md` (§10 "630 unit tests"; §11 "Pure-PHP suite" row).
+- Historical dated `BUILD_LOG.md` entries left unchanged (they record the state at their time).
+- Verification: `composer test` -> `OK (639 tests, 1129 assertions)`; no current-state `630`
+  references remain in `README.md`/`DEBT_REPORT.md`.

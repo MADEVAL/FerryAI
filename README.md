@@ -234,7 +234,7 @@ keeps sampling fast. See `docs/DEBT_REPORT.md` §12.
 | CPU backend | ✅ Tensor math (matmul/transpose/reshape/slice); RubixML `.rbm` predict/proba (isolated) |
 | Shared memory (shmop) | ✅ Allocate 2.5B key, attach, detach |
 | Async fibers | ✅ Suspend/resume, parallel tasks, timeout 10ms |
-| Linux / WSL | ✅ 630 unit + static analysis, all 5 native backends (llama CPU+CUDA, ONNX, sqlite-vec, RubixML) verified on WSL2 Ubuntu 24.04 / PHP 8.5.8 (PostgreSQL: pg_hba.conf env blocker) |
+| Linux / WSL | ✅ 639 unit + static analysis, all 5 native backends (llama CPU+CUDA, ONNX, sqlite-vec, RubixML) verified on WSL2 Ubuntu 24.04 / PHP 8.5.8 (PostgreSQL: pg_hba.conf env blocker) |
 
 ---
 
@@ -263,7 +263,7 @@ packages/
 ## Testing
 
 ```bash
-composer test                # 630 unit tests — pure PHP
+composer test                # 639 unit tests — pure PHP
 composer test-integration    # Integration — needs ONNX Runtime / llama.cpp / PostgreSQL
 composer check               # cs-fix + PHPStan lvl8 + Psalm lvl3 + tests — fully green
 ```
