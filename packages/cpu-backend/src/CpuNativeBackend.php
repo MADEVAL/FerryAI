@@ -23,6 +23,26 @@ final class CpuNativeBackend implements Backend
             throw new \FerryAI\Core\Exception\ModelNotFoundException($source);
         }
 
+        $adapter = new RubixMLAdapter();
+
+        if ($adapter->isAvailable()) {
+            try {
+                $loaded = $adapter->loadModel($source);
+
+                if (\is_object($loaded)) {
+                    return new CpuNativeModel($source, [], $loaded, $adapter);
+                }
+
+                if (\is_array($loaded)) {
+                    return new CpuNativeModel($source, $loaded);
+                }
+            } catch (\FerryAI\Core\Exception\ModelNotFoundException $e) {
+                throw $e;
+            } catch (\Throwable) {
+                // Not a RubixML/serialized payload we can read — fall back below.
+            }
+        }
+
         $content = \file_get_contents($source);
 
         if ($content === false) {

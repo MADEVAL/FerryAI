@@ -6,6 +6,7 @@ namespace FerryAI\CpuBackend\Tests\Unit;
 
 use FerryAI\Core\Contracts\Model;
 use FerryAI\CpuBackend\CpuNativeModel;
+use FerryAI\CpuBackend\Predictor;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
@@ -50,5 +51,41 @@ final class CpuNativeModelTest extends TestCase
 
         $this->expectException(\RuntimeException::class);
         $model->run([]);
+    }
+
+    public function testRunDelegatesToPredictorWhenEstimatorPresent(): void
+    {
+        $predictor = new class implements Predictor {
+            #[\Override]
+            public function isAvailable(): bool
+            {
+                return true;
+            }
+
+            #[\Override]
+            public function predict(mixed $model, array $samples): array
+            {
+                return \array_fill(0, \count($samples), 'label-A');
+            }
+
+            #[\Override]
+            public function proba(mixed $model, array $samples): array
+            {
+                return [];
+            }
+        };
+
+        $model = new CpuNativeModel('m.rbm', [], new \stdClass(), $predictor);
+
+        $out = $model->run(['samples' => [[1.0, 2.0], [3.0, 4.0]]]);
+
+        self::assertSame(['output' => ['label-A', 'label-A']], $out);
+    }
+
+    public function testRunFallsBackWithoutEstimator(): void
+    {
+        $model = new CpuNativeModel('m', []);
+
+        self::assertArrayHasKey('output', $model->run(['x' => 1]));
     }
 }

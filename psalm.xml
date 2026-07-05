@@ -34,6 +34,8 @@
             <file name="packages/llama-backend/src/FFI/LlamaBatch.php"/>
             <file name="packages/llama-backend/src/Runtime/NativeLlamaRuntime.php"/>
             <file name="packages/llama-backend/src/Runtime/NativeLlamaSession.php"/>
+            <!-- Optional RubixML library boundary (dynamic dispatch; rubix/ml not installed) -->
+            <file name="packages/cpu-backend/src/RubixMLAdapter.php"/>
         </ignoreFiles>
     </projectFiles>
 

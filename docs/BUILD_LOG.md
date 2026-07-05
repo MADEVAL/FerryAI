@@ -968,3 +968,38 @@ vec0.dll (`FERRY_AI_SKIP_NATIVE=0`). Rewrote `SqliteVecExtensionTest` (disabled 
 without the library), `examples/README.md` Tier 5, `docs/EXAMPLES_PLAN.md` (22 -> 23), root
 `README.md` vector-store section/counts. `DEBT_REPORT.md` Section 3 -> RESOLVED (new Section 3a,
 summary matrix, Section 6 integration list).
+
+---
+
+## 2026-07-05 - Debt Section 15: RubixML CPU backend + tensor math
+
+**What (TDD):** Made the `cpu-backend` package real - full pure-PHP tensor arithmetic and a
+working (dynamic) RubixML boundary with an isolated end-to-end runtime test.
+
+**CpuNativeTensor:** implemented `add/sub/mul` (elementwise, shape-checked), `matmul` (2D),
+`transpose`, `reshape`, `slice` in pure PHP (mirrors ArrayTensor algorithms; no dependency on
+the tensor package). Replaced the seven `Not implemented in Phase 3.` throws.
+
+**RubixML boundary:**
+- New `Predictor` interface; `RubixMLAdapter implements Predictor`.
+- Real `loadModel()` (RBX via `PersistentModel::load`, fallback to unserialize), `predict()`,
+  `proba()` - all via dynamic class-name dispatch, so no compile-time rubix dependency.
+  Excluded from PHPStan/Psalm like the FFI boundaries.
+- Fixed latent bug: `Rubix\ML\Estimator` is an *interface*, so availability now uses
+  `interface_exists()` (`class_exists()` always returned false).
+- `CpuNativeModel::run()` delegates to the estimator via `Predictor` when present; legacy
+  fallback otherwise. `CpuNativeBackend::load()` loads real `.rbm` estimators when available.
+
+**Dependency constraint:** rubix/ml needs amphp/parallel ^1 while psalm needs ^2/3, and
+amphp/amp's files-autoload (`Amp\delay`) collides if both load in one process. So rubix/ml
+is `suggest`-only and runs in an isolated process for the runtime test.
+
+**Verification (fresh):** `composer check` fully green - cs 0 - PHPStan L8 No errors - Psalm
+L3 No errors - 611 unit tests. Integration: `tests/Integration/Rubix/rubix_harness.php`
+(isolated rubix/ml 2.5.3 + rubix/tensor 3.0.5, PHP 8.5) -> predict `["a","b"]`, proba.a `1`;
+`RubixCpuIntegrationTest` runs it as a subprocess and asserts the JSON (1 test, passes).
+
+**Example + README (milestone policy):** `examples/24-rubix-cpu.php` (tensor math live; explains
+isolated rubix), `examples/README.md` Tier 5, `docs/EXAMPLES_PLAN.md` (23 -> 24), root
+`README.md` (CPU backend row, counts). `DEBT_REPORT.md` Section 15 -> RESOLVED (+ summary matrix,
+Section 6 integration list).

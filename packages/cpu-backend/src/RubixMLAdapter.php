@@ -4,24 +4,36 @@ declare(strict_types=1);
 
 namespace FerryAI\CpuBackend;
 
-final class RubixMLAdapter
+/**
+ * RubixML boundary: loads serialized estimators and runs inference.
+ *
+ * All RubixML access is dynamic (class names as strings), so this file needs no
+ * compile-time dependency on `rubix/ml` — which is an optional, `suggest`-only
+ * package (it cannot share the dev toolchain's `amphp/parallel ^2`). When RubixML
+ * is not installed every method degrades gracefully by throwing a clear error.
+ *
+ * Excluded from PHPStan/Psalm like the other external-library boundaries.
+ */
+final class RubixMLAdapter implements Predictor
 {
     private bool $available;
 
     public function __construct()
     {
-        $this->available = \class_exists('Rubix\ML\Estimator');
+        $this->available = \interface_exists('Rubix\ML\Estimator');
     }
 
+    #[\Override]
     public function isAvailable(): bool
     {
         return $this->available;
     }
 
     /**
-     * @return mixed
+     * Loads a persisted estimator. Prefers RubixML's RBX format; falls back to a
+     * plain PHP-serialized payload (legacy tabular models).
      */
-    public function loadModel(string $path)
+    public function loadModel(string $path): mixed
     {
         if (!$this->available) {
             throw new \RuntimeException('RubixML is not installed');
@@ -29,6 +41,16 @@ final class RubixMLAdapter
 
         if (!\file_exists($path)) {
             throw new \FerryAI\Core\Exception\ModelNotFoundException($path);
+        }
+
+        try {
+            $filesystem = 'Rubix\ML\Persisters\Filesystem';
+            $serializer = 'Rubix\ML\Serializers\RBX';
+            $persistentModel = 'Rubix\ML\PersistentModel';
+
+            return $persistentModel::load(new $filesystem($path, true, new $serializer()));
+        } catch (\Throwable) {
+            // Not an RBX archive — try a plain serialized payload.
         }
 
         $content = \file_get_contents($path);
@@ -47,30 +69,42 @@ final class RubixMLAdapter
     }
 
     /**
-     * @param  mixed                         $model
-     * @param  array<int, array<int, float>> $samples
+     * @param array<int, array<int, float|int|string>> $samples
+     *
      * @return array<int, mixed>
      */
+    #[\Override]
     public function predict(mixed $model, array $samples): array
     {
         if (!$this->available) {
             throw new \RuntimeException('RubixML is not installed');
         }
 
-        throw new \RuntimeException('RubixML adapter not fully implemented');
+        $unlabeled = 'Rubix\ML\Datasets\Unlabeled';
+        $dataset = new $unlabeled($samples);
+
+        return \array_values($model->predict($dataset));
     }
 
     /**
-     * @param  mixed                         $model
-     * @param  array<int, array<int, float>> $samples
-     * @return array<int, array<float>>
+     * @param array<int, array<int, float|int|string>> $samples
+     *
+     * @return array<int, array<string, float>>
      */
+    #[\Override]
     public function proba(mixed $model, array $samples): array
     {
         if (!$this->available) {
             throw new \RuntimeException('RubixML is not installed');
         }
 
-        throw new \RuntimeException('RubixML adapter not fully implemented');
+        if (!$model instanceof \Rubix\ML\Probabilistic) {
+            throw new \RuntimeException('The estimator does not support probability estimates');
+        }
+
+        $unlabeled = 'Rubix\ML\Datasets\Unlabeled';
+        $dataset = new $unlabeled($samples);
+
+        return \array_values($model->proba($dataset));
     }
 }

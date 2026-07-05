@@ -32,6 +32,8 @@ parameters:
             - packages/llama-backend/src/FFI/LlamaBatch.php
             - packages/llama-backend/src/Runtime/NativeLlamaRuntime.php
             - packages/llama-backend/src/Runtime/NativeLlamaSession.php
+            # Optional RubixML library boundary (dynamic dispatch; rubix/ml not installed)
+            - packages/cpu-backend/src/RubixMLAdapter.php
     treatPhpDocTypesAsCertain: false
     reportUnmatchedIgnoredErrors: false
     parallel:

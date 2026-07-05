@@ -46,7 +46,7 @@ the same C APIs that Python uses. No subprocess, no shell_exec, no Python.
 |---------|--------|-------------|
 | **ONNX** | 🟢 Production | Embeddings, classification, any `.onnx`. Tested: ONNX Runtime 1.27.0, all-MiniLM-L6-v2 (384d), similarity 0.79. |
 | **Llama** | 🟢 Probe OK | Library loads, `llama_backend_init()` works. Full inference needs GGUF model + struct declarations from `llama.h`. See setup below. |
-| **CPU Native** | 🟢 Always | Pure-PHP fallback for `.rbm` models. No native deps. |
+| **CPU Native** | 🟢 Always | Pure-PHP tensor math (add/sub/mul/matmul/transpose/reshape/slice) + RubixML `.rbm` inference (optional). No native deps for tensor ops. |
 
 ---
 
@@ -159,6 +159,7 @@ echo \$b->isAvailable() ? 'YES' : 'NO';
 | HuggingFace API | ✅ Qwen3-0.6B found, search works |
 | Vector store | ✅ SQLite CRUD, brute-force + sqlite-vec (vec0) native KNN, metadata filter |
 | Vector store (Postgres) | ✅ pgvector 0.8.4 native `<=>` search, HNSW index, metadata filter |
+| CPU backend | ✅ Tensor math (matmul/transpose/reshape/slice); RubixML `.rbm` predict/proba (isolated) |
 | Shared memory (shmop) | ✅ Allocate 2.5B key, attach, detach |
 | Async fibers | ✅ Suspend/resume, parallel tasks, timeout 10ms |
 | GPU (CUDA) | 🔵 ONNX = CPU build. CUDA DLLs present for llama.cpp |
@@ -179,7 +180,7 @@ packages/
 ├── vector/        SQLite + PostgreSQL/pgvector store, brute-force & native ANN, metadata filtering
 ├── model-hub/     HF download, LRU cache, SHA-256+Ed25519, format detection
 ├── pipeline/      Generator-based stages (8 types)
-├── cpu-backend/   Always-available CPU fallback
+├── cpu-backend/   Pure-PHP tensor math + optional RubixML (.rbm) tabular inference
 ├── ai/            Facade (AI::), backend registry, model pool, metrics, profiler
 ├── laravel/       Service provider + facade (env-based config)
 └── symfony/       Bundle + DI extension
@@ -190,7 +191,7 @@ packages/
 ## Testing
 
 ```bash
-composer test                # 599 unit tests — pure PHP
+composer test                # 611 unit tests — pure PHP
 composer test-integration    # Integration — needs ONNX Runtime / llama.cpp / PostgreSQL
 composer check               # cs-fix + PHPStan lvl8 + Psalm lvl3 + tests — fully green
 ```
@@ -199,10 +200,10 @@ composer check               # cs-fix + PHPStan lvl8 + Psalm lvl3 + tests — fu
 
 ## Examples
 
-See [`examples/`](examples/) — 23 standalone scripts covering every capability:
+See [`examples/`](examples/) — 24 standalone scripts covering every capability:
 embedding, tokenizer, chat, streaming, RAG, pipeline, vector store (SQLite +
 sqlite-vec & PostgreSQL/pgvector), grammar, model hub, profiling, async, model pool,
-observability, retry, benchmarks, Laravel, Symfony.
+observability, retry, CPU tensor math + RubixML, benchmarks, Laravel, Symfony.
 
 ```bash
 set FERRY_AI_MODEL_DIR=D:\FerryAI\all-MiniLM-L6-v2-onnx

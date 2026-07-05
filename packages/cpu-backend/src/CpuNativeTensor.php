@@ -79,43 +79,111 @@ final class CpuNativeTensor implements Tensor
     #[\Override]
     public function add(Tensor $other): Tensor
     {
-        throw new \RuntimeException('Not implemented in Phase 3.');
+        return $this->elementwise($other, 'add');
     }
 
     #[\Override]
     public function sub(Tensor $other): Tensor
     {
-        throw new \RuntimeException('Not implemented in Phase 3.');
+        return $this->elementwise($other, 'sub');
     }
 
     #[\Override]
     public function mul(Tensor $other): Tensor
     {
-        throw new \RuntimeException('Not implemented in Phase 3.');
+        return $this->elementwise($other, 'mul');
     }
 
     #[\Override]
     public function matmul(Tensor $other): Tensor
     {
-        throw new \RuntimeException('Not implemented in Phase 3.');
+        $a = $this->dimensions;
+        $b = $other->shape()->toArray();
+
+        if (\count($a) !== 2 || \count($b) !== 2 || $a[1] !== $b[0]) {
+            throw new \FerryAI\Core\Exception\ShapeMismatchException($this->shape(), $other->shape());
+        }
+
+        [$m, $k] = $a;
+        $n = $b[1];
+        $right = self::flatten($other->toArray());
+        $result = [];
+
+        for ($i = 0; $i < $m; ++$i) {
+            for ($j = 0; $j < $n; ++$j) {
+                $sum = 0.0;
+
+                for ($p = 0; $p < $k; ++$p) {
+                    $sum += $this->data[$i * $k + $p] * $right[$p * $n + $j];
+                }
+
+                $result[$i * $n + $j] = $sum;
+            }
+        }
+
+        return new self($result, [$m, $n]);
     }
 
     #[\Override]
     public function transpose(?array $axes = null): Tensor
     {
-        throw new \RuntimeException('Not implemented in Phase 3.');
+        $dims = $this->dimensions;
+        $rank = \count($dims);
+
+        if ($rank < 2) {
+            return new self($this->data, $dims);
+        }
+
+        $axes ??= \array_reverse(\range(0, $rank - 1));
+
+        $newDims = [];
+
+        foreach ($axes as $axis) {
+            $newDims[] = $dims[$axis];
+        }
+
+        $strides = self::strides($dims);
+        $result = [];
+        $total = \count($this->data);
+
+        for ($i = 0; $i < $total; ++$i) {
+            $multi = self::unravel($i, $newDims);
+            $sourceIndex = 0;
+
+            foreach ($axes as $position => $axis) {
+                $sourceIndex += $multi[$position] * $strides[$axis];
+            }
+
+            $result[$i] = $this->data[$sourceIndex];
+        }
+
+        return new self($result, $newDims);
     }
 
     #[\Override]
     public function reshape(Shape $newShape): Tensor
     {
-        throw new \RuntimeException('Not implemented in Phase 3.');
+        $dims = $newShape->toArray();
+
+        if (!$newShape->isStatic() || (int) \array_product($dims) !== \count($this->data)) {
+            throw new \FerryAI\Core\Exception\ShapeMismatchException($newShape, $this->shape());
+        }
+
+        return new self($this->data, $dims);
     }
 
     #[\Override]
     public function slice(array $slices): Tensor
     {
-        throw new \RuntimeException('Not implemented in Phase 3.');
+        $sliced = self::applySlice($this->toArray(), $slices, 0);
+
+        if (\is_array($sliced)) {
+            $flat = self::flatten($sliced);
+
+            return new self($flat, self::inferShape($sliced));
+        }
+
+        return new self([(float) $sliced], []);
     }
 
     #[\Override]
@@ -173,6 +241,136 @@ final class CpuNativeTensor implements Tensor
     {
         $this->data = $data['data'];
         $this->dimensions = $data['dimensions'];
+    }
+
+    /**
+     * @param 'add'|'sub'|'mul' $operation
+     */
+    private function elementwise(Tensor $other, string $operation): self
+    {
+        if ($this->dimensions !== $other->shape()->toArray()) {
+            throw new \FerryAI\Core\Exception\ShapeMismatchException($this->shape(), $other->shape());
+        }
+
+        $right = self::flatten($other->toArray());
+        $result = [];
+
+        foreach ($this->data as $index => $value) {
+            $operand = (float) $right[$index];
+            $result[$index] = match ($operation) {
+                'add' => $value + $operand,
+                'sub' => $value - $operand,
+                'mul' => $value * $operand,
+            };
+        }
+
+        return new self($result, $this->dimensions);
+    }
+
+    /**
+     * @param array<mixed> $data
+     *
+     * @return array<int, float>
+     */
+    private static function flatten(array $data): array
+    {
+        $flat = [];
+
+        \array_walk_recursive($data, static function (mixed $value) use (&$flat): void {
+            $flat[] = (float) $value;
+        });
+
+        return $flat;
+    }
+
+    /**
+     * @param array<mixed> $data
+     *
+     * @return int[]
+     */
+    private static function inferShape(array $data): array
+    {
+        $dims = [];
+        $node = $data;
+
+        while (\is_array($node)) {
+            $dims[] = \count($node);
+            $key = \array_key_first($node);
+            $node = $key === null ? null : ($node[$key] ?? null);
+        }
+
+        return $dims;
+    }
+
+    /**
+     * @param  int[] $dims
+     * @return int[]
+     */
+    private static function strides(array $dims): array
+    {
+        $strides = [];
+        $stride = 1;
+
+        for ($i = \count($dims) - 1; $i >= 0; --$i) {
+            $strides[$i] = $stride;
+            $stride *= $dims[$i];
+        }
+
+        \ksort($strides);
+
+        return $strides;
+    }
+
+    /**
+     * @param  int[] $dims
+     * @return int[]
+     */
+    private static function unravel(int $index, array $dims): array
+    {
+        $multi = [];
+
+        for ($i = \count($dims) - 1; $i >= 0; --$i) {
+            $multi[$i] = $index % $dims[$i];
+            $index = \intdiv($index, $dims[$i]);
+        }
+
+        \ksort($multi);
+
+        return $multi;
+    }
+
+    /**
+     * @param array<int, mixed>               $data
+     * @param array<int, int|array{int, int}> $slices
+     */
+    private static function applySlice(array $data, array $slices, int $axis): mixed
+    {
+        $spec = $slices[$axis] ?? null;
+
+        if ($spec === null) {
+            return \array_map(
+                static fn(mixed $child): mixed => \is_array($child)
+                    ? self::applySlice($child, $slices, $axis + 1)
+                    : $child,
+                $data,
+            );
+        }
+
+        if (\is_int($spec)) {
+            $selected = $data[$spec];
+
+            return \is_array($selected) ? self::applySlice($selected, $slices, $axis + 1) : $selected;
+        }
+
+        [$start, $length] = $spec;
+        $window = \array_slice($data, $start, $length);
+
+        return \array_map(
+            static fn(mixed $child): mixed => \is_array($child)
+                ? self::applySlice($child, $slices, $axis + 1)
+                : $child,
+            $window,
+        );
     }
 
     /**

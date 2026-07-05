@@ -139,6 +139,7 @@ unavailable), rather than transparently sharing loaded `Model` instances.
 | `tests/Integration/Llama/LlamaBackendIntegrationTest.php` | 2 (version, devices) | ⊘ Skipped — `NativeLlamaRuntime::isAvailable()` = false |
 | `tests/Integration/Postgres/PostgresVectorIntegrationTest.php` | 14 (CRUD, native cosine search, filter, HNSW, AIFactory) | ✅ Pass with PostgreSQL 18.3 + pgvector 0.8.4 |
 | `tests/Integration/Sqlite/SqliteVecIntegrationTest.php` | 4 (load, CRUD/KNN, Collection ANN, filtered fallback) | ✅ Pass with sqlite-vec vec0 v0.1.10 |
+| `tests/Integration/Rubix/RubixCpuIntegrationTest.php` | 1 (subprocess harness: load .rbm, predict, proba) | ✅ Pass with rubix/ml 2.5.3 (isolated) |
 
 **Missing integration tests:**
 - Model loading + inference (ONNX or llama)
@@ -237,7 +238,7 @@ Listed in `composer.json` scripts but not installed:
 | Vector store | ✅ brute-force + sqlite-vec (vec0) native KNN | — | Opt-in via `FERRY_AI_VEC_EXTENSION_LIB` (§3a) | — |
 | Model Hub | ✅ HF API, SHA-256, Ed25519, format detect | — | Download cycle | Token for private models |
 | Pipeline | ✅ all 8 stages | — | — | — |
-| CPU backend | ✅ Backend/Model/Tensor | RubixML predict/proba | `rubix/ml` not installed | .rbm inference |
+| CPU backend | ✅ Backend/Model/Tensor + real tensor math | — | RubixML predict/proba opt-in (§15) | — |
 | Shared memory | ✅ allocate/detach | — | Opt-in in ModelPool (§5); file-only sharing | — |
 | Async fibers | ✅ suspend/resume/timeout | — | Not tested in RoadRunner | — |
 | Model pool | ✅ put/acquire/evict + LRU eviction | — | Integrated into facade (§5) | — |
@@ -251,7 +252,7 @@ Listed in `composer.json` scripts but not installed:
 | Dev tooling | PHPUnit + PHPStan + Psalm + CS Fixer | — | — | Infection, Pest, CaptainHook |
 | Safetensors loading | 🔴 Format detected only | — | — | No loader. Needs Python conversion to ONNX/GGUF. See §13. |
 | GPU inference | 🔴 Never tested | — | — | CPU-only ONNX + llama.cpp builds. CUDA DLLs present but unused. See §14. |
-| RubixML models | 🔴 Never tested | — | — | `rubix/ml` not installed. `predict()`/`proba()` throw. See §15. |
+| RubixML models | ✅ predict/proba + `.rbm` load (isolated, verified) | — | Opt-in `suggest` (amphp conflict with psalm) | — |
 | Universal model loader | 🔴 Manual CDEF per build | — | — | No auto-generator from .h files. See §16. |
 | WSL / Linux testing | 🔴 Never tested | — | — | All 568 tests pass only on Windows x64. See §17. |
 | PostgreSQL vector store | ✅ PostgresStore + PostgresCollection + PostgresVecIndex (pgvector 0.8.4) | — | — | Resolved. See §18. |
@@ -435,22 +436,42 @@ Add example: `python -m optimum.exporters.onnx --model Qwen/Qwen3-0.6B output/`
 
 ---
 
-## 15. RubixML Models — Never Tested
+## 15. RubixML Models — Implemented (2026-07-05)
 
-### Current state
-- `CpuNativeBackend` exists, `isAvailable()=true` (always).
-- `RubixMLAdapter::isAvailable()` returns `false` because `class_exists('Rubix\ML\Estimator')` fails — `rubix/ml` is **not installed**.
-- `CpuNativeModel::run()` returns hardcoded `['output' => [0.5, 0.3, 0.2]]` — not real inference.
-- `RubixMLAdapter::predict()` / `proba()` throw `'RubixML adapter not fully implemented'`.
-- `CpuNativeTensor` arithmetic operations throw `'Not implemented in Phase 3.'`
+### Status: RESOLVED
 
-### What's missing
-- `rubix/ml` package (`composer require rubix/ml`)
-- A real `.rbm` model file (RubixML serialized estimator)
-- End-to-end test: load `.rbm` → `predict()` → classification result
-- Full `CpuNativeTensor` arithmetic (add/sub/mul/matmul) backed by RubixML/Tensor
+- **`CpuNativeTensor` arithmetic** — `add/sub/mul` (elementwise, shape-checked), `matmul`
+  (2D), `transpose`, `reshape`, `slice` are now real pure-PHP implementations (no native
+  deps, no dependency on the `tensor` package). Fully unit-tested.
+- **`RubixMLAdapter`** — real `loadModel()` (RBX format via `PersistentModel::load`, falling
+  back to plain unserialize), `predict()` and `proba()` (build an `Unlabeled` dataset and call
+  the estimator). All RubixML access is dynamic (class-name strings), so the file needs no
+  compile-time dependency and is excluded from PHPStan/Psalm like the FFI boundaries.
+  Fixed a latent bug: availability now uses `interface_exists('Rubix\ML\Estimator')`
+  (`Estimator` is an interface, so `class_exists` always returned false).
+- **`CpuNativeModel::run()`** — delegates to the estimator via a new `Predictor` interface when
+  one is present (`['output' => predictions]`); keeps the legacy fallback otherwise.
+- **`CpuNativeBackend::load()`** — RubixML-aware: loads real `.rbm` estimators when the library
+  is available, else falls back to the legacy serialized-array path (unchanged when absent).
 
-**Debt:** the `cpu-backend` package is a skeleton. It can load models in theory, but no real `.rbm` inference has been performed.
+### Dependency constraint (why rubix/ml is not in the main vendor)
+
+`rubix/ml` requires `amphp/parallel ^1` (→ `amphp/amp ^1`), but the dev toolchain's
+`vimeo/psalm` requires `amphp/parallel ^2` (→ `amphp/amp ^3`). They cannot coexist, and
+`amphp/amp`'s files-autoload (`Amp\delay()`) collides if both are loaded in one process.
+So `rubix/ml` stays a `suggest`-only, opt-in dependency installed in an **isolated** location.
+
+### Verification
+
+- Unit: `CpuNativeTensorTest` (arithmetic + shape-mismatch), `CpuNativeModelTest` (Predictor
+  delegation with a fake), `RubixMLAdapterTest` (not-installed path), `CpuNativeBackendTest`.
+- Integration (real rubix/ml v2.5.3 + rubix/tensor 3.0.5 on PHP 8.5, isolated process):
+  `tests/Integration/Rubix/rubix_harness.php` trains KNN → saves `.rbm` → loads via
+  `CpuNativeBackend` → `predict` = `["a","b"]`, `proba.a` = `1`.
+  `RubixCpuIntegrationTest` runs the harness as a subprocess (avoids the amphp collision) and
+  asserts the JSON — 1 test, passes. Set `FERRY_AI_RUBIXML_AUTOLOAD` to enable; skips otherwise.
+- `composer check` fully green: cs 0 · PHPStan L8 No errors · Psalm L3 No errors · 611 unit tests.
+- Example: `examples/24-rubix-cpu.php`.
 
 ---
 

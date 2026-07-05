@@ -21,6 +21,8 @@ final class CpuNativeModel implements Model
     public function __construct(
         private string $modelPath,
         array $modelData,
+        private readonly ?object $estimator = null,
+        private readonly ?Predictor $predictor = null,
     ) {
         $this->modelData = $modelData;
     }
@@ -32,9 +34,41 @@ final class CpuNativeModel implements Model
             throw new \RuntimeException('Model is unloaded');
         }
 
+        if ($this->estimator !== null && $this->predictor !== null) {
+            $predictions = $this->predictor->predict($this->estimator, self::toSamples($inputs));
+
+            return ['output' => $predictions];
+        }
+
         return [
             'output' => [0.5, 0.3, 0.2],
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>                     $inputs
+     * @return array<int, array<int, float|int|string>>
+     */
+    private static function toSamples(array $inputs): array
+    {
+        if (isset($inputs['samples']) && \is_array($inputs['samples'])) {
+            /** @var array<int, array<int, float|int|string>> $samples */
+            $samples = \array_values($inputs['samples']);
+
+            return $samples;
+        }
+
+        if (isset($inputs['input']) && \is_array($inputs['input'])) {
+            /** @var array<int, float|int|string> $row */
+            $row = \array_values($inputs['input']);
+
+            return [$row];
+        }
+
+        /** @var array<int, float|int|string> $row */
+        $row = \array_values($inputs);
+
+        return [$row];
     }
 
     #[\Override]
