@@ -344,7 +344,7 @@ final class AI
             throw new ConfigurationException('backends.llama.model_path', 'a GGUF model path must be configured');
         }
 
-        $model = $registry->get(BackendType::Llama)->load($modelPath, self::$activeDevice);
+        $model = self::loadPooled($registry->get(BackendType::Llama), $modelPath, self::$activeDevice);
 
         if (!$model instanceof LlamaModel) {
             throw new BackendNotAvailableException('llama', 'the llama backend did not return a llama model');

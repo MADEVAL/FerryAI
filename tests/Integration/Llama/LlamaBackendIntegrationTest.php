@@ -36,11 +36,11 @@ final class LlamaBackendIntegrationTest extends TestCase
         }
     }
 
-    private function chat(string $device, float $temperature = 0.0): array
+    private function chat(string $device, float $temperature = 0.0, string $mode = 'single'): array
     {
         $raw = \shell_exec(
             \escapeshellarg(\PHP_BINARY) . ' ' . \escapeshellarg($this->harness)
-            . ' ' . $device . ' 16 ' . $temperature
+            . ' ' . $device . ' 16 ' . $temperature . ' ' . $mode
             . ' 2>' . (\PHP_OS_FAMILY === 'Windows' ? 'NUL' : '/dev/null'),
         );
 
@@ -79,5 +79,16 @@ final class LlamaBackendIntegrationTest extends TestCase
         $data = $this->chat('cpu', 0.7);
 
         self::assertNotSame('', (string) $data['text']);
+    }
+
+    public function testChatModelIsPooledAcrossCalls(): void
+    {
+        // Two chats in one process: the second must reuse the pooled model (no reload),
+        // so it is markedly faster than the first (which pays the model load).
+        $data = $this->chat('cuda', 0.0, 'twice');
+
+        self::assertStringContainsStringIgnoringCase('paris', (string) $data['text1']);
+        self::assertStringContainsStringIgnoringCase('paris', (string) $data['text2']);
+        self::assertLessThan((int) $data['ms1'], (int) $data['ms2']);
     }
 }

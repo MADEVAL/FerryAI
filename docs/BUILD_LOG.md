@@ -1187,3 +1187,25 @@ options.
 **Remaining (honest):** grammar sampling still scans the full vocab (required) so it is slower;
 GrammarSampler GBNF enforcement is simplified (does not strictly reject every off-grammar token);
 standalone-process only; ferry_llama.dll not committed.
+
+---
+
+## 2026-07-05 - Performance debts: cache Embedder, pool chat model (no reloads)
+
+**What (TDD):** Removed two model-reload-per-call performance debts. No new features.
+
+- **Embedder cache:** AIFactory::createEmbedder now caches the Embedder per model name, so the
+  ONNX model loads once instead of on every AI::embed()/AI::similarity() call. Red-green proof:
+  AiEmbedIntegrationTest::testEmbedderIsCachedPerModel asserts createEmbedder() returns the same
+  instance (deterministic, real all-MiniLM-L6-v2).
+- **Chat model pooling:** AI::chatModel() now loads through loadPooled() (ModelPool), like
+  classify/moderate/predict. DEBT §5 had claimed chat was pooled but the code reloaded the GGUF
+  every call. Regression/perf proof: LlamaBackendIntegrationTest::testChatModelIsPooledAcrossCalls
+  runs two chats in one process and asserts the second reuses the pooled model
+  (measured ~11 ms vs ~470 ms first call, i.e. no reload).
+
+**Verification (fresh):** composer check fully green - cs 0 - PHPStan L8 No errors - Psalm L3 No
+errors - 620 unit tests. Integration 30/30 (added embed-cache + chat-pool tests). Existing tests
+unchanged (no regressions).
+
+**Docs:** DEBT_REPORT.md §4 (Embedder cached) and §5 (chat/stream genuinely pooled, with numbers).

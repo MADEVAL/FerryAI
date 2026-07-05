@@ -84,7 +84,7 @@ instead of returning `[]`.
 
 | Method | State |
 |--------|-------|
-| `AI::embed()` | ✅ Works via the facade — `backends.embedding.model_path` (dir or `model.onnx`); tokenizer auto-resolved from the same dir (or `backends.embedding.tokenizer_path`); `embedding.pooling`/`embedding.normalize`. Verified e2e (`AiEmbedIntegrationTest`, real all-MiniLM-L6-v2). |
+| `AI::embed()` | ✅ Works via the facade — `backends.embedding.model_path` (dir or `model.onnx`); tokenizer auto-resolved from the same dir (or `backends.embedding.tokenizer_path`); `embedding.pooling`/`embedding.normalize`. The `Embedder` is cached per model in `AIFactory`, so the ONNX model loads once (not per `embed()` call). Verified e2e (`AiEmbedIntegrationTest`, real all-MiniLM-L6-v2). |
 | `AI::similarity()` | ✅ Same wiring; verified (`sim(cat,kitten) > sim(cat,airplane)`). |
 | `AI::streamResponse()` | ✅ `StreamResponse::create()` auto-detects a PSR-17 factory (nyholm/psr7 or guzzlehttp/psr7) and returns a real SSE `ResponseInterface`; streams `AI::stream()` tokens. Clear error if no factory. |
 | `AI::warmup()` | ✅ Wired to `ModelPool` in §5 (no longer a no-op). |
@@ -122,7 +122,7 @@ used directly by `model-hub`.
 | `Logger` | Emitted by `Observability` (facade) and by `Downloader`/`HuggingFaceClient` (download attempts/failures). Now honours a severity threshold. |
 | `Metrics` | `Observability::measure()` records `ai.operation.count` + `ai.operation.ms` around `embed`/`similarity`/`chat`/`classify`/`moderate`/`predict`. Opt-in via `observability.metrics`. |
 | `Profiler` | Same wrapper, opt-in via `observability.profiling`. |
-| `ModelPool` | `AI` owns a pool; `classify`/`moderate`/`predict`/`chat` load through it (check→load→put). Real `warmup(ids, loader)`, memory-bounded LRU eviction honouring `maxMemoryBytes`. `AI::warmup()` preloads. |
+| `ModelPool` | `AI` owns a pool; `classify`/`moderate`/`predict`/`chat` load through it (check→load→put). Real `warmup(ids, loader)`, memory-bounded LRU eviction honouring `maxMemoryBytes`. `AI::warmup()` preloads. **`chat`/`stream` are genuinely pooled** — verified: 2nd chat in a process reuses the model (~11 ms vs ~470 ms first). |
 | `NativeBinaryManager` | Implements new `LibraryResolver`; `AIFactory::createBackend(Llama)` best-effort resolves the llama library and sets `FERRY_AI_LLAMA_LIB` when unset (guarded, no download). |
 | `RetryHandler` | `Downloader::download()` and `HuggingFaceClient::downloadFile()` wrap network I/O in retry + logging (injectable HTTP seam for tests). |
 | `SharedMemoryManager` | Implements new `SharedMemory`; `ModelPool` accepts it and exposes opt-in `shareModel(id, path)` / `isModelShared(id)`; `evict()` detaches. Enabled via `model_pool.shared_memory`. |

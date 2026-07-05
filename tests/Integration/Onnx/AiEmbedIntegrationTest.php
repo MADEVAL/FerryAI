@@ -86,4 +86,18 @@ final class AiEmbedIntegrationTest extends TestCase
         self::assertCount(3, $results);
         self::assertContainsOnlyInstancesOf(EmbeddingResult::class, $results);
     }
+
+    public function testEmbedderIsCachedPerModel(): void
+    {
+        $factory = new \FerryAI\AIFactory(\FerryAI\Core\AIConfig::fromArray([
+            'backend' => 'onnx',
+            'backends' => ['embedding' => ['model_path' => $this->modelDir]],
+        ]));
+
+        $first = $factory->createEmbedder($this->modelDir);
+        $second = $factory->createEmbedder($this->modelDir);
+
+        // Same instance => the ONNX model is loaded once, not on every embed() call.
+        self::assertSame($first, $second);
+    }
 }

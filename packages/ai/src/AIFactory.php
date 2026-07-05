@@ -28,6 +28,9 @@ final class AIFactory
 {
     private readonly AIConfig $config;
 
+    /** @var array<string, Embedder> */
+    private array $embedders = [];
+
     public function __construct(?AIConfig $config = null, private readonly ?LibraryResolver $libraryResolver = null)
     {
         $this->config = $config ?? AIConfig::fromArray([]);
@@ -137,6 +140,10 @@ final class AIFactory
 
     public function createEmbedder(string $modelName): Embedder
     {
+        if (isset($this->embedders[$modelName])) {
+            return $this->embedders[$modelName];
+        }
+
         $backend = $this->createBackend($this->config->backend());
         [$modelPath, $tokenizerPath] = self::resolveEmbeddingPaths(
             $modelName,
@@ -146,7 +153,7 @@ final class AIFactory
         $pooling = (string) $this->config->get('embedding.pooling', 'mean');
         $normalize = (bool) $this->config->get('embedding.normalize', true);
 
-        return new EmbedderImpl($modelPath, $backend, $tokenizer, $pooling, $normalize);
+        return $this->embedders[$modelName] = new EmbedderImpl($modelPath, $backend, $tokenizer, $pooling, $normalize);
     }
 
     /**

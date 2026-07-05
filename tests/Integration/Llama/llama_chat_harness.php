@@ -17,6 +17,7 @@ use FerryAI\AI;
 $device = $argv[1] ?? 'cpu';
 $maxTokens = (int) ($argv[2] ?? 16);
 $temperature = isset($argv[3]) ? (float) $argv[3] : 0.0;
+$mode = $argv[4] ?? 'single';
 
 $llamaDir = getenv('FERRY_AI_LLAMA_DIR') ?: 'D:\\FerryAI';
 $wrapper = $llamaDir . '\\ferry_llama.dll';
@@ -37,19 +38,41 @@ try {
         'backends' => ['llama' => ['model_path' => $model]],
     ]);
 
-    $t0 = microtime(true);
-    $result = AI::chat(
-        [['role' => 'user', 'content' => 'What is the capital of France? Answer in one word.']],
-        ['max_tokens' => $maxTokens, 'temperature' => $temperature],
-    );
-    $ms = (microtime(true) - $t0) * 1000;
+    $chat = static function () use ($maxTokens, $temperature): array {
+        $t0 = microtime(true);
+        $result = AI::chat(
+            [['role' => 'user', 'content' => 'What is the capital of France? Answer in one word.']],
+            ['max_tokens' => $maxTokens, 'temperature' => $temperature],
+        );
+
+        return ['text' => $result->text, 'ms' => (microtime(true) - $t0) * 1000, 'result' => $result];
+    };
+
+    if ($mode === 'twice') {
+        // Second call must reuse the pooled model (no reload) => noticeably faster.
+        $a = $chat();
+        $b = $chat();
+
+        echo json_encode([
+            'device' => $device,
+            'text1' => $a['text'],
+            'text2' => $b['text'],
+            'ms1' => round($a['ms']),
+            'ms2' => round($b['ms']),
+        ]);
+
+        return;
+    }
+
+    $first = $chat();
+    $result = $first['result'];
 
     echo json_encode([
         'device' => $device,
         'text' => $result->text,
         'tokens_generated' => $result->tokensGenerated,
         'tokens_prompt' => $result->tokensPrompt,
-        'ms' => round($ms),
+        'ms' => round($first['ms']),
     ]);
 } catch (Throwable $e) {
     echo json_encode(['error' => $e->getMessage()]);
