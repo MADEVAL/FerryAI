@@ -10,7 +10,9 @@ final class SQLiteStore
 
     public function __construct(string $dbPath)
     {
-        $this->pdo = new \PDO('sqlite:' . $dbPath);
+        $this->pdo = \class_exists(\Pdo\Sqlite::class)
+            ? \Pdo\Sqlite::connect('sqlite:' . $dbPath)
+            : new \PDO('sqlite:' . $dbPath);
         $this->pdo->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
 
         $this->pdo->exec('CREATE TABLE IF NOT EXISTS collections (
@@ -20,6 +22,11 @@ final class SQLiteStore
             index_type TEXT DEFAULT \'flat\',
             created_at TEXT DEFAULT (datetime(\'now\'))
         )');
+    }
+
+    public function pdo(): \PDO
+    {
+        return $this->pdo;
     }
 
     public function createCollection(string $name, int $dimension, string $metric = 'cosine', string $indexType = 'flat'): void

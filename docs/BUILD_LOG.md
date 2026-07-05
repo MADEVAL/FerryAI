@@ -937,3 +937,34 @@ still 14/14. New/updated tests: `ObservabilityTest`, `ModelPoolTest`, `AIFactory
 native deps), `examples/README.md`, `docs/EXAMPLES_PLAN.md` (21 → 22), root `README.md`
 new "Observability & model pool" section + counts. `DEBT_REPORT.md` §5 → RESOLVED
 (+ summary matrix).
+
+---
+
+## 2026-07-05 - Debt Section 3a: SqliteVecExtension - real sqlite-vec (vec0) ANN
+
+**What (TDD):** Replaced the `SqliteVecExtension::search()` stub (returned `[]`) with a
+working sqlite-vec (vec0) integration, and wired it into `Collection` opt-in.
+
+**Runtime findings:** vec0.dll (sqlite-vec v0.1.10) loads via `Pdo\Sqlite::loadExtension`
+(base `new PDO` has no such method). vec0 virtual tables require integer rowid PKs, and PDO
+binds array params as strings - so a `vecmap_{collection}(rowid, ext_id)` side table plus
+`bindValue(PARAM_INT)` are needed.
+
+**Changes:**
+- `SQLiteStore` - connects via `Pdo\Sqlite::connect()` when available (enables extension
+  loading), added `pdo()` getter. Backward compatible (Pdo\Sqlite is-a PDO).
+- `SqliteVecExtension` - real `load()/createIndex()/upsert()/remove()/clear()/search()`.
+  vec0 vtable `embedding float[dim] distance_metric=cosine|l2` + id<->rowid map. Graceful
+  no-op / `[]` when the library is absent.
+- `Collection` - opt-in: loads the extension, builds+backfills the index, syncs on
+  add/update/delete/clear, and routes unfiltered search through vec0. Filtered search and the
+  no-extension path stay on `BruteForceIndex` (default behaviour unchanged).
+
+**Verification (fresh):** `composer check` fully green - cs 0 - PHPStan L8 No errors -
+Psalm L3 No errors - 599 unit tests. Integration `tests/Integration/Sqlite` 4/4 against real
+vec0.dll (`FERRY_AI_SKIP_NATIVE=0`). Rewrote `SqliteVecExtensionTest` (disabled path).
+
+**Example + README (milestone policy):** `examples/23-sqlite-vec.php` (runs green, skips
+without the library), `examples/README.md` Tier 5, `docs/EXAMPLES_PLAN.md` (22 -> 23), root
+`README.md` vector-store section/counts. `DEBT_REPORT.md` Section 3 -> RESOLVED (new Section 3a,
+summary matrix, Section 6 integration list).

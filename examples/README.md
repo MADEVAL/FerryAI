@@ -63,6 +63,7 @@ For LLM examples — a GGUF model and validated llama.cpp FFI binding (see READM
 | # | File | What it shows | Needs |
 |---|------|--------------|-------|
 | 21 | `postgres-vector.php` | PostgreSQL + pgvector: CRUD, native `<=>` ANN search, metadata filter, HNSW index | ext-pdo_pgsql + pgvector |
+| 23 | `sqlite-vec.php` | SQLite + sqlite-vec (vec0): native KNN, opt-in index sync, brute-force fallback with filters | ext-pdo_sqlite + vec0 lib |
 
 ## Running
 

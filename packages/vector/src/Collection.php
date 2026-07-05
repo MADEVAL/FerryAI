@@ -13,8 +13,9 @@ final class Collection implements VectorStore
 
     private MetadataFilter $filter;
 
-    /** @phpstan-ignore property.onlyWritten */
     private SqliteVecExtension $vecExtension;
+
+    private bool $useVec = false;
 
     public function __construct(
         private string $name,
@@ -24,6 +25,21 @@ final class Collection implements VectorStore
         $this->bruteForce = new BruteForceIndex();
         $this->filter = new MetadataFilter();
         $this->vecExtension = new SqliteVecExtension();
+        $this->initVecIndex();
+    }
+
+    private function initVecIndex(): void
+    {
+        if ($this->dimensionValue < 1 || !$this->vecExtension->load($this->store)) {
+            return;
+        }
+
+        $this->useVec = true;
+        $this->vecExtension->createIndex($this->store, $this->name, $this->dimensionValue, 'cosine');
+
+        foreach ($this->store->iterateVectors($this->name) as $row) {
+            $this->vecExtension->upsert($this->store, $this->name, $row['id'], $this->unpackVector($row['vector']));
+        }
     }
 
     #[\Override]
@@ -33,6 +49,10 @@ final class Collection implements VectorStore
         $blob = $this->packVector($vector);
         $metadataJson = $metadata !== null ? \json_encode($metadata, JSON_UNESCAPED_UNICODE) : null;
         $this->store->insertVector($this->name, $id, $blob, \is_string($metadataJson) ? $metadataJson : null);
+
+        if ($this->useVec) {
+            $this->vecExtension->upsert($this->store, $this->name, $id, $vector);
+        }
     }
 
     #[\Override]
@@ -46,6 +66,10 @@ final class Collection implements VectorStore
     #[\Override]
     public function search(array $queryVector, int $k = 10, ?array $filter = null): array
     {
+        if ($this->useVec && $filter === null) {
+            return $this->vecSearch($queryVector, $k);
+        }
+
         $vectors = $this->loadAllVectors();
 
         if ($vectors === []) {
@@ -80,10 +104,36 @@ final class Collection implements VectorStore
         return $output;
     }
 
+    /**
+     * @param  array<int, float>                                                              $queryVector
+     * @return array<int, array{id: string, distance: float, metadata: array<string, mixed>}>
+     */
+    private function vecSearch(array $queryVector, int $k): array
+    {
+        $output = [];
+
+        foreach ($this->vecExtension->search($this->store, $this->name, $queryVector, $k) as $hit) {
+            $row = $this->store->getVector($this->name, $hit['id']);
+            $metadata = $row !== null && $row['metadata'] !== null ? \json_decode($row['metadata'], true) : [];
+
+            $output[] = [
+                'id' => $hit['id'],
+                'distance' => $hit['distance'],
+                'metadata' => \is_array($metadata) ? $metadata : [],
+            ];
+        }
+
+        return $output;
+    }
+
     #[\Override]
     public function delete(string $id): void
     {
         $this->store->deleteVector($this->name, $id);
+
+        if ($this->useVec) {
+            $this->vecExtension->remove($this->store, $this->name, $id);
+        }
     }
 
     #[\Override]
@@ -95,6 +145,11 @@ final class Collection implements VectorStore
         foreach ($vectors as $item) {
             if ($this->filter->matches($item['metadata'] ?? [], $filter)) {
                 $this->store->deleteVector($this->name, $item['id']);
+
+                if ($this->useVec) {
+                    $this->vecExtension->remove($this->store, $this->name, $item['id']);
+                }
+
                 $deleted++;
             }
         }
@@ -121,6 +176,10 @@ final class Collection implements VectorStore
         }
 
         $this->store->insertVector($this->name, $id, $blob, \is_string($metadataJson) ? $metadataJson : null);
+
+        if ($this->useVec && $blob !== '') {
+            $this->vecExtension->upsert($this->store, $this->name, $id, $this->unpackVector($blob));
+        }
     }
 
     #[\Override]
@@ -172,6 +231,10 @@ final class Collection implements VectorStore
     public function clear(): void
     {
         $this->store->clearCollection($this->name);
+
+        if ($this->useVec) {
+            $this->vecExtension->clear($this->store, $this->name);
+        }
     }
 
     /**

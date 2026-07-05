@@ -48,7 +48,33 @@
 | `RubixMLAdapter` | `loadModel()` | Works if `rubix/ml` installed — otherwise throws |
 | `StreamResponse::create()` | Returns PSR-7 ResponseInterface | `throw new RuntimeException` — needs `nyholm/psr7` or `guzzlehttp/psr7` |
 | `HuggingFaceTokenizer` | `encode()`, `decode()`, all Tokenizer methods | `throw new RuntimeException` — FFI not wired |
-| `SqliteVecExtension` | `search()` | Returns `[]` — FFI not wired. BruteForceIndex fallback works. |
+| ~~`SqliteVecExtension`~~ | ~~`search()`~~ | ✅ **RESOLVED** — real sqlite-vec (vec0) KNN; see §3a |
+
+---
+
+## 3a. SqliteVecExtension — Implemented (2026-07-05)
+
+### Status: RESOLVED
+
+`SqliteVecExtension` now performs real ANN via the sqlite-vec (`vec0`) loadable extension
+instead of returning `[]`.
+
+- **Mechanism:** `SQLiteStore` connects through `Pdo\Sqlite::connect()` (PHP 8.4+, exposes
+  `loadExtension`) and exposes `pdo()`. `SqliteVecExtension::load()` loads the `vec0` library
+  into that connection. `createIndex()` builds a `vec0` virtual table
+  (`embedding float[dim] distance_metric=cosine|l2`) plus a `vecmap_{collection}` side table
+  mapping the store's TEXT ids to the integer rowids vec0 requires. `upsert`/`remove`/`clear`
+  keep it in sync; `search()` runs `MATCH ... AND k = ? ORDER BY distance` and joins ids back.
+- **Opt-in, zero-regression:** enabled only when `FERRY_AI_VEC_EXTENSION_LIB` points at the
+  library. `Collection` uses the vec index for unfiltered search and syncs on
+  add/update/delete/clear; filtered search and the no-extension path fall back to
+  `BruteForceIndex` (default behaviour unchanged).
+- **Verified:** runtime probe with `vec0.dll` (sqlite-vec v0.1.10). Unit tests cover the
+  disabled path; `tests/Integration/Sqlite/SqliteVecIntegrationTest.php` (4 tests,
+  `@group integration`) exercises real load/CRUD/KNN and the `Collection` path — 4/4 pass.
+  `examples/23-sqlite-vec.php` runs green.
+- **Limitation:** `dot` metric has no vec0 equivalent → mapped to cosine. `vec0` v0.1.10 is
+  alpha; brute force remains the default when the extension is absent.
 
 ---
 
@@ -112,6 +138,7 @@ unavailable), rather than transparently sharing loaded `Model` instances.
 | `tests/Integration/Onnx/OnnxRuntimeIntegrationTest.php` | 3 (version, devices, providers) | ✅ Pass with ONNX 1.27.0 |
 | `tests/Integration/Llama/LlamaBackendIntegrationTest.php` | 2 (version, devices) | ⊘ Skipped — `NativeLlamaRuntime::isAvailable()` = false |
 | `tests/Integration/Postgres/PostgresVectorIntegrationTest.php` | 14 (CRUD, native cosine search, filter, HNSW, AIFactory) | ✅ Pass with PostgreSQL 18.3 + pgvector 0.8.4 |
+| `tests/Integration/Sqlite/SqliteVecIntegrationTest.php` | 4 (load, CRUD/KNN, Collection ANN, filtered fallback) | ✅ Pass with sqlite-vec vec0 v0.1.10 |
 
 **Missing integration tests:**
 - Model loading + inference (ONNX or llama)
@@ -207,7 +234,7 @@ Listed in `composer.json` scripts but not installed:
 | llama.cpp | ✅ DLL loads, init, probes, metadata | — | ⚠️ Model load crashes (hparams:55) — PHP FFI struct ABI mismatch with Clang 20.1.8. See §12. | — |
 | Embedding | ✅ via Embedder direct | — | AI::embed() via facade | Config wiring |
 | Tokenizer | ✅ pure-PHP BPE/WordPiece | — | Native tokenizers-cpp | DLL |
-| Vector store | ✅ brute-force | sqlite-vec (FFI not wired) | — | sqlite-vec DLL |
+| Vector store | ✅ brute-force + sqlite-vec (vec0) native KNN | — | Opt-in via `FERRY_AI_VEC_EXTENSION_LIB` (§3a) | — |
 | Model Hub | ✅ HF API, SHA-256, Ed25519, format detect | — | Download cycle | Token for private models |
 | Pipeline | ✅ all 8 stages | — | — | — |
 | CPU backend | ✅ Backend/Model/Tensor | RubixML predict/proba | `rubix/ml` not installed | .rbm inference |

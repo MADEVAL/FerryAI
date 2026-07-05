@@ -12,44 +12,65 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(SqliteVecExtension::class)]
 final class SqliteVecExtensionTest extends TestCase
 {
-    public function testIsAvailableReturnsFalseByDefault(): void
-    {
-        $ext = new SqliteVecExtension();
+    private ?string $previousEnv = null;
 
-        self::assertFalse($ext->isAvailable());
+    protected function setUp(): void
+    {
+        $env = \getenv('FERRY_AI_VEC_EXTENSION_LIB');
+        $this->previousEnv = $env === false ? null : $env;
+        \putenv('FERRY_AI_VEC_EXTENSION_LIB');
+    }
+
+    protected function tearDown(): void
+    {
+        if ($this->previousEnv === null) {
+            \putenv('FERRY_AI_VEC_EXTENSION_LIB');
+        } else {
+            \putenv('FERRY_AI_VEC_EXTENSION_LIB=' . $this->previousEnv);
+        }
+    }
+
+    public function testIsAvailableReturnsFalseWithoutEnv(): void
+    {
+        self::assertFalse((new SqliteVecExtension())->isAvailable());
+    }
+
+    public function testIsAvailableReturnsFalseWhenLibMissing(): void
+    {
+        \putenv('FERRY_AI_VEC_EXTENSION_LIB=/nonexistent/vec0.dll');
+
+        self::assertFalse((new SqliteVecExtension())->isAvailable());
     }
 
     public function testIsLoadedReturnsFalseByDefault(): void
     {
-        $ext = new SqliteVecExtension();
-
-        self::assertFalse($ext->isLoaded());
+        self::assertFalse((new SqliteVecExtension())->isLoaded());
     }
 
-    public function testLoadDoesNotError(): void
+    public function testLoadReturnsFalseWithoutExtension(): void
     {
         $ext = new SqliteVecExtension();
         $store = new SQLiteStore(':memory:');
 
-        $ext->load($store);
-
+        self::assertFalse($ext->load($store));
         self::assertFalse($ext->isLoaded());
     }
 
-    public function testSearchReturnsEmptyArray(): void
+    public function testSearchReturnsEmptyWhenNotLoaded(): void
     {
         $ext = new SqliteVecExtension();
+        $store = new SQLiteStore(':memory:');
 
-        $results = $ext->search('test', 'blob', 10);
-
-        self::assertSame([], $results);
+        self::assertSame([], $ext->search($store, 'test', [1.0, 0.0, 0.0], 10));
     }
 
-    public function testCreateIndexDoesNotError(): void
+    public function testCreateIndexIsNoopWhenNotLoaded(): void
     {
         $ext = new SqliteVecExtension();
-        $ext->createIndex('test', 'hnsw');
+        $store = new SQLiteStore(':memory:');
 
-        self::assertTrue(true);
+        $ext->createIndex($store, 'test', 3);
+
+        self::assertFalse($ext->isLoaded());
     }
 }

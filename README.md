@@ -56,7 +56,7 @@ Two interchangeable backends behind the same `VectorStore` contract — pick per
 
 | Backend | Status | Search | Best for |
 |---------|--------|--------|----------|
-| **SQLite** | 🟢 Production | PHP brute-force (cosine/euclidean/dot) | Dev, demos, small collections, zero-setup |
+| **SQLite** | 🟢 Production | PHP brute-force, or native KNN via **sqlite-vec** (vec0) when `FERRY_AI_VEC_EXTENSION_LIB` is set | Dev, demos, embedded, single-file |
 | **PostgreSQL + pgvector** | 🟢 Production | Native `<=>` / `<->` / `<#>`, HNSW / IVFFlat indexes | Production, large collections, concurrent access |
 
 ```php
@@ -75,7 +75,11 @@ $hits = $store->search($query, k: 5, filter: ['lang' => ['eq' => 'en']]);
 ```
 
 Vectors live in native `vector(dim)` columns with `jsonb` metadata; verified against
-PostgreSQL 18.3 + pgvector 0.8.4. See [`examples/21-postgres-vector.php`](examples/21-postgres-vector.php).
+PostgreSQL 18.3 + pgvector 0.8.4. The SQLite backend transparently uses **sqlite-vec**
+(vec0 virtual tables) for native KNN when the extension is available, and falls back to a
+pure-PHP brute-force scan otherwise — filters always work. See
+[`examples/21-postgres-vector.php`](examples/21-postgres-vector.php) and
+[`examples/23-sqlite-vec.php`](examples/23-sqlite-vec.php).
 
 ---
 
@@ -153,7 +157,7 @@ echo \$b->isAvailable() ? 'YES' : 'NO';
 | ONNX inference e2e | ✅ Embed `Hello world` → 384d vector, similarity cat-kitten=0.79 |
 | llama.cpp FFI load (build 9873) | ✅ DLL loads, `llama_backend_init()` OK, `supports_mmap()`=YES |
 | HuggingFace API | ✅ Qwen3-0.6B found, search works |
-| Vector store | ✅ SQLite CRUD, brute-force search, metadata filter |
+| Vector store | ✅ SQLite CRUD, brute-force + sqlite-vec (vec0) native KNN, metadata filter |
 | Vector store (Postgres) | ✅ pgvector 0.8.4 native `<=>` search, HNSW index, metadata filter |
 | Shared memory (shmop) | ✅ Allocate 2.5B key, attach, detach |
 | Async fibers | ✅ Suspend/resume, parallel tasks, timeout 10ms |
@@ -186,7 +190,7 @@ packages/
 ## Testing
 
 ```bash
-composer test                # 598 unit tests — pure PHP
+composer test                # 599 unit tests — pure PHP
 composer test-integration    # Integration — needs ONNX Runtime / llama.cpp / PostgreSQL
 composer check               # cs-fix + PHPStan lvl8 + Psalm lvl3 + tests — fully green
 ```
@@ -195,9 +199,9 @@ composer check               # cs-fix + PHPStan lvl8 + Psalm lvl3 + tests — fu
 
 ## Examples
 
-See [`examples/`](examples/) — 22 standalone scripts covering every capability:
-embedding, tokenizer, chat, streaming, RAG, pipeline, vector store (SQLite &
-PostgreSQL/pgvector), grammar, model hub, profiling, async, model pool,
+See [`examples/`](examples/) — 23 standalone scripts covering every capability:
+embedding, tokenizer, chat, streaming, RAG, pipeline, vector store (SQLite +
+sqlite-vec & PostgreSQL/pgvector), grammar, model hub, profiling, async, model pool,
 observability, retry, benchmarks, Laravel, Symfony.
 
 ```bash
