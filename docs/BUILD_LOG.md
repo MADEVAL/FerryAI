@@ -1383,3 +1383,18 @@ for facts that are not debt. README matrix, BUILD_LOG and docs are in sync.
   as subprocess and asserts predict_a="a", predict_b="b". Both Windows and Linux/WSL pass.
 - AI::predict() removed from "model-gated" debt (now "verified e2e"). DEBT §4 updated.
 - Full gate: 630 unit, 32 integration (2 Rubix).
+
+---
+
+## 2026-07-05 - ONNX GPU investigation (Windows + Linux)
+
+Provisioned GPU builds (ORT 1.27.0 CUDA 13) on both platforms. Result:
+- CUDA provider visible in AvailableProviders on both Windows and Linux.
+- Session creation fails: ORT CUDA provider depends on cuDNN, which requires a manual download
+  from developer.nvidia.com (click-through license, not in package repos).
+- cuDNN dependency is an environment/legal step, not a code fix. GPU-able builds are installed
+  and the detection works; completing GPU requires the user to download cuDNN and place it next
+  to the ORT libs.
+- CPU path verified and stable on both platforms (embeddings 630 unit, 7 ONNX integration).
+DEBT §14 updated with diagnosis. DEBT §3 (HuggingFaceTokenizer) reclassified as not-debt:
+  pure-PHP BPE/WordPiece covers all needed tokenizer types; native binding is optional.
