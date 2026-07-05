@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace FerryAI\CpuBackend\Tests\Unit;
 
 use FerryAI\Core\Contracts\Model;
+use FerryAI\Core\Exception\BackendNotAvailableException;
 use FerryAI\CpuBackend\CpuNativeModel;
 use FerryAI\CpuBackend\Predictor;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -45,8 +46,25 @@ final class CpuNativeModelTest extends TestCase
 
     public function testUnload(): void
     {
-        $model = new CpuNativeModel('test', []);
+        $predictor = new class implements Predictor {
+            #[\Override]
+            public function isAvailable(): bool
+            {
+                return true;
+            }
+            #[\Override]
+            public function predict(mixed $model, array $samples): array
+            {
+                return ['A'];
+            }
+            #[\Override]
+            public function proba(mixed $model, array $samples): array
+            {
+                return [];
+            }
+        };
 
+        $model = new CpuNativeModel('test', [], new \stdClass(), $predictor);
         $model->unload();
 
         $this->expectException(\RuntimeException::class);
@@ -86,6 +104,7 @@ final class CpuNativeModelTest extends TestCase
     {
         $model = new CpuNativeModel('m', []);
 
-        self::assertArrayHasKey('output', $model->run(['x' => 1]));
+        $this->expectException(BackendNotAvailableException::class);
+        $model->run(['x' => 1]);
     }
 }

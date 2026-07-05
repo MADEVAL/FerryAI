@@ -40,9 +40,11 @@ final class CpuNativeModel implements Model
             return ['output' => $predictions];
         }
 
-        return [
-            'output' => [0.5, 0.3, 0.2],
-        ];
+        throw new \FerryAI\Core\Exception\BackendNotAvailableException(
+            'cpu_native',
+            'This model was loaded as a legacy serialized array and cannot perform inference. '
+            . 'Install rubix/ml (isolated) and set FERRY_AI_RUBIXML_AUTOLOAD to enable real .rbm inference.',
+        );
     }
 
     /**

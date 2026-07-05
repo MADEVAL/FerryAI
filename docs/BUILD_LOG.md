@@ -1354,3 +1354,32 @@ removed. Valuable runtime findings moved to capability docs:
   guides and wrapper README).
 Final report (15 sections) covers only unresolved/by-design items + a new "Honest Notes" section
 for facts that are not debt. README matrix, BUILD_LOG and docs are in sync.
+
+---
+
+## 2026-07-05 - Final stub / model-gated cleanup
+
+- CpuNativeModel::run() no longer returns silent dummy `[0.5,0.3,0.2]` when no RubixML estimator
+  is present — it throws a clear BackendNotAvailableException with actionable guidance. Test
+  adapted (CpuNativeModelTest: unload + fallback). All 16 cpu-backend unit tests pass.
+- HuggingFaceTokenizer: investigated tokenizers-cpp; the library requires Rust + cargo (links
+  libtokenizers_c.a from rust/tokenizers). Prebuilt binaries are not published. Honest outcome:
+  the pure-PHP BPE/WordPiece tokenizers cover all supported types; native binding is documented
+  as requiring the Rust toolchain + FERRY_AI_TOKENIZERS_LIB.
+- BackedTensor / OnnxTensor arithmetic is by-design: ONNX does math natively; CpuNativeTensor
+  provides the pure-PHP tensor. Documented as architectural boundary, not stub.
+- AI::predict(): path correct for the cpu backend + real `.rbm` model. E2e verified through
+  the isolated RubixML harness (load KNN, predict, proba — Section 15).
+- DEBT_REPORT.md §3 rewritten: BackedTensor/OnnxTensor removed as by-design; HuggingFaceTokenizer
+  and CpuNativeModel updated to reflect real status; AI::predict added with RubixML note.
+
+---
+
+## 2026-07-05 - RubixML AI::predict() verified e2e (Windows + Linux)
+
+- New harness: tests/Integration/Rubix/rubix_predict_harness.php — trains KNN (.rbm), loads
+  via AI::predict(), prints JSON. Runs in isolated RubixML process (avoids amphp collision).
+- New integration test: RubixCpuIntegrationTest::testAiFacadePredictsEndToEnd runs harness
+  as subprocess and asserts predict_a="a", predict_b="b". Both Windows and Linux/WSL pass.
+- AI::predict() removed from "model-gated" debt (now "verified e2e"). DEBT §4 updated.
+- Full gate: 630 unit, 32 integration (2 Rubix).

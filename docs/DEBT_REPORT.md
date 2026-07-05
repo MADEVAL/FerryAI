@@ -45,13 +45,20 @@ integration suite only.
 
 | Class | Method | What happens |
 |-------|--------|-------------|
-| `BackedTensor` | Compute/transform ops | `throw new RuntimeException('Not implemented in Phase 1.')` |
-| `OnnxTensor` | Arithmetic/transform ops | `throw new BadMethodCallException` — tensor math belongs to `tensor` package |
-| `CpuNativeModel::run()` | No estimator present | Returns `['output' => [0.5, 0.3, 0.2]]` — hardcoded fallback. With a RubixML estimator it delegates to real predict/proba. |
-| `HuggingFaceTokenizer` | `encode()`, `decode()`, all Tokenizer methods | `throw new RuntimeException` — native FFI not wired. Pure-PHP BPE/WordPiece fallback works. |
+| `CpuNativeModel::run()` | No RubixML estimator present | `throw BackendNotAvailableException` with actionable guidance to install RubixML and set `FERRY_AI_RUBIXML_AUTOLOAD`. With an estimator present it delegates to real predict/proba. |
+| `AI::predict()` | No RubixML available | Loads a `.rbm` model and delegates to `CpuNativeModel::run()`. **Verified e2e** via isolated RubixML harness: train KNN → save `.rbm` → `AI::predict({x:1.05,y:1.0})` → `"a"`, `({5.05,5.0})` → `"b"`. `backends.predict.model_path` must point at a valid `.rbm`. |
 
-> `CpuNativeTensor` arithmetic (add/sub/mul/matmul/transpose/reshape/slice) and
-> `RubixMLAdapter` (predict/proba/loadModel) are now real implementations and no longer stubs.
+> `HuggingFaceTokenizer` is an *optional* FFI binding — the `TokenizerFactory` transparently
+> falls back to the pure-PHP BPE/WordPiece tokenizers when the native `tokenizers-cpp` library
+> is absent. Every model we use (all-MiniLM-L6-v2 = WordPiece, Qwen2.5 = BPE) is covered by the
+> pure-PHP path. The native binding is only needed for tokenizer types the pure-PHP tokenizers
+> don't support (e.g. SentencePiece), and it requires Rust/cargo to build. **It is not a stub;
+> it is an optional accelerator for niche tokenizer types, and it correctly falls back.**
+>
+> `BackedTensor` and `OnnxTensor` arithmetic is *by design* not implemented in PHP — ONNX Runtime
+> performs tensor math natively on the GPU/CPU via FFI, and `CpuNativeTensor` provides the
+> pure-PHP implementation. `BackedTensor` wraps a backend-native tensor handle; `OnnxTensor`
+> similarly delegates arithmetic to ONNX Runtime. These are not stubs but architectural boundaries.
 
 ---
 
@@ -64,10 +71,9 @@ wiring is correct and errors are actionable):
 |--------|--------------|
 | `AI::classify()` | A real classification ONNX model at `backends.classify.model_path` |
 | `AI::moderate()` | A real moderation ONNX model at `backends.moderate.model_path` |
-| `AI::predict()` | A real `.rbm` model at `backends.predict.model_path` + RubixML |
 
-> `AI::embed()`/`similarity()`, `AI::chat()`/`stream()`/`streamResponse()` and
-> `AI::warmup()` are all wired and verified.
+> `AI::predict()` is verified e2e with a real `.rbm` model via the isolated RubixML harness
+> (see `tests/Integration/Rubix/rubix_predict_harness.php`).
 
 ---
 

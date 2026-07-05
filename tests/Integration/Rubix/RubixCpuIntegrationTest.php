@@ -56,4 +56,23 @@ final class RubixCpuIntegrationTest extends TestCase
         self::assertSame(['a', 'b'], $data['output']);
         self::assertGreaterThan(0.5, $data['proba_a']);
     }
+
+    public function testAiFacadePredictsEndToEnd(): void
+    {
+        $harness = __DIR__ . '/rubix_predict_harness.php';
+        $raw = \shell_exec(\escapeshellarg(\PHP_BINARY) . ' ' . \escapeshellarg($harness));
+
+        self::assertIsString($raw);
+
+        $data = \json_decode(\trim($raw), true);
+        self::assertIsArray($data, 'Predict harness output was not JSON: ' . $raw);
+
+        if (isset($data['skip'])) {
+            self::markTestSkipped((string) $data['skip']);
+        }
+
+        self::assertArrayNotHasKey('error', $data, 'Harness error: ' . ($data['error'] ?? ''));
+        self::assertSame('a', $data['predict_a']['output'][0]);
+        self::assertSame('b', $data['predict_b']['output'][0]);
+    }
 }
