@@ -6,13 +6,6 @@ namespace FerryAI\ModelHub\Format;
 
 final class FormatDetector
 {
-    private const MAGIC_BYTES = [
-        'onnx' => "\x08\x08\x12\x08",
-        'gguf' => 'GGUF',
-        'ai' => "PK\x03\x04",
-        'rbm' => "RBM\x00",
-    ];
-
     public static function detect(string $path): string
     {
         if (!\file_exists($path)) {
@@ -32,10 +25,23 @@ final class FormatDetector
             return 'unknown';
         }
 
-        foreach (self::MAGIC_BYTES as $format => $magic) {
-            if (\str_starts_with($header, $magic)) {
-                return $format;
-            }
+        if (\str_starts_with($header, 'GGUF')) {
+            return 'gguf';
+        }
+
+        if (\str_starts_with($header, "PK\x03\x04")) {
+            return 'ai';
+        }
+
+        if (\str_starts_with($header, "RBM\x00")) {
+            return 'rbm';
+        }
+
+        $b0 = \ord($header[0]);
+        $b1 = \strlen($header) >= 2 ? \ord($header[1]) : 0;
+
+        if ($b0 === 0x08 && $b1 < 0x20) {
+            return 'onnx';
         }
 
         if (\strlen($header) >= 8) {

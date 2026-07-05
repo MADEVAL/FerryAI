@@ -57,6 +57,8 @@
             "FerryAI\\ModelHub\\Tests\\": "packages/model-hub/tests/",
             "FerryAI\\Pipeline\\Tests\\": "packages/pipeline/tests/",
             "FerryAI\\CpuBackend\\Tests\\": "packages/cpu-backend/tests/",
+            "FerryAI\\Laravel\\Tests\\": "packages/laravel/tests/",
+            "FerryAI\\Symfony\\Tests\\": "packages/symfony/tests/",
             "FerryAI\\Tests\\": ["tests/", "packages/ai/tests/"]
         }
     },

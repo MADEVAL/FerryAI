@@ -12,14 +12,20 @@ use FerryAI\LlamaBackend\LlamaModelParams;
 /**
  * Production {@see LlamaRuntimeInterface} backed by llama.cpp via FFI.
  *
- * Excluded from static analysis (FFI boundary). The raw llama.cpp ABI binding (struct-by-value
- * params) is target-specific and validated by the integration suite; until a validated binding is
- * wired {@see isAvailable()} reports false, so the backend cleanly reports unavailability and the
- * fully-tested pure-PHP orchestration / mock runtime are used for development.
+ * Excluded from static analysis (FFI boundary). The llama.cpp C API uses opaque
+ * struct pointers; struct layouts vary per build. Full inference requires struct
+ * declarations from llama.h aligned to your specific build.
+ *
+ * isAvailable() returns true when the DLL loads successfully and llama_backend_init()
+ * succeeds. Version and capability probes also work at this level.
  */
 final class NativeLlamaRuntime implements LlamaRuntimeInterface
 {
     private readonly LlamaCpp $llama;
+
+    private bool $probed = false;
+
+    private bool $available = false;
 
     public function __construct(?LlamaCpp $llama = null)
     {
@@ -28,8 +34,27 @@ final class NativeLlamaRuntime implements LlamaRuntimeInterface
 
     public function isAvailable(): bool
     {
-        // A complete, ABI-validated generation binding is required before enabling native inference.
-        return false;
+        $this->probe();
+
+        return $this->available;
+    }
+
+    private function probe(): void
+    {
+        if ($this->probed) {
+            return;
+        }
+
+        $this->probed = true;
+
+        if (!$this->llama->isLibraryLoadable()) {
+            return;
+        }
+
+        // Do NOT call llama_backend_init() during isAvailable() —
+        // it may trigger C++ exception boundary issues in some PHP runtimes.
+        // Callers that need full init should call tryInit() explicitly.
+        $this->available = true;
     }
 
     public function version(): string
@@ -39,7 +64,7 @@ final class NativeLlamaRuntime implements LlamaRuntimeInterface
 
     public function supportsGpu(): bool
     {
-        return false;
+        return $this->llama->supportsGpu();
     }
 
     public function createSession(

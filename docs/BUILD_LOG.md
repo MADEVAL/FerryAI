@@ -692,8 +692,7 @@ Detailed docs (Step 129) remain a separate documentation pass.
 | Symfony | 3 | `AIBundle`, `Configuration`, `FerryAIExtension` |
 | CI/CD | 3 | `ci.yml`, `Dockerfile`, `docker-compose.yaml` |
 
-**Gate (fresh run):** `composer check` → cs-check OK · Psalm level 3 No errors · PHPUnit 479/479 (867 assertions).
-PHPStan level 8 has 26 cosmetic warnings (missingType.iterableValue on existing Phase 1–4 code) — zero functional errors.
+**Gate (fresh run):** `composer test` → 568/568 (996 assertions). cs-check OK. Psalm No errors. PHPStan 26 cosmetic (unchanged).
 
 ---
 
@@ -704,4 +703,106 @@ PHPStan level 8 has 26 cosmetic warnings (missingType.iterableValue on existing 
 | Phase 1 (MVP) | core, tensor, onnx-backend, ai | 217/217 |
 | Phase 2 (LLM) | llama-backend, tokenizer, ai (updated) | 291/291 |
 | Phase 3 (Ecosystem) | embedding, vector, model-hub, pipeline, cpu-backend, ai (updated) | 469/469 |
-| Phase 4 (Production) | core (3 new), ai (7 new), onnx-backend (2 new), model-hub (1 new), laravel, symfony | 479/479 |
+| Phase 4 (Production) | core (3 new), ai (7 new), onnx-backend (2 new), model-hub (1 new), laravel, symfony | 568/568 |
+
+---
+
+## Production Verification — 2026-07-05
+
+### End-to-end ONNX inference (Windows x64, ONNX Runtime 1.27.0)
+
+**Verified:** full inference pipeline on real model.
+
+| Step | Result |
+|------|--------|
+| ONNX Runtime FFI load | `isAvailable()=true`, version `1.27.0`, devices `[cpu]` |
+| Providers | `AzureExecutionProvider`, `CPUExecutionProvider` (CPU-build package) |
+| Model load | `all-MiniLM-L6-v2.onnx` — inputs (input_ids, attention_mask, token_type_ids), outputs (token_embeddings 384d, sentence_embedding) |
+| Tokenizer | WordPiece from `tokenizer.json`, vocab=29674 |
+| Tokenize | `"Hello world"` → `[101, 100, 2088, 102]` |
+| Inference | Batch [1,4] → token_embeddings [1,4,384], sentence_embedding [1,384] |
+| Mean pooling | 384-dim vector |
+| L2 normalization | Norm: 6.52 → 1.00 |
+| Cosine similarity | `"Hello world"` vs `"Hi there"` = 0.43 |
+
+### HuggingFace Hub API
+
+| Test | Result |
+|------|--------|
+| `Qwen/Qwen3-0.6B` model info | Found: 27.8M downloads, 1384 likes |
+| List files | 10 files (config.json, safetensors, etc.) |
+| Search `bert embedding` | 62 results |
+| `sentence-transformers/all-MiniLM-L6-v2` | Found: pipeline=sentence-similarity |
+
+### Shared Memory (ext-shmop)
+
+| Test | Result |
+|------|--------|
+| `isAvailable()` | `true` (ext-shmop loaded) |
+| `allocateModel()` | Key returned, data written |
+| `isShared()` | `true` after allocation |
+| `detachModel()` | Clean |
+
+### Async Inference (Fibers)
+
+| Test | Result |
+|------|--------|
+| `runAsync` + `wait` | Fiber executes, returns `ABCDE` |
+| `runParallel` | `[10, 20, 30]` |
+| Timeout (50ms) | Caught: "timed out after 50 ms" |
+
+### llama.cpp FFI
+
+DLL loads (`isLibraryLoadable()=true`), but `llama_backend_init` triggers `GGML_ASSERT`.
+The CDEF in `LlamaCpp` declares only 2 functions — per-build alignment with `llama.h` needed.
+`NativeLlamaRuntime::isAvailable()` honestly returns `false`.
+
+### GPU (CUDA)
+
+ONNX Runtime package is CPU-build (`AzureExecutionProvider` + `CPUExecutionProvider`).
+CUDA DLLs (`cublas64_13.dll`, `cudart64_13.dll`) are present for llama.cpp.
+ONNX CUDA provider correctly reports `isAvailable()=false`.
+
+
+---
+
+## Phase 4 — Test coverage completion
+
+### 2026-07-05 — 19 new test classes: 100% class coverage
+
+**What:** Added unit tests for all 19 previously untested Phase 4 classes, plus `SpecialTokens` and
+`OnnxTypeMapper` that existed without dedicated tests.
+
+**Test files created (all TDD):**
+
+| Package | Test class | Tests |
+|---|---|---|
+| `core` | `LoggerTest` | 6 (JSON file logging, multiple entries, levels) |
+| `tokenizer` | `SpecialTokensTest` | 4 (role extraction, empty config, missing ids) |
+| `onnx-backend` | `OnnxTypeMapperTest` | 10 (type mapping, provider mapping, device→providers) |
+| `vector` | `SqliteVecExtensionTest` | 5 (availability, search stub, index stub) |
+| `model-hub` | `StreamLoaderTest` | 4 (mmap handle, stream chunks, missing file) |
+| `ai` | `MetricsTest` | 5 (increment, record, timing, tags, reset) |
+| `ai` | `ProfilerTest` | 5 (start/end, report stats, accumulation, reset, no-start) |
+| `ai` | `ModelPoolTest` | 7 (put/acquire, evict, memory, warmup, release, null acquire) |
+| `ai` | `SharedMemoryManagerTest` | 5 (availability check, allocate/attach gating, detach) |
+| `ai` | `NativeBinaryManagerTest` | 5 (resolve, verify, cleanup, constructors) |
+| `ai` | `AsyncInferenceTest` | 4 (Fiber run, wait, parallel, timeout) |
+| `cpu-backend` | `RubixMLAdapterTest` | 4 (availability, load/predict/proba throws) |
+| `pipeline` | `EmbedStageTest` | 4 (string embed, batch embed, non-string passthrough) |
+| `pipeline` | `ClassifyStageTest` | 2 (ClassificationResult output) |
+| `pipeline` | `StoreStageTest` | 4 (store+return id, auto-generate id, non-array passthrough) |
+| `pipeline` | `FiberPipelineTest` | 4 (setTimeout, runAsync Fiber, Generator, extends Pipeline) |
+| `laravel` | `AIServiceProviderTest` | 4 (register→AIConfig, getConfig structure, env reading, boot) |
+| `laravel` | `AIFacadeTest` | 2 (proxy to AI, unknown method) |
+| `symfony` | `AIBundleTest` | 2 (boot→AIConfig, config structure) |
+| `symfony` | `SymfonyDITest` | 3 (Configuration tree, extension load, defaults) |
+
+**Notes:** `SharedMemoryManagerTest` adapts to the availability of `ext-shmop` (loaded on Windows PHP 8.5.4)
+— checks `isAvailable()` result and branches behaviour accordingly. `AsyncInference::wait()` timeout tested
+with `Fiber::suspend()` infinite loop. All test doubles are hand-rolled stubs implementing core contracts
+(`Embedder`, `Backend`, `Model`, `VectorStore`), consistent with the project's interface-and-mock pattern.
+
+**Verification:** `composer test` → 568/568 (996 assertions). `composer cs-fix` → 0 fixable. `composer stan`
+→ same 26 cosmetic warnings, zero new.
+

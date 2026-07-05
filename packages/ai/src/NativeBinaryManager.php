@@ -64,6 +64,10 @@ final class NativeBinaryManager
 
     public function verify(string $path, string $expectedSha256): bool
     {
+        if (!\file_exists($path)) {
+            return false;
+        }
+
         return Sha256Verifier::verify($path, $expectedSha256);
     }
 

@@ -48,15 +48,26 @@ final class Embedder implements EmbedderContract
     public function embed(string $text): array
     {
         $encoded = $this->tokenizer->encode($text);
-        $attentionMask = \array_fill(0, \count($encoded), 1);
+        $seqLen = \count($encoded);
+        $attentionMask = \array_fill(0, $seqLen, 1);
 
         $inputs = [
-            'input_ids' => $encoded,
-            'attention_mask' => $attentionMask,
+            'input_ids' => [$encoded],
+            'attention_mask' => [$attentionMask],
         ];
 
+        if (\array_key_exists('token_type_ids', $this->model->inputs())) {
+            $inputs['token_type_ids'] = [\array_fill(0, $seqLen, 0)];
+        }
+
         $outputs = $this->model->run($inputs);
-        $hiddenStates = $outputs['last_hidden_state'] ?? \reset($outputs);
+        $hiddenStates = $outputs['token_embeddings'] ?? $outputs['last_hidden_state'] ?? \reset($outputs);
+
+        if ($hiddenStates instanceof \FerryAI\Core\Contracts\Tensor) {
+            $hiddenStates = $hiddenStates->toArray();
+        }
+
+        $hiddenStates = \is_array($hiddenStates) ? ($hiddenStates[0] ?? $hiddenStates) : [];
 
         if (\is_array($hiddenStates) && isset($hiddenStates[0]) && \is_array($hiddenStates[0])) {
             $vector = $this->poolingStrategy->pool($hiddenStates, [$attentionMask]);

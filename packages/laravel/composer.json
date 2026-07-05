@@ -15,14 +15,22 @@
         "ferry-ai/inference-ai": "^1.0"
     },
     "require-dev": {
-        "phpunit/phpunit": "^12.0 || ^13.0"
+        "phpunit/phpunit": "^12.0 || ^13.0",
+        "phpstan/phpstan": "^2.0",
+        "vimeo/psalm": "^6.0"
     },
     "suggest": {
-        "laravel/framework": "For Laravel integration"
+        "laravel/framework": "For Laravel service provider and facade integration",
+        "illuminate/support": "Required for Laravel ServiceProvider base class"
     },
     "autoload": {
         "psr-4": {
             "FerryAI\\Laravel\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "FerryAI\\Laravel\\Tests\\": "tests/"
         }
     },
     "config": {
