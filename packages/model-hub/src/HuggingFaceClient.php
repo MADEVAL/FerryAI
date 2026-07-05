@@ -4,11 +4,26 @@ declare(strict_types=1);
 
 namespace FerryAI\ModelHub;
 
+use FerryAI\Core\Logger;
+use FerryAI\Core\RetryHandler;
+
 final class HuggingFaceClient
 {
+    private RetryHandler $retry;
+
+    /**
+     * @param (\Closure(string): (string|false))|null $httpGet Overridable HTTP GET seam (testing / custom transports)
+     */
     public function __construct(
-        private ?string $token = null,
-    ) {}
+        private readonly ?string $token = null,
+        ?RetryHandler $retry = null,
+        private readonly ?Logger $logger = null,
+        private readonly ?\Closure $httpGet = null,
+        private readonly int $maxAttempts = 3,
+        private readonly int $retryDelayMs = 1000,
+    ) {
+        $this->retry = $retry ?? new RetryHandler();
+    }
 
     /**
      * @return string[]
@@ -99,13 +114,30 @@ final class HuggingFaceClient
             $filename,
         );
 
-        $context = $this->createContext();
+        $attempt = 0;
 
-        $data = @\file_get_contents($url, false, $context);
+        $data = $this->retry->retry(
+            function () use ($url, $modelId, $filename, &$attempt): string {
+                $attempt++;
+                $raw = $this->httpGet !== null
+                    ? ($this->httpGet)($url)
+                    : @\file_get_contents($url, false, $this->createContext());
 
-        if ($data === false) {
-            throw new \RuntimeException(\sprintf('Failed to download: %s/%s', $modelId, $filename));
-        }
+                if ($raw === false) {
+                    $this->logger?->error('hf.download.failed', [
+                        'model' => $modelId,
+                        'file' => $filename,
+                        'attempt' => $attempt,
+                    ]);
+
+                    throw new \RuntimeException(\sprintf('Failed to download: %s/%s', $modelId, $filename));
+                }
+
+                return $raw;
+            },
+            $this->maxAttempts,
+            $this->retryDelayMs,
+        );
 
         $dir = \dirname($destination);
 

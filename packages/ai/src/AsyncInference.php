@@ -10,8 +10,14 @@ final class AsyncInference
 {
     /**
      * @template T
-     * @param  callable(): T $inference
+     *
+     * @param callable(): T $inference
+     *
+     *
+     * @psalm-suppress TooManyTemplateParams
+     *
      * @return Fiber
+     * @phpstan-return Fiber<mixed, mixed, mixed, T>
      */
     public function runAsync(callable $inference): Fiber
     {
@@ -20,6 +26,11 @@ final class AsyncInference
         });
     }
 
+    /**
+     * @phpstan-param Fiber<mixed, mixed, mixed, mixed> $fiber
+     *
+     * @psalm-suppress TooManyTemplateParams
+     */
     public function wait(Fiber $fiber, int $timeoutMs = 30000): mixed
     {
         if ($fiber->isTerminated()) {
@@ -32,6 +43,7 @@ final class AsyncInference
             $fiber->start();
         }
 
+        /** @phpstan-ignore booleanNot.alwaysTrue */
         while (!$fiber->isTerminated()) {
             $elapsed = \microtime(true) * 1000.0 - $startTime;
 
@@ -49,6 +61,7 @@ final class AsyncInference
             }
         }
 
+        /** @phpstan-ignore deadCode.unreachable */
         return $fiber->getReturn();
     }
 

@@ -27,6 +27,44 @@ final class AIFactoryTest extends TestCase
         self::assertInstanceOf(LlamaBackend::class, (new AIFactory())->createBackend(BackendType::Llama));
     }
 
+    public function testCreateBackendResolvesLlamaLibraryWhenEnvUnset(): void
+    {
+        \putenv('FERRY_AI_LLAMA_LIB');
+
+        $resolver = new class implements \FerryAI\LibraryResolver {
+            #[\Override]
+            public function resolve(string $library): ?string
+            {
+                return $library === 'llama' ? 'C:/fake/llama.dll' : null;
+            }
+        };
+
+        (new AIFactory(null, $resolver))->createBackend(BackendType::Llama);
+
+        self::assertSame('C:/fake/llama.dll', \getenv('FERRY_AI_LLAMA_LIB'));
+
+        \putenv('FERRY_AI_LLAMA_LIB');
+    }
+
+    public function testCreateBackendKeepsExistingLlamaLibraryEnv(): void
+    {
+        \putenv('FERRY_AI_LLAMA_LIB=C:/existing/llama.dll');
+
+        $resolver = new class implements \FerryAI\LibraryResolver {
+            #[\Override]
+            public function resolve(string $library): ?string
+            {
+                return 'C:/other/llama.dll';
+            }
+        };
+
+        (new AIFactory(null, $resolver))->createBackend(BackendType::Llama);
+
+        self::assertSame('C:/existing/llama.dll', \getenv('FERRY_AI_LLAMA_LIB'));
+
+        \putenv('FERRY_AI_LLAMA_LIB');
+    }
+
     public function testCreateCpuNativeBackend(): void
     {
         self::assertInstanceOf(CpuNativeBackend::class, (new AIFactory())->createBackend(BackendType::CpuNative));

@@ -883,3 +883,57 @@ Config keys `vector.dsn|user|password|metric`. `vector/composer.json` suggests
 against the live server, skips gracefully otherwise), `examples/README.md` Tier 5,
 `docs/EXAMPLES_PLAN.md` (20 → 21), and root `README.md` — new "Vector store" section
 (SQLite vs PostgreSQL/pgvector), Verified table, Packages, test/example counts.
+
+---
+
+## 2026-07-05 — Debt §5: wire up "dead" components + PHPStan to zero
+
+**What (TDD):** Integrated the previously-unused cross-cutting components and drove the
+whole `composer check` gate green for the first time.
+
+**Architectural correction:** `Metrics`/`Profiler`/`ModelPool`/`SharedMemoryManager`/
+`NativeBinaryManager` live in `ai`; backends cannot depend on `ai` (isolation + graph).
+Instrumentation therefore lives in the **facade layer**, not in `Backend::load()`.
+
+**A — Observability (`ai/src/Observability.php`, new):** wraps facade operations
+(`embed`/`similarity`/`chat`/`classify`/`moderate`/`predict`) with `Metrics` (count + ms
+timing), `Profiler`, and `Logger`. All channels opt-in via `observability.{metrics,
+profiling,logging}` — off by default (zero overhead, no test file writes).
+
+**B — ModelPool:** `AI` owns a pool; classify/moderate/predict/chat load through
+`loadPooled()` (check→load→put). Real `warmup(ids, loader)` and memory-bounded LRU
+eviction honouring `maxMemoryBytes`. `AI::warmup()` is no longer a no-op.
+
+**C — NativeBinaryManager:** new `LibraryResolver` interface (implemented by
+`NativeBinaryManager`); `AIFactory` takes an optional resolver and, in
+`createBackend(Llama)`, best-effort sets `FERRY_AI_LLAMA_LIB` when unset (guarded, no
+download).
+
+**D — RetryHandler + Logger in model-hub:** `Downloader::download()` and
+`HuggingFaceClient::downloadFile()` wrap network I/O in `RetryHandler` + logging, with an
+injectable HTTP seam so retries are unit-tested without the network. HF getters left as
+single-shot (they already return `[]` and are network-tested).
+
+**E — SharedMemoryManager (opt-in):** new `SharedMemory` interface; `ModelPool` accepts one
+and exposes `shareModel(id, path)` / `isModelShared(id)`; `evict()` detaches. Enabled via
+`model_pool.shared_memory`. Honest limitation documented: only raw model *files* (by path)
+can be shared, not loaded `Model` objects (native handles aren't serializable).
+
+**F — PHPStan level 8 → 0 (was 26):** typed `Metrics`/`Logger` context arrays; `Logger`
+now honours a severity threshold (reads `$level`); `ModelPool` reads `maxMemoryBytes` via
+eviction; `AIServiceProvider::app()` accessor; `ChatFormatter`/`Pipeline` iterable value
+types; `FormatDetector` redundant check; `StreamLoader` `fread` length `max(1, …)`;
+`CpuNativeTensor::toArray()` `array_values`; `Downloader` split into `download()`/
+`doDownload()` (correct `@phpstan-ignore` placement); `Fiber` generics via
+`@phpstan-return`/`@phpstan-param` + `@psalm-suppress TooManyTemplateParams` (Psalm has no
+Fiber templates).
+
+**Verification (fresh):** `composer check` → **fully green** — cs-check 0 fixable ·
+PHPStan L8 **No errors** · Psalm L3 No errors · **598/598** unit tests. Postgres integration
+still 14/14. New/updated tests: `ObservabilityTest`, `ModelPoolTest`, `AIFactoryTest`,
+`DownloaderTest`, `HuggingFaceClientTest`, `LoggerTest`.
+
+**Example + README (milestone policy):** `examples/22-observability.php` (runs green, no
+native deps), `examples/README.md`, `docs/EXAMPLES_PLAN.md` (21 → 22), root `README.md`
+new "Observability & model pool" section + counts. `DEBT_REPORT.md` §5 → RESOLVED
+(+ summary matrix).

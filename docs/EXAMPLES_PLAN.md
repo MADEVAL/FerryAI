@@ -1,6 +1,6 @@
 # FerryAI Examples — Coverage Reference
 
-> **All 21 examples are implemented** in `examples/`. This document is the capability coverage matrix.
+> **All 22 examples are implemented** in `examples/`. This document is the capability coverage matrix.
 > Each example is a standalone PHP script: `php examples/<name>.php`.
 
 ---
@@ -291,6 +291,7 @@ examples/
 ├── 19-laravel.php
 ├── 20-symfony.php
 ├── 21-postgres-vector.php      # PostgreSQL + pgvector: native ANN, HNSW, metadata filter
+├── 22-observability.php        # Metrics/Profiler/Logger, ModelPool eviction, RetryHandler, shared memory
 └── README.md                  # How to run, prerequisites, expected output
 ```
 

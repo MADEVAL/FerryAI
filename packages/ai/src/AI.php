@@ -40,6 +40,10 @@ final class AI
 
     private static ?Device $activeDevice = null;
 
+    private static ?Observability $observability = null;
+
+    private static ?ModelPool $modelPool = null;
+
     /**
      * @param array<string, mixed> $config
      */
@@ -53,6 +57,9 @@ final class AI
         self::$registry->register(BackendType::CpuNative, self::$factory->createBackend(BackendType::CpuNative));
         self::$activeBackend = BackendType::Onnx;
         self::$activeDevice = self::$config->device();
+        self::$observability = Observability::fromConfig(self::$config);
+        $sharedMemory = (bool) self::$config->get('model_pool.shared_memory', false) ? new SharedMemoryManager() : null;
+        self::$modelPool = new ModelPool(self::poolMemoryLimit(self::$config), $sharedMemory);
     }
 
     /**
@@ -61,7 +68,9 @@ final class AI
     public static function warmup(array $modelIds): void
     {
         self::ensureConfigured();
-        // Phase 1: model preloading requires the model-hub package (Phase 3); intentional no-op.
+
+        $backend = self::registry()->get(self::activeBackend());
+        self::modelPool()->warmup($modelIds, static fn(string $id): \FerryAI\Core\Contracts\Model => $backend->load($id));
     }
 
     public static function reset(): void
@@ -71,6 +80,8 @@ final class AI
         self::$registry = null;
         self::$activeBackend = null;
         self::$activeDevice = null;
+        self::$observability = null;
+        self::$modelPool = null;
     }
 
     public static function resetBackend(string $name): void
@@ -127,9 +138,13 @@ final class AI
      */
     public static function chat(array $messages, ?array $options = null): GenerationResult
     {
-        $model = self::chatModel();
+        self::ensureConfigured();
 
-        return $model->runComplete($messages, self::samplingParams($options));
+        return self::observability()->measure('chat', static function () use ($messages, $options): GenerationResult {
+            $model = self::chatModel();
+
+            return $model->runComplete($messages, self::samplingParams($options));
+        });
     }
 
     /**
@@ -152,59 +167,66 @@ final class AI
     {
         self::ensureConfigured();
 
-        $embedder = self::embedder();
+        return self::observability()->measure('embed', static function () use ($input): EmbeddingResult|array {
+            $embedder = self::embedder();
 
-        if (\is_string($input)) {
-            $vector = $embedder->embed($input);
+            if (\is_string($input)) {
+                $vector = $embedder->embed($input);
 
-            return new EmbeddingResult($vector, $embedder->dimension(), $embedder->modelName());
-        }
+                return new EmbeddingResult($vector, $embedder->dimension(), $embedder->modelName());
+            }
 
-        $vectors = $embedder->embedBatch($input);
-        $results = [];
+            $vectors = $embedder->embedBatch($input);
+            $results = [];
 
-        foreach ($vectors as $vector) {
-            $results[] = new EmbeddingResult($vector, $embedder->dimension(), $embedder->modelName());
-        }
+            foreach ($vectors as $vector) {
+                $results[] = new EmbeddingResult($vector, $embedder->dimension(), $embedder->modelName());
+            }
 
-        return $results;
+            return $results;
+        });
     }
 
     public static function similarity(string $a, string $b): float
     {
-        $embedder = self::embedder();
+        self::ensureConfigured();
 
-        return $embedder->cosineSimilarity(
-            $embedder->embed($a),
-            $embedder->embed($b),
-        );
+        return self::observability()->measure('similarity', static function () use ($a, $b): float {
+            $embedder = self::embedder();
+
+            return $embedder->cosineSimilarity(
+                $embedder->embed($a),
+                $embedder->embed($b),
+            );
+        });
     }
 
     public static function classify(mixed $input): ClassificationResult
     {
         self::ensureConfigured();
-        $activeBackend = self::activeBackend();
 
-        $backend = self::registry()->get($activeBackend);
-        $config = self::configuration();
-        $modelPath = $config->get('backends.classify.model_path');
+        return self::observability()->measure('classify', static function () use ($input): ClassificationResult {
+            $backend = self::registry()->get(self::activeBackend());
+            $config = self::configuration();
+            $modelPath = $config->get('backends.classify.model_path');
 
-        if (!\is_string($modelPath) || $modelPath === '') {
-            throw new ConfigurationException('backends.classify.model_path', 'a classification model path must be configured');
-        }
+            if (!\is_string($modelPath) || $modelPath === '') {
+                throw new ConfigurationException('backends.classify.model_path', 'a classification model path must be configured');
+            }
 
-        $model = $backend->load($modelPath);
-        $outputs = $model->run(['input' => $input]);
-        $scores = $outputs['output'] ?? \reset($outputs);
+            $model = self::loadPooled($backend, $modelPath);
+            $outputs = $model->run(['input' => $input]);
+            $scores = $outputs['output'] ?? \reset($outputs);
 
-        if (\is_array($scores) && isset($scores[0]) && \is_numeric($scores[0])) {
-            $maxScore = (float) \max($scores);
-            $label = (string) \array_search($maxScore, $scores, true);
+            if (\is_array($scores) && isset($scores[0]) && \is_numeric($scores[0])) {
+                $maxScore = (float) \max($scores);
+                $label = (string) \array_search($maxScore, $scores, true);
 
-            return new ClassificationResult($label, $maxScore);
-        }
+                return new ClassificationResult($label, $maxScore);
+            }
 
-        return new ClassificationResult('unknown', 0.0);
+            return new ClassificationResult('unknown', 0.0);
+        });
     }
 
     /**
@@ -213,30 +235,31 @@ final class AI
     public static function moderate(string $text): array
     {
         self::ensureConfigured();
-        $activeBackend = self::activeBackend();
 
-        $backend = self::registry()->get($activeBackend);
-        $config = self::configuration();
-        $modelPath = $config->get('backends.moderate.model_path');
+        return self::observability()->measure('moderate', static function () use ($text): array {
+            $backend = self::registry()->get(self::activeBackend());
+            $config = self::configuration();
+            $modelPath = $config->get('backends.moderate.model_path');
 
-        if (!\is_string($modelPath) || $modelPath === '') {
-            throw new ConfigurationException('backends.moderate.model_path', 'a moderation model path must be configured');
-        }
+            if (!\is_string($modelPath) || $modelPath === '') {
+                throw new ConfigurationException('backends.moderate.model_path', 'a moderation model path must be configured');
+            }
 
-        $model = $backend->load($modelPath);
-        $outputs = $model->run(['input' => $text]);
-        $scores = $outputs['output'] ?? \reset($outputs);
+            $model = self::loadPooled($backend, $modelPath);
+            $outputs = $model->run(['input' => $text]);
+            $scores = $outputs['output'] ?? \reset($outputs);
 
-        if (!\is_array($scores)) {
-            return ['categories' => [], 'flagged' => false];
-        }
+            if (!\is_array($scores)) {
+                return ['categories' => [], 'flagged' => false];
+            }
 
-        $maxScore = $scores !== [] ? (float) \max($scores) : 0.0;
+            $maxScore = $scores !== [] ? (float) \max($scores) : 0.0;
 
-        return [
-            'categories' => $scores,
-            'flagged' => $maxScore > 0.5,
-        ];
+            return [
+                'categories' => $scores,
+                'flagged' => $maxScore > 0.5,
+            ];
+        });
     }
 
     /**
@@ -246,18 +269,20 @@ final class AI
     {
         self::ensureConfigured();
 
-        $factory = self::factory();
-        $backend = $factory->createBackend(BackendType::CpuNative);
-        $config = self::configuration();
-        $modelPath = $config->get('backends.predict.model_path');
+        return self::observability()->measure('predict', static function () use ($features): mixed {
+            $factory = self::factory();
+            $backend = $factory->createBackend(BackendType::CpuNative);
+            $config = self::configuration();
+            $modelPath = $config->get('backends.predict.model_path');
 
-        if (!\is_string($modelPath) || $modelPath === '') {
-            throw new ConfigurationException('backends.predict.model_path', 'a prediction model path must be configured');
-        }
+            if (!\is_string($modelPath) || $modelPath === '') {
+                throw new ConfigurationException('backends.predict.model_path', 'a prediction model path must be configured');
+            }
 
-        $model = $backend->load($modelPath);
+            $model = self::loadPooled($backend, $modelPath);
 
-        return $model->run($features);
+            return $model->run($features);
+        });
     }
 
     public static function pipeline(): Pipeline
@@ -356,6 +381,44 @@ final class AI
         if (self::$config === null) {
             throw new \RuntimeException('AI::config() must be called before using the facade.');
         }
+    }
+
+    private static function observability(): Observability
+    {
+        return self::$observability ??= new Observability();
+    }
+
+    private static function modelPool(): ModelPool
+    {
+        return self::$modelPool ??= new ModelPool();
+    }
+
+    /**
+     * Loads a model through the shared pool: reuse the cached instance when present,
+     * otherwise load once and cache it under a backend+path+device key.
+     */
+    private static function loadPooled(\FerryAI\Core\Contracts\Backend $backend, string $modelPath, ?Device $device = null): \FerryAI\Core\Contracts\Model
+    {
+        $key = $backend::class . '|' . $modelPath . '|' . ($device === null ? 'auto' : $device->value);
+        $pool = self::modelPool();
+
+        $cached = $pool->acquire($key);
+
+        if ($cached !== null) {
+            return $cached;
+        }
+
+        $model = $backend->load($modelPath, $device);
+        $pool->put($key, $model, $model->metadata()->sizeBytes);
+
+        return $model;
+    }
+
+    private static function poolMemoryLimit(AIConfig $config): ?int
+    {
+        $limit = $config->get('model_pool.max_memory_bytes');
+
+        return \is_int($limit) ? $limit : null;
     }
 
     private static function registry(): BackendRegistry

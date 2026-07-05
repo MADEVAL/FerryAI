@@ -7,7 +7,7 @@ namespace FerryAI;
 use FerryAI\Core\PlatformDetector;
 use FerryAI\ModelHub\Signature\Sha256Verifier;
 
-final class NativeBinaryManager
+final class NativeBinaryManager implements LibraryResolver
 {
     private string $cacheDir;
 
@@ -17,6 +17,7 @@ final class NativeBinaryManager
         $this->cacheDir = $cacheDir ?? (\is_string($home) ? $home : \sys_get_temp_dir()) . '/.ferry-ai/bin';
     }
 
+    #[\Override]
     public function resolve(string $library): ?string
     {
         $systemPath = $this->findInSystem($library);

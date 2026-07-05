@@ -67,7 +67,7 @@ final class CpuNativeTensor implements Tensor
         }
 
         /** @psalm-suppress InvalidReturnStatement */
-        return $this->buildNested([...$this->data], $this->dimensions);
+        return \array_values($this->buildNested([...$this->data], $this->dimensions));
     }
 
     #[\Override]

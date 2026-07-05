@@ -49,6 +49,7 @@ For LLM examples — a GGUF model and validated llama.cpp FFI binding (see READM
 | 16 | `retry.php` | RetryHandler exponential/linear, PlatformDetector, NativeBinaryManager | None |
 | 17 | `benchmark.php` | Throughput: embed, similarity, tokenizer, vector store | ONNX Runtime |
 | 18 | `stream-response.php` | SSE and NDJSON formatting for HTTP streaming | None |
+| 22 | `observability.php` | Metrics/Profiler/Logger wrapper, ModelPool eviction, RetryHandler, shared memory | None |
 
 ## Tier 4 — Frameworks
 

@@ -20,7 +20,10 @@ class FiberPipeline extends Pipeline
     }
 
     /**
+     * @psalm-suppress TooManyTemplateParams
+     *
      * @return Fiber
+     * @phpstan-return Fiber<mixed, mixed, Generator<mixed>, mixed>
      */
     public function runAsync(mixed $input): Fiber
     {

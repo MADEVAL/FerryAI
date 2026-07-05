@@ -62,6 +62,9 @@ final class ChatFormatter
         return ['role' => $role, 'content' => $this->stringifyContent($message['content'] ?? '')];
     }
 
+    /**
+     * @param array<int|string, mixed>|string $content
+     */
     private function stringifyContent(array|string $content): string
     {
         if (\is_string($content)) {

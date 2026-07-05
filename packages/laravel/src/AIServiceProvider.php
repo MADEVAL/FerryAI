@@ -15,6 +15,11 @@ final class AIServiceProvider
         $this->app = $app;
     }
 
+    public function app(): mixed
+    {
+        return $this->app;
+    }
+
     public function register(): void
     {
         $config = $this->getConfig();

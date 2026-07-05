@@ -4,16 +4,18 @@ declare(strict_types=1);
 
 namespace FerryAI;
 
-final class SharedMemoryManager
+final class SharedMemoryManager implements SharedMemory
 {
     /** @var array<string, int> */
     private array $segments = [];
 
+    #[\Override]
     public function isAvailable(): bool
     {
         return \extension_loaded('shmop');
     }
 
+    #[\Override]
     public function allocateModel(string $modelId, string $modelPath): int
     {
         if (!$this->isAvailable()) {
@@ -56,11 +58,13 @@ final class SharedMemoryManager
         return $key;
     }
 
+    #[\Override]
     public function detachModel(string $modelId): void
     {
         unset($this->segments[$modelId]);
     }
 
+    #[\Override]
     public function isShared(string $modelId): bool
     {
         return isset($this->segments[$modelId]);

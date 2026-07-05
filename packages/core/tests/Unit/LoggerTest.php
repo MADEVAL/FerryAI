@@ -85,4 +85,15 @@ final class LoggerTest extends TestCase
 
         self::assertTrue(true);
     }
+
+    public function testLevelThresholdSkipsLowerSeverity(): void
+    {
+        $logger = new Logger($this->logFile, 'warning');
+        $logger->info('should be skipped');
+        $logger->error('should be written');
+
+        $content = (string) \file_get_contents($this->logFile);
+        self::assertStringNotContainsString('should be skipped', $content);
+        self::assertStringContainsString('should be written', $content);
+    }
 }

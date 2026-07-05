@@ -4,14 +4,53 @@ declare(strict_types=1);
 
 namespace FerryAI\ModelHub;
 
+use FerryAI\Core\Logger;
+use FerryAI\Core\RetryHandler;
+
 final class Downloader
 {
     private bool $cancelled = false;
 
+    private RetryHandler $retry;
+
+    public function __construct(
+        ?RetryHandler $retry = null,
+        private readonly ?Logger $logger = null,
+        private readonly int $maxAttempts = 3,
+        private readonly int $retryDelayMs = 1000,
+    ) {
+        $this->retry = $retry ?? new RetryHandler();
+    }
+
     public function download(string $url, string $destination, ?callable $onProgress = null): void
     {
         $this->cancelled = false;
+        $attempt = 0;
 
+        $this->retry->retry(
+            function () use ($url, $destination, $onProgress, &$attempt): void {
+                $attempt++;
+                $this->logger?->info('download.attempt', ['url' => $url, 'attempt' => $attempt]);
+
+                try {
+                    $this->doDownload($url, $destination, $onProgress);
+                } catch (\Throwable $e) {
+                    $this->logger?->error('download.failed', [
+                        'url' => $url,
+                        'attempt' => $attempt,
+                        'error' => $e->getMessage(),
+                    ]);
+
+                    throw $e;
+                }
+            },
+            $this->maxAttempts,
+            $this->retryDelayMs,
+        );
+    }
+
+    private function doDownload(string $url, string $destination, ?callable $onProgress): void
+    {
         $context = \stream_context_create([
             'http' => [
                 'method' => 'GET',
@@ -42,14 +81,18 @@ final class Downloader
 
         $downloaded = 0;
 
-        /** @phpstan-ignore booleanNot.alwaysTrue, booleanAnd.leftAlwaysFalse */
-        /** @psalm-suppress RedundantCondition, TypeDoesNotContainType */
-        while (!$this->cancelled && !\feof($handle)) {
+        while (!\feof($handle)) {
+            /** @phpstan-ignore booleanNot.alwaysTrue */
+            if ($this->cancelled) {
+                break;
+            }
+
             $chunk = \fread($handle, 8192);
 
             if ($chunk === false || $chunk === '') {
                 break;
             }
+
             \fwrite($outHandle, $chunk);
             $downloaded += \strlen($chunk);
 
@@ -62,7 +105,6 @@ final class Downloader
         \fclose($handle);
 
         /** @phpstan-ignore booleanAnd.leftAlwaysFalse */
-        /** @psalm-suppress TypeDoesNotContainType */
         if ($this->cancelled && \file_exists($destination)) {
             \unlink($destination);
         }

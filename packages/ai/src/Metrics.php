@@ -12,18 +12,27 @@ final class Metrics
     /** @var array<string, array<int, float>> */
     private static array $timings = [];
 
+    /**
+     * @param array<string, string> $tags
+     */
     public static function increment(string $metric, array $tags = []): void
     {
         $key = self::buildKey($metric, $tags);
         self::$counters[$key]['value'] = (float) (self::$counters[$key]['value'] ?? 0.0) + 1.0;
     }
 
+    /**
+     * @param array<string, string> $tags
+     */
     public static function record(string $metric, float $value, array $tags = []): void
     {
         $key = self::buildKey($metric, $tags);
         self::$counters[$key]['value'] = $value;
     }
 
+    /**
+     * @param array<string, string> $tags
+     */
     public static function timing(string $metric, float $durationMs, array $tags = []): void
     {
         $key = self::buildKey($metric, $tags);

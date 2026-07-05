@@ -79,6 +79,27 @@ PostgreSQL 18.3 + pgvector 0.8.4. See [`examples/21-postgres-vector.php`](exampl
 
 ---
 
+## Observability & model pool
+
+Cross-cutting instrumentation is applied at the facade layer (backends stay isolated) and is
+**off by default** — enable per channel via config:
+
+```php
+AI::config(['observability' => ['metrics' => true, 'profiling' => true, 'logging' => true]]);
+
+AI::embed('hello');                 // automatically timed, counted and logged
+print_r(FerryAI\Metrics::report()); // counters + timing histograms
+print_r(FerryAI\Profiler::report());// per-operation count/avg/min/max
+```
+
+`AI::warmup([...])` preloads models into a shared `ModelPool` (memory-bounded LRU eviction);
+`classify()`/`moderate()`/`predict()`/`chat()` reuse pooled instances. Model downloads
+(`Downloader`, `HuggingFaceClient`) retry transient failures via `RetryHandler`, and
+`ModelPool` can opt into cross-worker weight sharing (`ext-shmop`). See
+[`examples/22-observability.php`](examples/22-observability.php).
+
+---
+
 ## Quick Start
 
 ```bash
@@ -165,19 +186,19 @@ packages/
 ## Testing
 
 ```bash
-composer test                # 580 unit tests — pure PHP
+composer test                # 598 unit tests — pure PHP
 composer test-integration    # Integration — needs ONNX Runtime / llama.cpp / PostgreSQL
-composer check               # cs-fix + PHPStan lvl8 + Psalm lvl3 + tests
+composer check               # cs-fix + PHPStan lvl8 + Psalm lvl3 + tests — fully green
 ```
 
 ---
 
 ## Examples
 
-See [`examples/`](examples/) — 21 standalone scripts covering every capability:
+See [`examples/`](examples/) — 22 standalone scripts covering every capability:
 embedding, tokenizer, chat, streaming, RAG, pipeline, vector store (SQLite &
-PostgreSQL/pgvector), grammar, model hub, profiling, async, model pool, retry,
-benchmarks, Laravel, Symfony.
+PostgreSQL/pgvector), grammar, model hub, profiling, async, model pool,
+observability, retry, benchmarks, Laravel, Symfony.
 
 ```bash
 set FERRY_AI_MODEL_DIR=D:\FerryAI\all-MiniLM-L6-v2-onnx

@@ -38,7 +38,7 @@ final class FormatDetector
         }
 
         $b0 = \ord($header[0]);
-        $b1 = \strlen($header) >= 2 ? \ord($header[1]) : 0;
+        $b1 = \ord($header[1]);
 
         if ($b0 === 0x08 && $b1 < 0x20) {
             return 'onnx';

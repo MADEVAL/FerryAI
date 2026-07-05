@@ -70,15 +70,38 @@
 
 ## 5. Not Integrated — Code Exists, Never Called
 
-| Component | Where defined | Never called by |
-|-----------|--------------|----------------|
-| `ModelPool` | `ai/src/ModelPool.php` | Backends don't check pool in `load()`. No preload at startup. |
-| `SharedMemoryManager` | `ai/src/SharedMemoryManager.php` | Not integrated into `LlamaBackend::load()` or `OnnxBackend::load()` |
-| `RetryHandler` | `core/src/RetryHandler.php` | `Downloader` and `HuggingFaceClient` don't use it |
-| `Logger` | `core/src/Logger.php` | No component calls `Logger::info()` or `Logger::error()` |
-| `Metrics` | `ai/src/Metrics.php` | Backends don't call `Metrics::increment()` or `Metrics::timing()` |
-| `Profiler` | `ai/src/Profiler.php` | Same — not called automatically |
-| `NativeBinaryManager` | `ai/src/NativeBinaryManager.php` | No auto-download at startup. Not called in `OnnxRuntimeFactory` or `LlamaCpp` |
+### Status: RESOLVED (2026-07-05)
+
+**Architectural note:** `Metrics`/`Profiler`/`ModelPool`/`SharedMemoryManager`/`NativeBinaryManager`
+live in the `ai` package. Backends (`onnx-backend`, `llama-backend`) must not depend on `ai`
+(backend isolation + dependency graph), so cross-cutting instrumentation is applied at the
+**facade layer**, not inside `Backend::load()`. `Logger`/`RetryHandler` live in `core` and are
+used directly by `model-hub`.
+
+| Component | Integration |
+|-----------|-------------|
+| `Logger` | Emitted by `Observability` (facade) and by `Downloader`/`HuggingFaceClient` (download attempts/failures). Now honours a severity threshold. |
+| `Metrics` | `Observability::measure()` records `ai.operation.count` + `ai.operation.ms` around `embed`/`similarity`/`chat`/`classify`/`moderate`/`predict`. Opt-in via `observability.metrics`. |
+| `Profiler` | Same wrapper, opt-in via `observability.profiling`. |
+| `ModelPool` | `AI` owns a pool; `classify`/`moderate`/`predict`/`chat` load through it (check→load→put). Real `warmup(ids, loader)`, memory-bounded LRU eviction honouring `maxMemoryBytes`. `AI::warmup()` preloads. |
+| `NativeBinaryManager` | Implements new `LibraryResolver`; `AIFactory::createBackend(Llama)` best-effort resolves the llama library and sets `FERRY_AI_LLAMA_LIB` when unset (guarded, no download). |
+| `RetryHandler` | `Downloader::download()` and `HuggingFaceClient::downloadFile()` wrap network I/O in retry + logging (injectable HTTP seam for tests). |
+| `SharedMemoryManager` | Implements new `SharedMemory`; `ModelPool` accepts it and exposes opt-in `shareModel(id, path)` / `isModelShared(id)`; `evict()` detaches. Enabled via `model_pool.shared_memory`. |
+
+**Instrumentation is off by default** (zero overhead, no file writes in tests).
+
+**Limitation (SharedMemoryManager):** only raw model *files* (by path) can be shared across
+workers — already-instantiated model objects wrap native handles that cannot be serialized.
+`shareModel()` therefore takes a path and is best-effort (returns false when shmop is
+unavailable), rather than transparently sharing loaded `Model` instances.
+
+### Verification
+
+- New unit tests: `ObservabilityTest`, extended `ModelPoolTest` (warmup/eviction/shared memory),
+  `AIFactoryTest` (llama library resolution), `DownloaderTest` + `HuggingFaceClientTest` (retry),
+  `LoggerTest` (level threshold).
+- `composer check` → **fully green**: cs-check 0 fixable · PHPStan level 8 **No errors**
+  (was 26) · Psalm level 3 No errors · 598 unit tests. Example: `examples/22-observability.php`.
 
 ---
 
@@ -188,13 +211,13 @@ Listed in `composer.json` scripts but not installed:
 | Model Hub | ✅ HF API, SHA-256, Ed25519, format detect | — | Download cycle | Token for private models |
 | Pipeline | ✅ all 8 stages | — | — | — |
 | CPU backend | ✅ Backend/Model/Tensor | RubixML predict/proba | `rubix/ml` not installed | .rbm inference |
-| Shared memory | ✅ allocate/detach | — | Not integrated into backends | — |
+| Shared memory | ✅ allocate/detach | — | Opt-in in ModelPool (§5); file-only sharing | — |
 | Async fibers | ✅ suspend/resume/timeout | — | Not tested in RoadRunner | — |
-| Model pool | ✅ put/acquire/evict | — | Not integrated into backends | — |
-| Metrics/Profiler | ✅ manual calls work | — | Not auto-called by backends | — |
-| Logger | ✅ writes JSON lines | — | Not called by any component | — |
-| RetryHandler | ✅ retry works | — | Not integrated into Downloader | — |
-| NativeBinaryManager | ✅ resolve/verify | — | Not called at startup | Download URLs |
+| Model pool | ✅ put/acquire/evict + LRU eviction | — | Integrated into facade (§5) | — |
+| Metrics/Profiler | ✅ auto via Observability wrapper (§5) | — | Opt-in (off by default) | — |
+| Logger | ✅ used by facade + model-hub (§5) | — | Opt-in; severity threshold | — |
+| RetryHandler | ✅ in Downloader + HuggingFaceClient (§5) | — | — | — |
+| NativeBinaryManager | ✅ resolve in AIFactory (§5) | — | No auto-download at startup | Download URLs |
 | Framework integrations | ✅ standalone classes | Framework base classes | Not tested in real apps | — |
 | DataFrame | — | — | — | Entire package (6 files) |
 | Documentation | README + BUILD_LOG + design docs | — | — | All usage guides |

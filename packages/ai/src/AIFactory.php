@@ -28,7 +28,7 @@ final class AIFactory
 {
     private readonly AIConfig $config;
 
-    public function __construct(?AIConfig $config = null)
+    public function __construct(?AIConfig $config = null, private readonly ?LibraryResolver $libraryResolver = null)
     {
         $this->config = $config ?? AIConfig::fromArray([]);
     }
@@ -42,9 +42,37 @@ final class AIFactory
     {
         return match ($type) {
             BackendType::Onnx => new OnnxBackend(),
-            BackendType::Llama => new LlamaBackend(),
+            BackendType::Llama => $this->createLlamaBackend(),
             BackendType::CpuNative => new CpuNativeBackend(),
         };
+    }
+
+    private function createLlamaBackend(): LlamaBackend
+    {
+        $this->ensureLlamaLibraryResolved();
+
+        return new LlamaBackend();
+    }
+
+    /**
+     * Best-effort: locate the llama.cpp shared library and expose it via
+     * FERRY_AI_LLAMA_LIB when the environment does not already point at one.
+     * Never downloads and never throws — resolution failure leaves the env untouched.
+     */
+    private function ensureLlamaLibraryResolved(): void
+    {
+        $current = \getenv('FERRY_AI_LLAMA_LIB');
+
+        if (\is_string($current) && $current !== '') {
+            return;
+        }
+
+        $resolver = $this->libraryResolver ?? new NativeBinaryManager();
+        $path = $resolver->resolve('llama');
+
+        if ($path !== null) {
+            \putenv('FERRY_AI_LLAMA_LIB=' . $path);
+        }
     }
 
     public function createTokenizer(string $modelName): Tokenizer

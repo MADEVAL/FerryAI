@@ -48,7 +48,7 @@ class Pipeline implements PipelineContract
     }
 
     /**
-     * @return \Traversable|array
+     * @return array<int|string, mixed>|\Traversable<mixed, mixed>
      */
     private function normalizeInput(mixed $input): array|\Traversable
     {

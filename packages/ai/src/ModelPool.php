@@ -16,12 +16,28 @@ final class ModelPool
 
     private int $maxMemoryBytes;
 
-    public function __construct(?int $maxMemoryBytes = null)
+    public function __construct(?int $maxMemoryBytes = null, private readonly ?SharedMemory $sharedMemory = null)
     {
         $this->maxMemoryBytes = $maxMemoryBytes ?? 2_147_483_648;
     }
 
-    public function warmup(array $modelIds): void {}
+    /**
+     * Preloads models into the pool using the supplied loader. Already-pooled ids are skipped.
+     *
+     * @param string[]                $modelIds
+     * @param callable(string): Model $loader
+     */
+    public function warmup(array $modelIds, callable $loader): void
+    {
+        foreach ($modelIds as $modelId) {
+            if (isset($this->pool[$modelId])) {
+                continue;
+            }
+
+            $model = $loader($modelId);
+            $this->put($modelId, $model, $model->metadata()->sizeBytes);
+        }
+    }
 
     public function acquire(string $modelId): ?Model
     {
@@ -32,8 +48,12 @@ final class ModelPool
 
     public function put(string $modelId, Model $model, int $memoryBytes = 0): void
     {
+        unset($this->pool[$modelId], $this->memoryUsage[$modelId]);
+
         $this->pool[$modelId] = $model;
         $this->memoryUsage[$modelId] = $memoryBytes;
+
+        $this->enforceMemoryLimit($modelId);
     }
 
     public function evict(string $modelId): void
@@ -42,6 +62,35 @@ final class ModelPool
             $this->pool[$modelId]->unload();
             unset($this->pool[$modelId], $this->memoryUsage[$modelId]);
         }
+
+        $this->sharedMemory?->detachModel($modelId);
+    }
+
+    /**
+     * Opt-in: loads the model file at $modelPath into shared memory so that
+     * sibling workers (e.g. PHP-FPM) can map the same read-only bytes.
+     *
+     * Returns false — never throws — when shared memory is not configured or the
+     * extension is unavailable, so callers can treat sharing as best-effort.
+     */
+    public function shareModel(string $modelId, string $modelPath): bool
+    {
+        if ($this->sharedMemory === null || !$this->sharedMemory->isAvailable()) {
+            return false;
+        }
+
+        try {
+            $this->sharedMemory->allocateModel($modelId, $modelPath);
+        } catch (\RuntimeException) {
+            return false;
+        }
+
+        return true;
+    }
+
+    public function isModelShared(string $modelId): bool
+    {
+        return $this->sharedMemory?->isShared($modelId) ?? false;
     }
 
     public function size(): int
@@ -52,5 +101,22 @@ final class ModelPool
     public function memoryUsage(): int
     {
         return \array_sum($this->memoryUsage);
+    }
+
+    /**
+     * Evicts least-recently-added models until the pool fits within its memory budget.
+     * The model identified by $keep is never evicted, even if it alone exceeds the limit.
+     */
+    private function enforceMemoryLimit(string $keep): void
+    {
+        while ($this->memoryUsage() > $this->maxMemoryBytes) {
+            $oldest = \array_key_first($this->pool);
+
+            if ($oldest === null || $oldest === $keep) {
+                break;
+            }
+
+            $this->evict($oldest);
+        }
     }
 }

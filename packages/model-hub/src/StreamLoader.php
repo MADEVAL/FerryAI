@@ -44,7 +44,7 @@ final class StreamLoader
         }
 
         while (!\feof($handle)) {
-            $chunk = \fread($handle, $chunkSize);
+            $chunk = \fread($handle, \max(1, $chunkSize));
 
             if ($chunk === false || $chunk === '') {
                 break;

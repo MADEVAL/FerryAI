@@ -452,23 +452,26 @@ php-inference/
 
 ---
 
-### Пакет `ai` (11 файлов)
+### Пакет `ai` (14 файлов)
 
 | # | Путь | Содержит | Зависит от |
 |---|---|---|---|
-| 1 | `AI.php` | final class `AI` — фасад | AIFactory, BackendRegistry, TaskRouter |
-| 2 | `AIFactory.php` | class `AIFactory` — фабрика | Все бэкенды, токенизатор, embedding, pipeline, model-hub, vector |
+| 1 | `AI.php` | final class `AI` — фасад | AIFactory, BackendRegistry, TaskRouter, Observability, ModelPool |
+| 2 | `AIFactory.php` | class `AIFactory` — фабрика | Все бэкенды, токенизатор, embedding, pipeline, model-hub, vector, LibraryResolver |
 | 3 | `BackendRegistry.php` | class `BackendRegistry` — реестр бэкендов | core Contracts\Backend, core Enums\BackendType |
 | 4 | `TaskRouter.php` | class `TaskRouter` — роутинг задач | BackendRegistry |
 | 5 | `StreamResponse.php` | class `StreamResponse` — PSR-7 streaming response (заглушка Фаза 1 → доработка Фаза 4) | (PSR-7 интерфейс) |
-| 6 | `SharedMemoryManager.php` | class `SharedMemoryManager` — System V shared memory (Фаза 4) | ext-shmop |
-| 7 | `ModelPool.php` | class `ModelPool` — пул предзагруженных моделей (Фаза 4) | core Contracts\Model |
-| 8 | `AsyncInference.php` | class `AsyncInference` — Fibers-based async (Фаза 4) | (нет) |
-| 9 | `NativeBinaryManager.php` | class `NativeBinaryManager` — автоскачивание бинарников (Фаза 4) | core PlatformDetector |
-| 10 | `Metrics.php` | class `Metrics` — Prometheus/StatsD метрики (Фаза 4) | (нет) |
-| 11 | `Profiler.php` | class `Profiler` — профилирование/бенчмарки (Фаза 4) | (нет) |
+| 6 | `SharedMemoryManager.php` | class `SharedMemoryManager` implements SharedMemory — System V shared memory | ext-shmop |
+| 7 | `ModelPool.php` | class `ModelPool` — пул моделей + LRU eviction + opt-in shared memory | core Contracts\Model, SharedMemory |
+| 8 | `AsyncInference.php` | class `AsyncInference` — Fibers-based async | (нет) |
+| 9 | `NativeBinaryManager.php` | class `NativeBinaryManager` implements LibraryResolver — резолв/скачивание бинарников | core PlatformDetector |
+| 10 | `Metrics.php` | class `Metrics` — Prometheus/StatsD метрики | (нет) |
+| 11 | `Profiler.php` | class `Profiler` — профилирование/бенчмарки | (нет) |
+| 12 | `Observability.php` | class `Observability` — обёртка metrics/profiling/logging для фасада | Metrics, Profiler, core Logger |
+| 13 | `LibraryResolver.php` | interface `LibraryResolver` — резолв пути нативной либы | (нет) |
+| 14 | `SharedMemory.php` | interface `SharedMemory` — абстракция shared memory для ModelPool | (нет) |
 
-**Всего: 11 файлов**
+**Всего: 14 файлов**
 
 ---
 
