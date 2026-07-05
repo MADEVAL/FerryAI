@@ -2,7 +2,11 @@
 #include <string.h>
 #include <stdlib.h>
 
-#define FERRY_API __declspec(dllexport)
+#if defined(_WIN32)
+#  define FERRY_API __declspec(dllexport)
+#else
+#  define FERRY_API __attribute__((visibility("default")))
+#endif
 
 /*
  * FerryAI flat wrapper around llama.cpp.

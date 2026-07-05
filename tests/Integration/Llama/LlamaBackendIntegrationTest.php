@@ -29,10 +29,11 @@ final class LlamaBackendIntegrationTest extends TestCase
         }
 
         $this->harness = __DIR__ . '/llama_chat_harness.php';
-        $dir = getenv('FERRY_AI_LLAMA_DIR') ?: 'D:\\FerryAI';
+        $dir = getenv('FERRY_AI_LLAMA_DIR') ?: (\PHP_OS_FAMILY === 'Windows' ? 'D:\\FerryAI' : '/opt/llama');
+        $ext = \PHP_OS_FAMILY === 'Windows' ? 'dll' : (\PHP_OS_FAMILY === 'Darwin' ? 'dylib' : 'so');
 
-        if (!\is_file($dir . '\\ferry_llama.dll')) {
-            self::markTestSkipped('ferry_llama.dll not found in ' . $dir . ' (build native/llama-wrapper).');
+        if (!\is_file($dir . \DIRECTORY_SEPARATOR . 'ferry_llama.' . $ext)) {
+            self::markTestSkipped('ferry_llama wrapper not found in ' . $dir . ' (build native/llama-wrapper).');
         }
     }
 

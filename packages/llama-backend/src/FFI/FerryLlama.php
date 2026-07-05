@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace FerryAI\LlamaBackend\FFI;
 
+use FerryAI\Core\PlatformDetector;
+
 /**
  * PHP-FFI binding to the FerryAI flat llama.cpp wrapper (`ferry_llama.dll`).
  *
@@ -40,11 +42,18 @@ final class FerryLlama
 
     public function __construct(string $wrapperPath, string $backendDir)
     {
-        // Help Windows resolve the dependent DLLs (llama.dll, ggml*.dll) next to the wrapper.
-        $path = \getenv('PATH') ?: '';
+        // Help the loader resolve the dependent libs (llama, ggml*) next to the wrapper.
+        // On Windows that means PATH; on Linux/macOS the wrapper is built with an rpath of
+        // $ORIGIN, and we also export LD_LIBRARY_PATH / DYLD_LIBRARY_PATH as a best effort.
+        $var = match (PlatformDetector::os()) {
+            'windows' => 'PATH',
+            'macos' => 'DYLD_LIBRARY_PATH',
+            default => 'LD_LIBRARY_PATH',
+        };
+        $current = \getenv($var) ?: '';
 
-        if (!\str_contains($path, $backendDir)) {
-            \putenv('PATH=' . $backendDir . \PATH_SEPARATOR . $path);
+        if (!\str_contains($current, $backendDir)) {
+            \putenv($var . '=' . $backendDir . \PATH_SEPARATOR . $current);
         }
 
         $this->ffi = \FFI::cdef(self::CDEF, $wrapperPath);
@@ -63,7 +72,7 @@ final class FerryLlama
         $lib = \getenv('FERRY_AI_LLAMA_LIB');
 
         if (\is_string($lib) && $lib !== '') {
-            $candidate = \dirname($lib) . \DIRECTORY_SEPARATOR . 'ferry_llama.dll';
+            $candidate = \dirname($lib) . \DIRECTORY_SEPARATOR . 'ferry_llama.' . PlatformDetector::libExtension();
 
             return \is_file($candidate) ? $candidate : null;
         }

@@ -19,9 +19,10 @@ $maxTokens = (int) ($argv[2] ?? 16);
 $temperature = isset($argv[3]) ? (float) $argv[3] : 0.0;
 $mode = $argv[4] ?? 'single';
 
-$llamaDir = getenv('FERRY_AI_LLAMA_DIR') ?: 'D:\\FerryAI';
-$wrapper = $llamaDir . '\\ferry_llama.dll';
-$model = getenv('FERRY_AI_LLAMA_MODEL') ?: $llamaDir . '\\qwen-0.5b.Q4_K_M.gguf';
+$llamaDir = getenv('FERRY_AI_LLAMA_DIR') ?: (\PHP_OS_FAMILY === 'Windows' ? 'D:\\FerryAI' : '/opt/llama');
+$ext = \PHP_OS_FAMILY === 'Windows' ? 'dll' : (\PHP_OS_FAMILY === 'Darwin' ? 'dylib' : 'so');
+$wrapper = $llamaDir . \DIRECTORY_SEPARATOR . 'ferry_llama.' . $ext;
+$model = getenv('FERRY_AI_LLAMA_MODEL') ?: $llamaDir . \DIRECTORY_SEPARATOR . 'qwen-0.5b.Q4_K_M.gguf';
 
 if (!is_file($wrapper) || !is_file($model)) {
     echo json_encode(['skip' => "need $wrapper and $model"]);
@@ -29,7 +30,10 @@ if (!is_file($wrapper) || !is_file($model)) {
 }
 
 putenv('FERRY_AI_LLAMA_WRAPPER=' . $wrapper);
-putenv('PATH=' . $llamaDir . PATH_SEPARATOR . (getenv('PATH') ?: ''));
+
+if (\PHP_OS_FAMILY === 'Windows') {
+    putenv('PATH=' . $llamaDir . PATH_SEPARATOR . (getenv('PATH') ?: ''));
+}
 
 try {
     AI::config([

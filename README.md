@@ -203,6 +203,10 @@ $env:PATH = "D:\FerryAI;" + $env:PATH
 php native/llama-wrapper/ffi-smoke.php
 ```
 
+On Linux/macOS use `native/llama-wrapper/build.sh /opt/llama` (needs a Linux llama.cpp build +
+`cc`). Verified on WSL2 Ubuntu 24.04 / PHP 8.5.8 (CPU ~100 tok/s, full integration 5/5); Linux
+CUDA needs a CUDA-enabled llama.cpp build.
+
 Details, flat API and limits: [`native/llama-wrapper/README.md`](native/llama-wrapper/README.md).
 The wrapper is wired into `FerryAI\LlamaBackend` — `AI::chat()`/`AI::stream()` work on CPU and
 GPU. Sampling is per request: `temperature: 0` → greedy, `> 0` → nucleus; force one with
@@ -227,6 +231,7 @@ keeps sampling fast. See `docs/DEBT_REPORT.md` §12.
 | CPU backend | ✅ Tensor math (matmul/transpose/reshape/slice); RubixML `.rbm` predict/proba (isolated) |
 | Shared memory (shmop) | ✅ Allocate 2.5B key, attach, detach |
 | Async fibers | ✅ Suspend/resume, parallel tasks, timeout 10ms |
+| Linux / WSL | ✅ 630 unit + PHPStan L8 + Psalm L3, and llama.cpp **CPU + CUDA GPU** (RTX 4060, ~176 tok/s) on WSL2 Ubuntu 24.04, PHP 8.5.8 |
 
 ---
 

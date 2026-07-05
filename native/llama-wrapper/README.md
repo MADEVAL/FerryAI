@@ -25,19 +25,65 @@ Put everything in one directory (default `D:\FerryAI`), which must be on `PATH` 
 
 ## Build
 
+### Windows (PowerShell + MSVC)
+
 ```powershell
 powershell -File native/llama-wrapper/build.ps1 -LlamaDir D:\FerryAI
 # -> D:\FerryAI\ferry_llama.dll   (also creates llama.lib / ggml.lib if missing)
 ```
 
+### Linux / macOS (build.sh + cc)
+
+Put a Linux/macOS llama.cpp build (`libllama.so`, `libggml*.so` — e.g. the
+`llama-bXXXX-bin-ubuntu-x64.tar.gz` release) plus the matching headers in one dir, then:
+
+```bash
+native/llama-wrapper/build.sh /opt/llama            # -> /opt/llama/ferry_llama.so
+```
+
+The `.so`/`.dylib` is linked with an `$ORIGIN`/`@loader_path` rpath, so it finds the sibling
+llama/ggml libraries without setting `LD_LIBRARY_PATH`.
+
+### Linux GPU (CUDA)
+
+The prebuilt `ubuntu-x64` release is CPU-only. For GPU, build llama.cpp with CUDA from source
+(needs the CUDA toolkit — `nvcc`/`cudart`/`cublas` — and cmake; on WSL2 the Windows NVIDIA driver
+provides `libcuda.so`). Verified on WSL2 Ubuntu 24.04, CUDA 12.6, RTX 4060:
+
+```bash
+git clone --depth 1 --branch b9873 https://github.com/ggml-org/llama.cpp
+cmake -S llama.cpp -B build -DCMAKE_BUILD_TYPE=Release \
+      -DGGML_CUDA=ON -DBUILD_SHARED_LIBS=ON -DCMAKE_CUDA_ARCHITECTURES=89 \
+      -DLLAMA_CURL=OFF -DLLAMA_BUILD_EXAMPLES=OFF -DLLAMA_BUILD_SERVER=OFF -DLLAMA_BUILD_TOOLS=OFF
+cmake --build build --target ggml llama -j"$(nproc)"
+
+mkdir -p /opt/llama-cuda
+cp -a build/bin/*.so* /opt/llama-cuda/
+cp -a llama.cpp/include/llama.h llama.cpp/ggml/include/*.h /opt/llama-cuda/
+cp -a /usr/local/cuda-12.6/lib64/lib{cudart,cublas,cublasLt}.so.12* /opt/llama-cuda/   # optional
+native/llama-wrapper/build.sh /opt/llama-cuda
+
+FERRY_AI_LLAMA_DIR=/opt/llama-cuda \
+LD_LIBRARY_PATH=/opt/llama-cuda:/usr/lib/wsl/lib \
+    php native/llama-wrapper/ffi-smoke.php     # [GPU] ~176 tok/s on the RTX 4060
+```
+
+`-DCMAKE_CUDA_ARCHITECTURES=89` targets Ada (RTX 40xx) — change for your GPU. `libcuda.so.1`
+lives in `/usr/lib/wsl/lib` on WSL.
+
 ## Smoke test (CPU + GPU)
 
 ```powershell
+# Windows
 $env:PATH = "D:\FerryAI;" + $env:PATH
 php native/llama-wrapper/ffi-smoke.php
-# gpu_offload_supported: 1
-# [CPU] Paris. It is the largest city ...  ~96 tok/s
-# [GPU] Paris. It is the largest city ...  ~250 tok/s
+# [CPU] Paris …  ~96 tok/s   [GPU] Paris …  ~250 tok/s
+```
+
+```bash
+# Linux (verified: WSL2 Ubuntu 24.04, PHP 8.5.8, CPU build ~100 tok/s)
+FERRY_AI_LLAMA_DIR=/opt/llama FERRY_AI_GGUF=/path/to/model.gguf \
+    php native/llama-wrapper/ffi-smoke.php
 ```
 
 ## Flat API (FFI cdef)
@@ -66,8 +112,9 @@ void  ferry_reset(void* ctx);                          // clear KV cache
 - `ggml_backend_load_all` etc. are exported by **ggml.dll** (not ggml-base.dll) — link `ggml.lib`.
 - Backends must be loaded from the llama directory (`ferry_load_backends($dir)`) because
   llama.cpp resolves them next to the **host exe** (php.exe), not the DLL.
-- Greedy sampling only; temperature/top-k/top-p/grammar are TODO in the wrapper.
-- Not yet wired into `FerryAI\LlamaBackend\Runtime\NativeLlamaRuntime` (next step; see
+- `ferry_eval_topk` powers greedy/top-k/top-p; `ferry_eval` (full vocab) powers grammar.
+- Wired into `FerryAI\LlamaBackend\Runtime\NativeLlamaRuntime`; verified on Windows (CPU+CUDA)
+  and Linux/WSL (CPU). See
   `docs/DEBT_REPORT.md` §12).
 - Runs in standalone PHP; under PHPUnit the ggml global constructors conflict with the test
   runner (§12).

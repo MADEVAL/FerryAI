@@ -286,10 +286,10 @@ Listed in `composer.json` scripts but not installed:
 | Documentation | README + BUILD_LOG + design docs | — | — | All usage guides |
 | Dev tooling | PHPUnit + PHPStan + Psalm + CS Fixer | — | — | Infection, Pest, CaptainHook |
 | Safetensors loading | 🔴 Format detected only | — | — | No loader. Needs Python conversion to ONNX/GGUF. See §13. |
-| GPU inference | ✅ llama.cpp CUDA verified (RTX 4060, native + PHP FFI wrapper); 🔴 ONNX GPU untested | — | ONNX = CPU build | See §12, §14 |
+| GPU inference | ✅ llama.cpp CUDA verified on Windows (RTX 4060, ~250 t/s) **and Linux/WSL** (~176 t/s); 🔴 ONNX GPU untested | — | ONNX = CPU build | See §12, §14 |
 | RubixML models | ✅ predict/proba + `.rbm` load (isolated, verified) | — | Opt-in `suggest` (amphp conflict with psalm) | — |
 | FFI CDEF generator | ✅ `CdefGenerator` + `bin/generate-ffi.php` (cleans C headers) | — | Not auto-wired into backends; cross-header enum macros need manual resolve (§16) | — |
-| WSL / Linux testing | 🔴 Never tested | — | — | All 568 tests pass only on Windows x64. See §17. |
+| WSL / Linux testing | ✅ 630 unit + PHPStan + Psalm green **and** llama.cpp CPU+CUDA GPU verified on WSL2 Ubuntu 24.04 / PHP 8.5.8 | — | ONNX/sqlite-vec native libs on Linux not built | See §17 |
 | PostgreSQL vector store | ✅ PostgresStore + PostgresCollection + PostgresVecIndex (pgvector 0.8.4) | — | — | Resolved. See §18. |
 
 ---
@@ -489,15 +489,14 @@ Add example: `python -m optimum.exporters.onnx --model Qwen/Qwen3-0.6B output/`
 
 **Hardware present:** NVIDIA GeForce RTX 4060, 8 GB, driver 591.86.
 
-### llama.cpp — ✅ GPU WORKS (CUDA)
+### llama.cpp — ✅ GPU WORKS (CUDA), Windows + Linux
 - The `D:\FerryAI` build **is CUDA-capable**: `ggml-cuda.dll` (156 MB) + `cudart64_13.dll`,
   `cublas64_13.dll`, `cublasLt64_13.dll` are present.
-- `llama-bench -ngl 99` → `load_backend: loaded CUDA backend from ggml-cuda.dll`, RTX 4060
-  detected, **~384 tok/s** on the CUDA backend.
-- Through PHP FFI (`ferry_llama` wrapper): `ferry_supports_gpu_offload()=1`, model loaded with
-  `n_gpu_layers=99` → `offloaded 25/25 layers to GPU`, ~250 tok/s. (§12)
-- Earlier note that the build was "CPU-only" was **wrong** — the CUDA backend loads once the
-  correct backend DLLs are loaded from the llama dir.
+- Windows `llama-bench -ngl 99` → `loaded CUDA backend`, RTX 4060, **~384 tok/s**.
+- Windows PHP FFI (`ferry_llama` wrapper): `n_gpu_layers=99` → 25/25 layers offloaded, ~250 tok/s.
+- **Linux/WSL2**: built llama.cpp from source with `GGML_CUDA=ON` (CUDA 12.6, `sm_89`) →
+  `libggml-cuda.so`; via the wrapper `ggml_cuda_init` found the RTX 4060 and the GPU run hit
+  **~176 tok/s** (vs ~104 CPU); `LlamaBackendIntegrationTest` 5/5. Recipe in §17 / the wrapper README.
 
 ### ONNX Runtime — 🔴 GPU untested
 - Installed package is a **CPU build** (`onnxruntime-win-x64-1.27.0`); providers =
@@ -588,27 +587,40 @@ tool. Backends still ship hand-verified CDEFs.
 
 ---
 
-## 17. WSL Testing — Never Done
+## 17. WSL / Linux Testing — Partially Verified (2026-07-05)
 
-### What
-FerryAI has only been tested on native Windows (PowerShell 5.1, PHP 8.5.4 x64).
-Windows Subsystem for Linux (WSL2) is a supported deployment target but never exercised.
+### Status: pure-PHP suite + static analysis GREEN on Linux
 
-### What needs testing in WSL
-| Item | Reason |
-|------|--------|
-| `libonnxruntime.so` loading | Linux shared library path differs from Windows DLL |
-| `libllama.so` + `libggml.so` | Linux llama.cpp builds use different CPU backends |
-| `ext-ffi` with Linux `.so` files | Linux FFI uses ELF, not PE/COFF |
-| PHP-FPM + Nginx | Production deployment on Linux |
-| `ext-shmop` with Linux shared memory | Different SHM implementation |
-| `ext-pdo_pgsql` with Linux PostgreSQL | Different socket than Windows named pipes |
-| RoadRunner / FrankenPHP | Long-running PHP on Linux |
-| File paths | `/home/` vs `C:\Users\`, forward vs backslash |
-| `putenv('PATH=...')` | Works differently on Linux |
+Ran the full gate inside **WSL2 Ubuntu 24.04** with **PHP 8.5.8** (ondrej PPA, ext-ffi/sqlite3/
+pdo_sqlite/pdo_pgsql/mbstring/curl/zip), against the repo on `/mnt/d/_DEV/FerryAI` (the same
+Windows-installed, pure-PHP `vendor/`):
 
-**Debt:** zero tests on Linux/WSL. All 568 tests pass only on Windows x64. Linux is the primary
-production deployment target for PHP applications.
+- `php8.5 vendor/bin/phpunit --testsuite unit` → **630/630 OK** (no cross-platform regressions).
+- `phpstan analyse` (level 8) → **No errors**.
+- `psalm` (level 3) → **No errors found**.
+
+So the PHP codebase, the pooling/sampling/grammar logic and all pure-PHP backends are
+platform-agnostic (Windows + Linux). `putenv`, paths and `:memory:` SQLite all behave.
+
+**llama.cpp on Linux — ✅ verified (CPU **and** CUDA GPU).** Downloaded the
+`llama-b9873-bin-ubuntu-x64` build for CPU, and **built llama.cpp from source with `GGML_CUDA=ON`**
+(CUDA 12.6, `sm_89`) for GPU; built the wrapper with `native/llama-wrapper/build.sh` →
+`ferry_llama.so` in each case, and ran the real FerryAI stack on WSL2: `ffi-smoke.php`
+(CPU ~104 tok/s; **GPU ~176 tok/s** on the RTX 4060, `ggml_cuda_init` found the device) and the
+full `LlamaBackendIntegrationTest` **5/5** on both CPU and CUDA builds. The wrapper source,
+`FerryLlama`, the harness and the test are cross-platform (`.dll`/`.so`/`.dylib` by OS; `$ORIGIN`
+rpath on Linux). CUDA build recipe: `native/llama-wrapper/README.md`.
+
+### Remaining (native + runtime, not yet done on Linux)
+| Item | Note |
+|------|------|
+| `libonnxruntime.so` | Linux ONNX Runtime build not installed; ONNX integration untested on Linux |
+| sqlite-vec `.so` | Linux vec0 build not installed |
+| `ext-pdo_pgsql` → Windows host PG | WSL2 → Windows-host networking not exercised |
+| `ext-shmop`, PHP-FPM/Nginx, RoadRunner/FrankenPHP | long-running Linux runtime not exercised |
+
+**Debt:** ONNX/sqlite-vec native paths are still Windows-only in practice; the *portable PHP core*
+and the *llama.cpp CPU + CUDA GPU paths* are now verified on Linux.
 
 ---
 

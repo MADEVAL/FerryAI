@@ -3,23 +3,31 @@
 declare(strict_types=1);
 
 /*
- * Smoke test for ferry_llama.dll — real llama.cpp inference through PHP FFI on
- * CPU and GPU. Run standalone (NOT under PHPUnit; the ggml global constructors
- * conflict with PHPUnit's output/exception handling — see DEBT_REPORT.md #12).
+ * Smoke test for the ferry_llama wrapper — real llama.cpp inference through PHP FFI on
+ * CPU and GPU. Run standalone (NOT under PHPUnit; the ggml global constructors conflict
+ * with PHPUnit's output/exception handling — see DEBT_REPORT.md #12).
  *
- *   $env:PATH = "D:\FerryAI;" + $env:PATH
- *   php native/llama-wrapper/ffi-smoke.php
+ *   Windows:  $env:PATH = "D:\FerryAI;" + $env:PATH; php native/llama-wrapper/ffi-smoke.php
+ *   Linux:    FERRY_AI_LLAMA_DIR=/opt/llama FERRY_AI_GGUF=/path/model.gguf \
+ *             php native/llama-wrapper/ffi-smoke.php
  *
- * Env overrides: FERRY_AI_LLAMA_DIR (default D:\FerryAI),
- *                FERRY_AI_GGUF (default $dir\qwen-0.5b.Q4_K_M.gguf).
+ * Env overrides: FERRY_AI_LLAMA_DIR (default: D:\FerryAI on Windows, /opt/llama otherwise),
+ *                FERRY_AI_GGUF (default: $dir/qwen-0.5b.Q4_K_M.gguf).
  */
 
-$dir = getenv('FERRY_AI_LLAMA_DIR') ?: 'D:\\FerryAI';
-$gguf = getenv('FERRY_AI_GGUF') ?: $dir . '\\qwen-0.5b.Q4_K_M.gguf';
-$wrapper = $dir . '\\ferry_llama.dll';
+$isWindows = \PHP_OS_FAMILY === 'Windows';
+$ext = $isWindows ? 'dll' : (\PHP_OS_FAMILY === 'Darwin' ? 'dylib' : 'so');
+$dir = getenv('FERRY_AI_LLAMA_DIR') ?: ($isWindows ? 'D:\\FerryAI' : '/opt/llama');
+$gguf = getenv('FERRY_AI_GGUF') ?: $dir . \DIRECTORY_SEPARATOR . 'qwen-0.5b.Q4_K_M.gguf';
+$wrapper = $dir . \DIRECTORY_SEPARATOR . 'ferry_llama.' . $ext;
+
+if ($isWindows) {
+    // Windows resolves dependent DLLs via PATH; Linux/macOS via the wrapper's $ORIGIN rpath.
+    putenv('PATH=' . $dir . \PATH_SEPARATOR . (getenv('PATH') ?: ''));
+}
 
 if (!is_file($wrapper) || !is_file($gguf)) {
-    fwrite(STDERR, "SKIP: need $wrapper and $gguf (and $dir on PATH).\n");
+    fwrite(STDERR, "SKIP: need {$wrapper} and {$gguf}.\n");
     exit(0);
 }
 
