@@ -49,7 +49,7 @@ the same C APIs that Python uses. No subprocess, no shell_exec, no Python.
 | Backend | Status | What it does |
 |---------|--------|-------------|
 | **ONNX** | 🟢 Production | Embeddings, classification, any `.onnx`. Tested: ONNX Runtime 1.27.0, all-MiniLM-L6-v2 (384d), similarity 0.79. |
-| **Llama** | 🟢 Probe OK | Library loads, `llama_backend_init()` works. Full inference needs GGUF model + struct declarations from `llama.h`. See setup below. |
+| **Llama** | 🟢 CPU + GPU | Real chat/generation via a thin `ferry_llama` C wrapper over llama.cpp (verified: CPU ~96 tok/s, RTX 4060 ~250 tok/s). See [`native/llama-wrapper`](native/llama-wrapper) and "LLM on CPU & GPU" below. |
 | **CPU Native** | 🟢 Always | Pure-PHP tensor math (add/sub/mul/matmul/transpose/reshape/slice) + RubixML `.rbm` inference (optional). No native deps for tensor ops. |
 
 ---
@@ -161,9 +161,51 @@ $env:FERRY_AI_VEC_EXTENSION_LIB = "C:\sqlite-vec\vec0.dll"
 php examples/23-sqlite-vec.php
 ```
 
-> Full llama.cpp inference additionally needs the C struct/function declarations aligned with your
-> build's `llama.h`. Generate them with `php bin/generate-ffi.php --header path/to/llama.h`
-> (see `docs/DEBT_REPORT.md` §12/§16).
+> Full llama.cpp inference through PHP is done via a thin `ferry_llama` C wrapper (it hides
+> llama.cpp's by-value struct params, which PHP FFI cannot pass safely). See the section below.
+
+## LLM on CPU & GPU (llama.cpp)
+
+Verified on this machine (Windows x64, RTX 4060 8 GB, driver 591.86, llama.cpp build 9873):
+
+| Path | Result |
+|------|--------|
+| Native `llama-cli` / `llama-bench` (CPU) | ✅ Qwen2.5-0.5B ~328 tok/s |
+| Native `llama-bench` (CUDA, `-ngl 99`) | ✅ ~384 tok/s, backend = CUDA |
+| **`AI::chat()` / `AI::stream()`** (CPU) | ✅ real chat via `LlamaBackend` + wrapper |
+| **`AI::chat()` / `AI::stream()`** (GPU, `device=cuda`) | ✅ 25/25 layers offloaded on the RTX 4060 |
+
+`LlamaBackend` uses `NativeLlamaRuntime`, which drives llama.cpp through the flat
+`ferry_llama` wrapper (real CPU + GPU). Point it at the wrapper via
+`FERRY_AI_LLAMA_WRAPPER=…\ferry_llama.dll` (or `FERRY_AI_LLAMA_LIB=…\llama.dll` in the same
+dir) and add that dir to `PATH`; select the device with config `device: cpu|cuda`.
+See [`examples/03-chat.php`](examples/03-chat.php), [`examples/04-streaming.php`](examples/04-streaming.php).
+
+What you need (all in one dir, e.g. `D:\FerryAI`, put on `PATH` at runtime):
+
+1. **llama.cpp Windows build** — DLLs `llama.dll`, `ggml.dll`, `ggml-base.dll`, `ggml-cpu-*.dll`;
+   for GPU also `ggml-cuda.dll` + CUDA runtime (`cudart64_*`, `cublas64_*`, `cublasLt64_*`).
+   → https://github.com/ggml-org/llama.cpp/releases (CUDA build: `llama-bXXXX-bin-win-cuda-*.zip`)
+2. **NVIDIA CUDA Toolkit** (for the GPU build) → https://developer.nvidia.com/cuda-downloads
+3. **Matching headers** (same commit): `llama.h`, `ggml.h`, `ggml-cpu.h`, `ggml-backend.h`,
+   `ggml-alloc.h`, `ggml-opt.h`, `gguf.h` → llama.cpp repo (`include/` + `ggml/include/`).
+4. **A GGUF model** → https://huggingface.co (e.g. `bartowski/Qwen2.5-0.5B-Instruct-GGUF`).
+5. **Visual Studio 2022** to build the wrapper.
+
+Then:
+
+```powershell
+# Build the wrapper (auto-creates llama.lib / ggml.lib import libs from the DLLs)
+powershell -File native/llama-wrapper/build.ps1 -LlamaDir D:\FerryAI
+
+# Smoke-test CPU + GPU
+$env:PATH = "D:\FerryAI;" + $env:PATH
+php native/llama-wrapper/ffi-smoke.php
+```
+
+Details, flat API and limits: [`native/llama-wrapper/README.md`](native/llama-wrapper/README.md).
+The wrapper is wired into `FerryAI\LlamaBackend` — `AI::chat()`/`AI::stream()` work on CPU and
+GPU (greedy sampling; richer samplers via the `Sampler` classes are WIP). See `docs/DEBT_REPORT.md` §12.
 
 ---
 
@@ -174,13 +216,15 @@ php examples/23-sqlite-vec.php
 | ONNX Runtime 1.27.0 FFI load | ✅ `isAvailable()`, version, CPU device |
 | ONNX inference e2e | ✅ Embed `Hello world` → 384d vector, similarity cat-kitten=0.79 |
 | llama.cpp FFI load (build 9873) | ✅ DLL loads, `llama_backend_init()` OK, `supports_mmap()`=YES |
+| llama.cpp inference via PHP FFI | ✅ CPU + GPU through the `ferry_llama` wrapper (Qwen2.5-0.5B, greedy) |
+| GPU (CUDA) — llama.cpp | ✅ RTX 4060, 25/25 layers offloaded, ~250 tok/s (native `llama-bench` ~384 tok/s) |
+| GPU (CUDA) — ONNX | 🔵 Installed ONNX Runtime is a CPU build; GPU provider untested |
 | HuggingFace API | ✅ Qwen3-0.6B found, search works |
 | Vector store | ✅ SQLite CRUD, brute-force + sqlite-vec (vec0) native KNN, metadata filter |
 | Vector store (Postgres) | ✅ pgvector 0.8.4 native `<=>` search, HNSW index, metadata filter |
 | CPU backend | ✅ Tensor math (matmul/transpose/reshape/slice); RubixML `.rbm` predict/proba (isolated) |
 | Shared memory (shmop) | ✅ Allocate 2.5B key, attach, detach |
 | Async fibers | ✅ Suspend/resume, parallel tasks, timeout 10ms |
-| GPU (CUDA) | 🔵 ONNX = CPU build. CUDA DLLs present for llama.cpp |
 
 ---
 

@@ -4,23 +4,23 @@ declare(strict_types=1);
 
 namespace FerryAI\Tests\Integration\Llama;
 
-use FerryAI\LlamaBackend\LlamaBackend;
-use FerryAI\LlamaBackend\Runtime\NativeLlamaRuntime;
 use PHPUnit\Framework\Attributes\CoversNothing;
 use PHPUnit\Framework\Attributes\Group;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Exercises the real llama.cpp binding.
+ * Real llama.cpp chat through the AI facade + ferry_llama wrapper.
  *
- * Skipped automatically unless a validated native binding is available
- * (the raw llama.cpp ABI binding is target-specific; see docs/BUILD_LOG.md).
+ * Runs in an isolated subprocess ({@see llama_chat_harness.php}) — loading the
+ * native DLL runs ggml global constructors that conflict with PHPUnit
+ * (docs/DEBT_REPORT.md §12). Needs FERRY_AI_LLAMA_DIR (default D:\FerryAI) with
+ * ferry_llama.dll + a .gguf model; skipped otherwise.
  */
 #[Group('integration')]
 #[CoversNothing]
 final class LlamaBackendIntegrationTest extends TestCase
 {
-    private LlamaBackend $backend;
+    private string $harness = '';
 
     protected function setUp(): void
     {
@@ -28,20 +28,44 @@ final class LlamaBackendIntegrationTest extends TestCase
             self::markTestSkipped('Native tests skipped via FERRY_AI_SKIP_NATIVE=1.');
         }
 
-        $this->backend = new LlamaBackend(new NativeLlamaRuntime());
+        $this->harness = __DIR__ . '/llama_chat_harness.php';
+        $dir = getenv('FERRY_AI_LLAMA_DIR') ?: 'D:\\FerryAI';
 
-        if (!$this->backend->isAvailable()) {
-            self::markTestSkipped('A validated native llama.cpp binding is not available in this environment.');
+        if (!\is_file($dir . '\\ferry_llama.dll')) {
+            self::markTestSkipped('ferry_llama.dll not found in ' . $dir . ' (build native/llama-wrapper).');
         }
     }
 
-    public function testReportsAVersion(): void
+    private function chat(string $device): array
     {
-        self::assertNotSame('', $this->backend->version());
+        $raw = \shell_exec(\escapeshellarg(\PHP_BINARY) . ' ' . \escapeshellarg($this->harness) . ' ' . $device . ' 16 2>' . (\PHP_OS_FAMILY === 'Windows' ? 'NUL' : '/dev/null'));
+
+        self::assertIsString($raw);
+        $data = \json_decode(\trim($raw), true);
+        self::assertIsArray($data, 'Harness output was not JSON: ' . $raw);
+
+        if (isset($data['skip'])) {
+            self::markTestSkipped((string) $data['skip']);
+        }
+
+        self::assertArrayNotHasKey('error', $data, 'Harness error: ' . ($data['error'] ?? ''));
+
+        return $data;
     }
 
-    public function testExposesAvailableDevices(): void
+    public function testChatOnCpu(): void
     {
-        self::assertNotEmpty($this->backend->availableDevices());
+        $data = $this->chat('cpu');
+
+        self::assertGreaterThan(0, $data['tokens_prompt']);
+        self::assertStringContainsStringIgnoringCase('paris', (string) $data['text']);
+    }
+
+    public function testChatOnGpu(): void
+    {
+        $data = $this->chat('cuda');
+
+        self::assertGreaterThan(0, $data['tokens_prompt']);
+        self::assertNotSame('', (string) $data['text']);
     }
 }

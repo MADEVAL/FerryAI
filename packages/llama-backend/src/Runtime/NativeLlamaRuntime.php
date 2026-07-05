@@ -4,67 +4,44 @@ declare(strict_types=1);
 
 namespace FerryAI\LlamaBackend\Runtime;
 
-use FerryAI\LlamaBackend\FFI\LlamaContext;
-use FerryAI\LlamaBackend\FFI\LlamaCpp;
+use FerryAI\LlamaBackend\FFI\FerryLlama;
 use FerryAI\LlamaBackend\LlamaContextParams;
 use FerryAI\LlamaBackend\LlamaModelParams;
 
 /**
- * Production {@see LlamaRuntimeInterface} backed by llama.cpp via FFI.
+ * Production {@see LlamaRuntimeInterface} backed by llama.cpp through the flat
+ * `ferry_llama` wrapper (docs/DEBT_REPORT.md §12). Real CPU + GPU inference.
  *
- * Excluded from static analysis (FFI boundary). The llama.cpp C API uses opaque
- * struct pointers; struct layouts vary per build. Full inference requires struct
- * declarations from llama.h aligned to your specific build.
+ * Excluded from static analysis (FFI boundary). Standalone-process only — under
+ * PHPUnit the ggml global constructors conflict with the test runner, so unit
+ * tests use a mock runtime and the integration test runs in a subprocess.
  *
- * isAvailable() returns true when the DLL loads successfully and llama_backend_init()
- * succeeds. Version and capability probes also work at this level.
+ * isAvailable() only checks that ext-ffi and the wrapper DLL are present; the DLL
+ * is loaded lazily on the first createSession() so probing stays cheap and safe.
  */
 final class NativeLlamaRuntime implements LlamaRuntimeInterface
 {
-    private readonly LlamaCpp $llama;
+    private ?FerryLlama $ffi = null;
 
-    private bool $probed = false;
-
-    private bool $available = false;
-
-    public function __construct(?LlamaCpp $llama = null)
-    {
-        $this->llama = $llama ?? new LlamaCpp();
-    }
+    private ?bool $supportsGpu = null;
 
     public function isAvailable(): bool
     {
-        $this->probe();
-
-        return $this->available;
-    }
-
-    private function probe(): void
-    {
-        if ($this->probed) {
-            return;
-        }
-
-        $this->probed = true;
-
-        if (!$this->llama->isLibraryLoadable()) {
-            return;
-        }
-
-        // Do NOT call llama_backend_init() during isAvailable() —
-        // it may trigger C++ exception boundary issues in some PHP runtimes.
-        // Callers that need full init should call tryInit() explicitly.
-        $this->available = true;
+        return \extension_loaded('FFI') && FerryLlama::resolveWrapperPath() !== null;
     }
 
     public function version(): string
     {
-        return $this->llama->version();
+        return 'llama.cpp (ferry_llama wrapper)';
     }
 
     public function supportsGpu(): bool
     {
-        return $this->llama->supportsGpu();
+        if ($this->supportsGpu === null) {
+            $this->supportsGpu = $this->ffi()->supportsGpu();
+        }
+
+        return $this->supportsGpu;
     }
 
     public function createSession(
@@ -72,27 +49,41 @@ final class NativeLlamaRuntime implements LlamaRuntimeInterface
         LlamaModelParams $modelParams,
         LlamaContextParams $contextParams,
     ): LlamaSession {
-        return new NativeLlamaSession(new LlamaContext($modelPath, $modelParams, $contextParams, $this->llama));
+        $ffi = $this->ffi();
+        $model = $ffi->loadModel($modelPath, $modelParams->nGpuLayers);
+        $threads = $contextParams->nThreads > 0 ? $contextParams->nThreads : 4;
+        $context = $ffi->newContext($model, $contextParams->nCtx, $threads);
+
+        return new NativeLlamaSession(
+            $ffi,
+            $model,
+            $context,
+            $ffi->nVocab($model),
+            $ffi->nCtx($context),
+            $ffi->eosToken($model),
+        );
     }
 
     public function nVocab(LlamaSession $session): int
     {
-        return $this->context($session)->nVocab();
+        return $this->native($session)->nVocab;
     }
 
     public function nCtx(LlamaSession $session): int
     {
-        return $this->context($session)->nCtx();
+        return $this->native($session)->nCtx;
     }
 
     public function nEmbd(LlamaSession $session): int
     {
-        return $this->context($session)->nEmbd();
+        $s = $this->native($session);
+
+        return $s->ffi->nEmbd($s->model);
     }
 
     public function eosToken(LlamaSession $session): int
     {
-        return $this->context($session)->eosToken();
+        return $this->native($session)->eosToken;
     }
 
     /**
@@ -100,12 +91,16 @@ final class NativeLlamaRuntime implements LlamaRuntimeInterface
      */
     public function tokenize(LlamaSession $session, string $text, bool $addBos = true, bool $special = true): array
     {
-        return $this->context($session)->tokenize($text, $addBos, $special);
+        $s = $this->native($session);
+
+        return $s->ffi->tokenize($s->model, $text, $addBos);
     }
 
     public function tokenToPiece(LlamaSession $session, int $token): string
     {
-        return $this->context($session)->tokenToPiece($token);
+        $s = $this->native($session);
+
+        return $s->ffi->tokenToPiece($s->model, $token);
     }
 
     /**
@@ -115,25 +110,49 @@ final class NativeLlamaRuntime implements LlamaRuntimeInterface
      */
     public function evaluate(LlamaSession $session, array $tokens, int $nPast): array
     {
-        return $this->context($session)->evaluate($tokens, $nPast);
+        $s = $this->native($session);
+
+        return $s->ffi->eval($s->context, $s->model, $tokens, $s->nVocab);
     }
 
     public function resetState(LlamaSession $session): void
     {
-        $this->context($session)->resetState();
+        $s = $this->native($session);
+        $s->ffi->reset($s->context);
     }
 
     public function releaseSession(LlamaSession $session): void
     {
-        // The underlying context frees native resources on destruction.
+        $s = $this->native($session);
+        $s->ffi->freeContext($s->context);
+        $s->ffi->freeModel($s->model);
     }
 
-    private function context(LlamaSession $session): LlamaContext
+    private function ffi(): FerryLlama
+    {
+        if ($this->ffi === null) {
+            $wrapper = FerryLlama::resolveWrapperPath();
+
+            if ($wrapper === null) {
+                throw new \RuntimeException(
+                    'ferry_llama wrapper not found. Set FERRY_AI_LLAMA_WRAPPER to ferry_llama.dll, '
+                    . 'or FERRY_AI_LLAMA_LIB to llama.dll in the same directory. '
+                    . 'Build it with native/llama-wrapper/build.ps1.',
+                );
+            }
+
+            $this->ffi = new FerryLlama($wrapper, \dirname($wrapper));
+        }
+
+        return $this->ffi;
+    }
+
+    private function native(LlamaSession $session): NativeLlamaSession
     {
         if (!$session instanceof NativeLlamaSession) {
             throw new \InvalidArgumentException('NativeLlamaRuntime requires a NativeLlamaSession.');
         }
 
-        return $session->context();
+        return $session;
     }
 }

@@ -1063,3 +1063,72 @@ Full integration suite 27 (2 llama skips).
 response), `examples/README.md`, `docs/EXAMPLES_PLAN.md` (25 -> 26), `README.md` (top sample now
 shows `backends.embedding.model_path`; counts). `DEBT_REPORT.md` Section 4 -> config-wiring RESOLVED
 (+ summary matrix, Section 6 integration list).
+
+---
+
+## 2026-07-05 - LLM on CPU & GPU: native verification + ferry_llama FFI wrapper (Section 12/14)
+
+**Goal:** determine and provision everything needed to test llama.cpp on CPU and GPU, and
+unblock the PHP FFI path (struct-by-value ABI crash, Section 12).
+
+**Environment (found):** NVIDIA RTX 4060 8 GB (driver 591.86); `D:\FerryAI` already holds a
+CUDA-capable llama.cpp build 9873 (llama.dll + ggml.dll + ggml-cpu-*.dll + ggml-cuda.dll + CUDA
+runtime) and models (qwen-0.5b.Q4_K_M.gguf). Native verified: `llama-bench` CPU ~328 t/s,
+CUDA (-ngl 99) ~384 t/s (backend=CUDA). The old "CPU-only build" note was wrong.
+
+**Downloaded:** matching ggml headers at commit a4107133a (ggml.h, ggml-cpu.h, ggml-backend.h,
+ggml-alloc.h, ggml-opt.h, gguf.h). Generated import libs llama.lib + ggml.lib from the DLLs
+(dumpbin -> .def -> lib). SDK in D:\FerryAI now complete for building against llama.cpp.
+
+**C wrapper (unblocks Section 12):** built `ferry_llama.dll` (MSVC) exposing a flat API - all
+llama_*_params structs are constructed inside C, so PHP FFI passes only pointers/ints/strings.
+Verified end to end via PHP FFI: **CPU ~96 tok/s**, **GPU (n_gpu_layers=99) 25/25 layers
+offloaded ~250 tok/s**, correct output. Key gotchas: ggml_backend_load_all* is exported by
+ggml.dll (not ggml-base.dll); backends must be loaded from the llama dir (llama resolves them
+next to php.exe, not the DLL).
+
+**Committed to repo (reproducible):** native/llama-wrapper/{ferry_llama.c, build.ps1,
+ffi-smoke.php, README.md}. The built ferry_llama.dll stays in D:\FerryAI (machine artifact).
+
+**Docs (memory note):** README - Backends table (Llama -> CPU+GPU), Verified table (llama FFI
+CPU+GPU, CUDA), new "LLM on CPU & GPU" section with exact downloads/build/run. DEBT_REPORT.md
+Section 12 -> UNBLOCKED via wrapper (+ remaining: wire into NativeLlamaRuntime, sampling, ship
+prebuilt dll), Section 14 -> llama GPU verified / ONNX GPU still untested, summary matrix.
+
+**Not done (honest):** the wrapper is proven standalone but NOT yet wired into
+FerryAI\LlamaBackend; greedy sampling only; under PHPUnit the ggml global ctors still conflict
+(standalone scripts only). Next step tracked in DEBT Section 12.
+
+---
+
+## 2026-07-05 - llama.cpp wired into LlamaBackend: real AI::chat/stream on CPU & GPU (Section 12)
+
+**What:** Connected the ferry_llama wrapper into the FerryAI llama backend, so AI::chat() and
+AI::stream() do real llama.cpp inference on CPU and GPU through the facade.
+
+- Extended the wrapper (native/llama-wrapper/ferry_llama.c): added ferry_eval (decode + return
+  next-token logits), ferry_reset (KV clear), ferry_n_ctx, ferry_eos_token, ferry_token_to_piece.
+  Rebuilt ferry_llama.dll via build.ps1.
+- New FFI binding packages/llama-backend/src/FFI/FerryLlama.php (loads ferry_llama.dll, prepends
+  the backend dir to PATH, PHP-friendly load/context/tokenize/eval/reset). FFI-excluded.
+- Rewrote NativeLlamaRuntime + NativeLlamaSession to use FerryLlama. isAvailable() = ext-ffi +
+  wrapper present (DLL loaded lazily on createSession). evaluate() returns logits so the existing
+  PHP Sampler classes drive generation. Old direct-binding (LlamaCpp/LlamaContext/LlamaBatch) now
+  unused.
+- Config: FERRY_AI_LLAMA_WRAPPER (or FERRY_AI_LLAMA_LIB in same dir) + dir on PATH; device cpu|cuda.
+
+**Verification (fresh):** composer check fully green - cs 0 - PHPStan L8 No errors - Psalm L3 No
+errors - 615 unit tests. Real chat via subprocess harness:
+- CPU: "What is the capital of France?" -> "The capital of France is Paris."
+- GPU (device=cuda): same, 25/25 layers offloaded (RTX 4060).
+- Stream: "Count from 1 to 5" -> 1 2 3 4 5 (+ SSE/NDJSON).
+Integration: tests/Integration/Llama/LlamaBackendIntegrationTest (2, CPU+GPU via harness) passes.
+examples/03-chat.php and examples/04-streaming.php now run for real.
+
+**Docs:** README (Backends Llama -> CPU+GPU, Verified, "LLM on CPU & GPU" now facade-level),
+DEBT_REPORT.md Section 12 -> RESOLVED/wired (+ summary matrix), examples 03/04 updated.
+
+**Remaining (honest):** LlamaBackend::load hardcodes GreedySampler (wire SamplerFactory for
+temperature/top-k/top-p/grammar - the seam already returns logits); standalone-process only
+(PHPUnit ggml ctor conflict); ferry_llama.dll not committed (needs prebuilt/CI); old
+LlamaCpp/LlamaContext/LlamaBatch files can be deleted.

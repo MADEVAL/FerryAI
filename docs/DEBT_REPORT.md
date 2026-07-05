@@ -267,7 +267,7 @@ Listed in `composer.json` scripts but not installed:
 |----------|------|--------|-------|---------|
 | ONNX inference | ✅ e2e proved | — | — | — |
 | ONNX providers | CPU ✅ | CUDA/TensorRT/ROCm/OpenVINO/DirectML | GPU probing | — |
-| llama.cpp | ✅ DLL loads, init, probes, metadata | — | ⚠️ Model load crashes (hparams:55) — PHP FFI struct ABI mismatch with Clang 20.1.8. See §12. | — |
+| llama.cpp | ✅ CPU + GPU chat/stream via `ferry_llama` wrapper, wired into `LlamaBackend` (§12) | — | Greedy sampler only; standalone-process (PHPUnit ggml ctor conflict) | — |
 | Embedding | ✅ e2e via `AI::embed()` facade (config wiring, §4) | — | — | — |
 | Tokenizer | ✅ pure-PHP BPE/WordPiece | — | Native tokenizers-cpp | DLL |
 | Vector store | ✅ brute-force + sqlite-vec (vec0) native KNN | — | Opt-in via `FERRY_AI_VEC_EXTENSION_LIB` (§3a) | — |
@@ -286,7 +286,7 @@ Listed in `composer.json` scripts but not installed:
 | Documentation | README + BUILD_LOG + design docs | — | — | All usage guides |
 | Dev tooling | PHPUnit + PHPStan + Psalm + CS Fixer | — | — | Infection, Pest, CaptainHook |
 | Safetensors loading | 🔴 Format detected only | — | — | No loader. Needs Python conversion to ONNX/GGUF. See §13. |
-| GPU inference | 🔴 Never tested | — | — | CPU-only ONNX + llama.cpp builds. CUDA DLLs present but unused. See §14. |
+| GPU inference | ✅ llama.cpp CUDA verified (RTX 4060, native + PHP FFI wrapper); 🔴 ONNX GPU untested | — | ONNX = CPU build | See §12, §14 |
 | RubixML models | ✅ predict/proba + `.rbm` load (isolated, verified) | — | Opt-in `suggest` (amphp conflict with psalm) | — |
 | FFI CDEF generator | ✅ `CdefGenerator` + `bin/generate-ffi.php` (cleans C headers) | — | Not auto-wired into backends; cross-header enum macros need manual resolve (§16) | — |
 | WSL / Linux testing | 🔴 Never tested | — | — | All 568 tests pass only on Windows x64. See §17. |
@@ -295,6 +295,35 @@ Listed in `composer.json` scripts but not installed:
 ---
 
 ## 12. llama.cpp FFI — Deep Dive (2026-07-05)
+
+### Status: RESOLVED — wired into LlamaBackend (2026-07-05)
+
+The struct-by-value ABI crash is solved by the flat C wrapper
+(`native/llama-wrapper/ferry_llama.dll`), and it is now **wired into the backend**:
+`NativeLlamaRuntime` drives llama.cpp through `FerryAI\LlamaBackend\FFI\FerryLlama`
+(loads `ferry_llama.dll`, `evaluate()` returns logits, PHP `Sampler`s do the sampling).
+`AI::chat()` / `AI::stream()` produce real output on **CPU and GPU**:
+- CPU: "What is the capital of France?" → "The capital of France is Paris."
+- GPU (`device: cuda`): same, 25/25 layers offloaded on the RTX 4060.
+- Streaming: "Count from 1 to 5" → `1 2 3 4 5` token-by-token (+ SSE/NDJSON).
+
+Config: `FERRY_AI_LLAMA_WRAPPER` (or `FERRY_AI_LLAMA_LIB` in the same dir) + that dir on `PATH`;
+`backends.llama.model_path`; `device: cpu|cuda`. Verified by
+`tests/Integration/Llama/LlamaBackendIntegrationTest` (subprocess harness — 2 tests, CPU+GPU)
+and `examples/03-chat.php` / `examples/04-streaming.php`.
+
+**Remaining:**
+- `LlamaBackend::load()` always uses `GreedySampler`; wire temperature/top-k/top-p/grammar
+  `Sampler`s (the seam already returns logits, so this is a `SamplerFactory` hookup).
+- Runs standalone only — under PHPUnit the ggml global ctors conflict, so the integration test
+  runs the harness in a subprocess (§12 PHPUnit note).
+- `ferry_llama.dll` is machine-built (not committed); ship a prebuilt binary or build in CI.
+- Old direct-binding files (`FFI/LlamaCpp.php`, `LlamaContext.php`, `LlamaBatch.php`) are now
+  unused and can be removed later.
+
+### Historical detail (the original blocker)
+
+The notes below describe the pre-wrapper investigation of the by-value crash; kept for context.
 
 ### Environment
 
@@ -305,6 +334,7 @@ Listed in `composer.json` scripts but not installed:
 | llama.dll | 2.6 MB, `D:\FerryAI\llama.dll` |
 | GGUF model | `Qwen2.5-0.5B-Instruct-Q4_K_M.gguf` (380 MB, 24 layers, 151K vocab, Q4_K quant) |
 | Model source | `bartowski/Qwen2.5-0.5B-Instruct-GGUF` on HuggingFace |
+| GPU | NVIDIA GeForce RTX 4060, 8 GB, driver 591.86 (CUDA backend `ggml-cuda.dll` present) |
 | Native CLI test | `llama-cli.exe -m model.gguf -p "Hello" -n 5` → *"Hello! How can I"* at **309 t/s** ✅ |
 
 ### What Works
@@ -447,27 +477,28 @@ Add example: `python -m optimum.exporters.onnx --model Qwen/Qwen3-0.6B output/`
 
 ---
 
-## 14. GPU — Never Tested
+## 14. GPU — Partially Verified (2026-07-05)
 
-### ONNX Runtime
-- Installed package is **CPU-build** (`onnxruntime-win-x64-1.27.0`).
-- `GetAvailableProviders` returns: `["AzureExecutionProvider", "CPUExecutionProvider"]`
-- CUDA provider (`CudaProvider`) correctly reports `isAvailable()=false`
-- All other GPU providers (`TensorRt`, `DirectMl`, `Rocm`, `OpenVino`) → `isAvailable()=false`
+**Hardware present:** NVIDIA GeForce RTX 4060, 8 GB, driver 591.86.
 
-### llama.cpp
-- `llama_supports_gpu_offload()` returns `false` (CPU build).
-- `cublas64_13.dll`, `cublasLt64_13.dll`, `cudart64_13.dll` exist in `D:\FerryAI` but unused.
-- The llama.cpp build we have is **CPU-only** (no CUDA backend).
+### llama.cpp — ✅ GPU WORKS (CUDA)
+- The `D:\FerryAI` build **is CUDA-capable**: `ggml-cuda.dll` (156 MB) + `cudart64_13.dll`,
+  `cublas64_13.dll`, `cublasLt64_13.dll` are present.
+- `llama-bench -ngl 99` → `load_backend: loaded CUDA backend from ggml-cuda.dll`, RTX 4060
+  detected, **~384 tok/s** on the CUDA backend.
+- Through PHP FFI (`ferry_llama` wrapper): `ferry_supports_gpu_offload()=1`, model loaded with
+  `n_gpu_layers=99` → `offloaded 25/25 layers to GPU`, ~250 tok/s. (§12)
+- Earlier note that the build was "CPU-only" was **wrong** — the CUDA backend loads once the
+  correct backend DLLs are loaded from the llama dir.
 
-### What needs testing
-| Backend | GPU package needed |
-|---------|--------------------|
-| ONNX Runtime | `onnxruntime-win-x64-gpu-1.27.0.zip` (separate download with CUDA provider) |
-| llama.cpp | CUDA-enabled build (`llama-bXXXX-bin-win-cuda-cuXX-x64.zip`) |
-| Both | NVIDIA GPU + CUDA drivers + cuDNN |
+### ONNX Runtime — 🔴 GPU untested
+- Installed package is a **CPU build** (`onnxruntime-win-x64-1.27.0`); providers =
+  `["AzureExecutionProvider", "CPUExecutionProvider"]`. All GPU providers report
+  `isAvailable()=false` (correct).
+- To test: download `onnxruntime-win-x64-gpu-*.zip` (CUDA provider) + CUDA Toolkit + cuDNN.
 
-**Debt:** no GPU inference path has ever been exercised. All 568 tests and 20 examples run on CPU only.
+**Remaining debt:** ONNX GPU path never exercised; llama GPU not yet driven through the FerryAI
+`LlamaBackend` (wrapper proven standalone — §12).
 
 ---
 

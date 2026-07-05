@@ -30,6 +30,7 @@ parameters:
             - packages/llama-backend/src/FFI/LlamaCpp.php
             - packages/llama-backend/src/FFI/LlamaContext.php
             - packages/llama-backend/src/FFI/LlamaBatch.php
+            - packages/llama-backend/src/FFI/FerryLlama.php
             - packages/llama-backend/src/Runtime/NativeLlamaRuntime.php
             - packages/llama-backend/src/Runtime/NativeLlamaSession.php
             # Optional RubixML library boundary (dynamic dispatch; rubix/ml not installed)

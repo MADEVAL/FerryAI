@@ -10,15 +10,22 @@ use FerryAI\StreamResponse;
 
 echo "=== 04 — Streaming ===\n\n";
 
-$llamaPath = getenv('FERRY_AI_LLAMA_MODEL');
-if (!$llamaPath || !file_exists($llamaPath)) {
-    echo "SKIP: set FERRY_AI_LLAMA_MODEL to a GGUF file path (requires validated llama.cpp FFI binding)\n";
+$llamaDir = getenv('FERRY_AI_LLAMA_DIR') ?: 'D:\FerryAI';
+$wrapper = $llamaDir . '\ferry_llama.dll';
+$llamaPath = getenv('FERRY_AI_LLAMA_MODEL') ?: $llamaDir . '\qwen-0.5b.Q4_K_M.gguf';
+
+if (!file_exists($wrapper) || !file_exists($llamaPath)) {
+    echo "SKIP: need ferry_llama.dll + a .gguf model in {$llamaDir}.\n";
+    echo "  Build the wrapper: native/llama-wrapper/build.ps1 (see README 'LLM on CPU & GPU').\n";
     exit(0);
 }
 
+putenv('FERRY_AI_LLAMA_WRAPPER=' . $wrapper);
+putenv('PATH=' . $llamaDir . PATH_SEPARATOR . (getenv('PATH') ?: ''));
+
 AI::config([
     'backend' => 'llama',
-    'device' => 'cpu',
+    'device' => getenv('FERRY_AI_LLAMA_DEVICE') ?: 'cpu',
     'backends' => ['llama' => ['model_path' => $llamaPath]],
 ]);
 
