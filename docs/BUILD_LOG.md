@@ -1003,3 +1003,34 @@ L3 No errors - 611 unit tests. Integration: `tests/Integration/Rubix/rubix_harne
 isolated rubix), `examples/README.md` Tier 5, `docs/EXAMPLES_PLAN.md` (23 -> 24), root
 `README.md` (CPU backend row, counts). `DEBT_REPORT.md` Section 15 -> RESOLVED (+ summary matrix,
 Section 6 integration list).
+
+---
+
+## 2026-07-05 - Dependency sources in README + FFI CDEF generator (Section 16)
+
+### Dependency & download documentation (Section 9a)
+
+The README never told users what native libs/extensions/models to download per capability.
+Added README **Install** + **Dependencies & downloads** matrix (ONNX Runtime, ONNX/GGUF models,
+GPU CUDA/TensorRT, llama.cpp, tokenizers-cpp, sqlite-vec, PostgreSQL/pgvector, RubixML, HF Hub,
+shmop) with exact sources, the enabling env var, and a CUDA note - cross-linked to
+`docs/SOURCES.md` (which gained pgvector, PostgreSQL and NVIDIA CUDA/cuDNN/TensorRT links).
+Honest gaps recorded in DEBT Section 9a (per-capability guides still unwritten; SOURCES lists
+sqlite-vec 0.1.9 vs the 0.1.10-alpha binary used; root composer surfaces only some ext reqs).
+
+### FFI CDEF generator (Section 16, TDD)
+
+- `packages/core/src/FFI/CdefGenerator.php` - cleans a C header into an `\FFI::cdef()`-ready
+  string (strips comments, preprocessor incl. continuations, `extern "C"`, attributes and listed
+  export macros; rebalances the extern-C brace; trims space before `;`).
+- `bin/generate-ffi.php` - CLI (`--header/--output/--class/--strip`).
+
+**Verification (fresh):** `composer check` fully green - cs 0 - PHPStan L8 No errors - Psalm L3
+No errors - 615 unit tests. `CdefGeneratorTest` (4) incl. a real `\FFI::cdef()` parse of generated
+types. Ran against the real 39 KB `D:\FerryAI\llama.h`: reduced to clean, brace-balanced
+declarations; FFI parsed up to an enum value referencing a cross-header macro
+(`LLAMA_ROPE_TYPE_NEOX = GGML_ROPE_TYPE_NEOX`) - honest limitation documented in DEBT Section 16.
+
+**Example + docs (milestone policy):** `examples/25-ffi-generator.php`, `examples/README.md`,
+`docs/EXAMPLES_PLAN.md` (24 -> 25), `README.md` (counts + llama note), `FILE_TREE.md`
+(core 38 -> 39 + bin), `DEBT_REPORT.md` Section 16 -> RESOLVED (+ summary matrix), Section 9a.

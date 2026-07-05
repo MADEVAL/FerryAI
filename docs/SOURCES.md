@@ -76,7 +76,18 @@
 
 ### sqlite-vec
 - GitHub: https://github.com/asg017/sqlite-vec
+- Releases (vec0 loadable extension binaries): https://github.com/asg017/sqlite-vec/releases
 - Docs: https://github.com/asg017/sqlite-vec/tree/main/docs
+
+### PostgreSQL + pgvector
+- PostgreSQL download: https://www.postgresql.org/download/
+- pgvector (extension): https://github.com/pgvector/pgvector
+- pgvector releases: https://github.com/pgvector/pgvector/releases
+
+### NVIDIA GPU stack (for CUDA/TensorRT execution)
+- CUDA Toolkit: https://developer.nvidia.com/cuda-downloads
+- cuDNN: https://developer.nvidia.com/cudnn
+- TensorRT: https://developer.nvidia.com/tensorrt
 
 ### tokenizers-cpp
 - GitHub: https://github.com/mlc-ai/tokenizers-cpp

@@ -104,48 +104,62 @@ print_r(FerryAI\Profiler::report());// per-operation count/avg/min/max
 
 ---
 
-## Quick Start
+## Install
 
 ```bash
 composer require ferry-ai/php-inference
 ```
 
-Requirements: PHP 8.5+, `ext-ffi`, `ext-json`, `ext-hash`, `ext-fileinfo`.
+Base requirements: **PHP 8.5+**, `ext-ffi`, `ext-json`, `ext-hash`, `ext-fileinfo`.
 
-### ONNX Runtime (for embeddings)
+Everything else is **optional and on-demand** — install only what a feature needs.
+FerryAI degrades gracefully (pure-PHP fallback or a clear "not available") when a native
+library, extension, or model is missing. Canonical, version-checked source list:
+[`docs/SOURCES.md`](docs/SOURCES.md).
+
+## Dependencies & downloads
+
+What each capability needs, why, where it goes, and the exact source. Versions intentionally
+omitted — always take the latest compatible build from the linked source.
+
+| Capability | PHP side (composer / ext) | Native artifact to download & why | Where it goes / how to enable | Source |
+|-----------|---------------------------|-----------------------------------|-------------------------------|--------|
+| Embeddings / classification (ONNX, CPU) | `ankane/onnxruntime` (auto) + `ext-ffi` | ONNX Runtime shared lib `onnxruntime.{dll,so,dylib}` (+ `onnxruntime_providers_shared`) — FFI loads it to run models | Extract into `vendor/ankane/onnxruntime/lib/…/lib/` | github.com/microsoft/onnxruntime/releases · onnxruntime.ai |
+| ONNX model file | — | `model.onnx` + `tokenizer.json` — the actual network + vocab | Any dir; point config / `FERRY_AI_MODEL_DIR` at it | huggingface.co (e.g. `sentence-transformers/all-MiniLM-L6-v2`) |
+| GPU for ONNX (CUDA / TensorRT) | — | ONNX Runtime **GPU** build **+** NVIDIA CUDA Toolkit **+** cuDNN (**+** TensorRT for the TRT provider) | Replace the CPU lib with the GPU package; select provider via `backends.onnx.providers` | onnxruntime releases (gpu zip) · developer.nvidia.com/cuda-downloads · developer.nvidia.com/cudnn · developer.nvidia.com/tensorrt |
+| LLM chat / streaming (llama.cpp) | `ext-ffi` | llama.cpp shared libs `llama.*` + `ggml*.*` (+ deps) — the inference engine | Extract to a dir; set `FERRY_AI_LLAMA_LIB` and add the dir to `PATH` | github.com/ggml-org/llama.cpp/releases |
+| GGUF model file | — | `*.gguf` quantized weights + tokenizer | Any dir; `backends.llama.model_path` | huggingface.co (e.g. `bartowski/*-GGUF`) |
+| GPU for llama.cpp | — | CUDA-enabled llama.cpp build (`*-bin-win-cuda-*`) **+** NVIDIA CUDA Toolkit | Same as llama.cpp above; set `backends.llama.n_gpu_layers` | github.com/ggml-org/llama.cpp/releases · developer.nvidia.com/cuda-downloads |
+| Native HuggingFace tokenizer (optional; pure-PHP BPE/WordPiece works without) | `ext-ffi` | tokenizers-cpp shared lib — fast native tokenization | `FERRY_AI_TOKENIZERS_LIB` | github.com/mlc-ai/tokenizers-cpp |
+| Vector store — SQLite (default) | `ext-pdo_sqlite` (bundled with PHP) | — (pure-PHP brute-force search) | works out of the box | sqlite.org (bundled) |
+| Vector ANN — sqlite-vec | `ext-pdo_sqlite` | `vec0.{dll,so,dylib}` loadable extension — native KNN in SQLite | `FERRY_AI_VEC_EXTENSION_LIB` = path to the lib | github.com/asg017/sqlite-vec/releases |
+| Vector store — PostgreSQL | `ext-pdo_pgsql` | PostgreSQL server **+** the **pgvector** extension — production ANN (`<=>`, HNSW/IVFFlat) | `FERRY_AI_VECTOR_DRIVER=pgsql` + `FERRY_AI_PG_DSN/USER/PASSWORD` (or `vector.*` config) | postgresql.org/download · github.com/pgvector/pgvector |
+| CPU tabular ML (RubixML) | `rubix/ml` via `composer require` — **isolated** (its amphp/parallel ^1 conflicts with psalm's amphp) | `.rbm` serialized estimator | `FERRY_AI_RUBIXML_AUTOLOAD` = path to the isolated `vendor/autoload.php` | github.com/RubixML/ML · github.com/RubixML/Tensor |
+| Model Hub / HuggingFace download | `ext-curl`, `ext-zip`, `ext-sodium` (Ed25519 verify) | models pulled from the Hub on demand | `FERRY_AI_MODEL_CACHE` = cache dir | huggingface.co |
+| Shared model weights across workers | `ext-shmop` | — | `model_pool.shared_memory=true` | PHP bundled |
+
+> CUDA note: GPU support means shipping a **CUDA-enabled native build** (ONNX Runtime GPU or a
+> llama.cpp CUDA build) alongside the **NVIDIA CUDA Toolkit** and **cuDNN** on the host. GPU paths
+> are **not yet verified** in this repo — see `docs/DEBT_REPORT.md` §14.
+
+### Quick checks
 
 ```powershell
-# Download from https://github.com/microsoft/onnxruntime/releases (≥1.18)
-# Extract to vendor\ankane\onnxruntime\lib\onnxruntime-win-x64-1.27.0\lib\
-# Place onnxruntime.dll and onnxruntime_providers_shared.dll there.
-
-# Test:
+# ONNX Runtime available?
 php -r "require 'vendor/autoload.php'; echo (new FerryAI\OnnxBackend\OnnxBackend())->isAvailable() ? 'OK' : 'FAIL';"
+
+# llama.cpp available?
+$env:FERRY_AI_LLAMA_LIB = "C:\llama\llama.dll"; $env:PATH = "C:\llama;" + $env:PATH
+php -r "require 'vendor/autoload.php'; echo (new FerryAI\LlamaBackend\LlamaBackend())->isAvailable() ? 'YES' : 'NO';"
+
+# sqlite-vec available?
+$env:FERRY_AI_VEC_EXTENSION_LIB = "C:\sqlite-vec\vec0.dll"
+php examples/23-sqlite-vec.php
 ```
 
-### llama.cpp (for LLM chat)
-
-```powershell
-# Download from https://github.com/ggml-org/llama.cpp/releases (build 9873 tested)
-# Extract to C:\llama
-
-$env:FERRY_AI_LLAMA_LIB = "C:\llama\llama.dll"
-$env:PATH = "C:\llama;" + $env:PATH         # Required: ggml.dll, llama-common.dll etc
-
-# Test:
-php -r "
-require 'vendor/autoload.php';
-\$b = new FerryAI\LlamaBackend\LlamaBackend();
-echo \$b->isAvailable() ? 'YES' : 'NO';
-"
-
-# For full inference:
-# 1. Copy llama.h from your release to reference
-# 2. Add struct definitions (llama_model_params, llama_context_params) to LlamaCpp::CDEF
-# 3. Add inference functions (llama_model_load_from_file, llama_decode, etc.)
-# 4. Set model path: AI::config(['backends' => ['llama' => ['model_path' => 'model.gguf']]])
-# 5. AI::chat([['role' => 'user', 'content' => 'Hello']])
-```
+> Full llama.cpp inference additionally needs the C struct/function declarations aligned with your
+> build's `llama.h`. Generate them with `php bin/generate-ffi.php --header path/to/llama.h`
+> (see `docs/DEBT_REPORT.md` §12/§16).
 
 ---
 
@@ -200,7 +214,7 @@ composer check               # cs-fix + PHPStan lvl8 + Psalm lvl3 + tests — fu
 
 ## Examples
 
-See [`examples/`](examples/) — 24 standalone scripts covering every capability:
+See [`examples/`](examples/) — 25 standalone scripts covering every capability:
 embedding, tokenizer, chat, streaming, RAG, pipeline, vector store (SQLite +
 sqlite-vec & PostgreSQL/pgvector), grammar, model hub, profiling, async, model pool,
 observability, retry, CPU tensor math + RubixML, benchmarks, Laravel, Symfony.
@@ -225,3 +239,4 @@ php examples/01-hello-embedding.php
 | [`docs/EXAMPLES_PLAN.md`](docs/EXAMPLES_PLAN.md) | Examples coverage matrix |
 | [`docs/SOURCES.md`](docs/SOURCES.md) | External stack reference |
 | [`docs/README.md`](docs/README.md) | Full navigator |
+

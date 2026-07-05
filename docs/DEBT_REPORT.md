@@ -176,9 +176,30 @@ unavailable), rather than transparently sharing loaded `Model` instances.
 
 ## 9. Documentation Debt
 
+### 9a. Dependency / download sources — Addressed (2026-07-05)
+
+Earlier the README (and package docs) never told users **what native libraries/extensions/models
+to download, why, where, and from which source** for each capability — a real onboarding gap.
+
+Fixed: README now has **Install** + **Dependencies & downloads** sections — a per-capability
+matrix (ONNX Runtime, ONNX/GGUF models, GPU CUDA/TensorRT, llama.cpp, tokenizers-cpp, sqlite-vec,
+PostgreSQL/pgvector, RubixML, HuggingFace Hub, shmop) with exact sources and the enabling
+env var, cross-linked to `docs/SOURCES.md`. `docs/SOURCES.md` gained pgvector, PostgreSQL and
+the NVIDIA CUDA/cuDNN/TensorRT pages.
+
+**Remaining honest gaps:**
+- Per-capability guides below are still unwritten (the README matrix is the single source for now).
+- `SOURCES.md` recorded sqlite-vec `v0.1.9`, but the verified binary here is `v0.1.10-alpha`
+  (pre-1.0 / alpha) — see §3a.
+- Packaging: the root `composer.json` `require` lists only `ext-ffi/json/hash/fileinfo`; extensions
+  used by sub-packages (`ext-pdo`, `ext-zip`) are declared per-package, and `ext-sodium/curl/shmop/
+  pdo_pgsql/pdo_sqlite` are `suggest`-only. Intentional (optional features) but not surfaced in one
+  place other than the new README matrix.
+
 | Document | Status |
 |----------|--------|
 | `docs/specs/` | Empty directory |
+| README §Dependencies & downloads | ✅ Written (2026-07-05) |
 | `docs/getting-started.md` | Not written |
 | `docs/configuration.md` | Not written |
 | `docs/backends/onnx.md` | Not written |
@@ -253,7 +274,7 @@ Listed in `composer.json` scripts but not installed:
 | Safetensors loading | 🔴 Format detected only | — | — | No loader. Needs Python conversion to ONNX/GGUF. See §13. |
 | GPU inference | 🔴 Never tested | — | — | CPU-only ONNX + llama.cpp builds. CUDA DLLs present but unused. See §14. |
 | RubixML models | ✅ predict/proba + `.rbm` load (isolated, verified) | — | Opt-in `suggest` (amphp conflict with psalm) | — |
-| Universal model loader | 🔴 Manual CDEF per build | — | — | No auto-generator from .h files. See §16. |
+| FFI CDEF generator | ✅ `CdefGenerator` + `bin/generate-ffi.php` (cleans C headers) | — | Not auto-wired into backends; cross-header enum macros need manual resolve (§16) | — |
 | WSL / Linux testing | 🔴 Never tested | — | — | All 568 tests pass only on Windows x64. See §17. |
 | PostgreSQL vector store | ✅ PostgresStore + PostgresCollection + PostgresVecIndex (pgvector 0.8.4) | — | — | Resolved. See §18. |
 
@@ -475,31 +496,42 @@ So `rubix/ml` stays a `suggest`-only, opt-in dependency installed in an **isolat
 
 ---
 
-## 16. Universal Model Loader — Design Gap
+## 16. FFI CDEF Generator — Implemented (2026-07-05)
+
+### Status: RESOLVED (with documented limitations)
 
 ### Problem
-Currently, each backend requires hand-written FFI CDEF declarations:
-- `onnx-backend`: uses `ankane/onnxruntime` PHP library (managed dependency, solved)
-- `llama-backend`: requires `LlamaCpp::CDEF` to be manually aligned with `llama.h` per build
-- `cpu-backend`: requires `rubix/ml` PHP library (solved if installed)
-- `tokenizer`: `HuggingFaceTokenizer` requires hand-written CDEF for `tokenizers-cpp`
+Each FFI backend needs hand-written CDEF declarations kept in sync with the native header,
+which changes per build — fragile and unfriendly.
 
-### Why this is a problem
-Every new llama.cpp build potentially changes struct layouts, function signatures, or enum values.
-Users must diff `llama.h` against the CDEF and update manually. This is fragile and not user-friendly.
+### Delivered
+- `packages/core/src/FFI/CdefGenerator.php` — turns a C header into an `\FFI::cdef()`-ready
+  string: strips block/line comments, preprocessor directives (incl. `\`-continuations),
+  `extern "C"` wrappers, `__attribute__((…))` / `__declspec(…)`, and user-listed export macros
+  (e.g. `LLAMA_API`), then rebalances the brace left by the removed `extern "C" {` and trims
+  whitespace before `;`.
+- `bin/generate-ffi.php` — CLI: `--header <path> [--output <file>] [--class <Name>] [--strip A,B]`.
+  Prints the cdef, or writes a `final class X { public const CDEF = <<<'CDEF' … CDEF; }`.
 
-### Proposed solution: Auto-generated CDEF
-A tool that reads a C header file and generates PHP FFI declarations:
-```
-php bin/generate-ffi.php --header llama.h --output LlamaCppCDEF.php
-```
-This would parse `llama.h`, extract function signatures and struct definitions, and produce
-a PHP-compatible CDEF string. Eliminates manual CDEF writing.
+### Verification
+- Unit: `CdefGeneratorTest` (4) — strips comments/preprocessor/macros/extern, keeps typedefs &
+  prototypes, braces balanced, and `\FFI::cdef()` parses generated type declarations.
+- Real header: `bin/generate-ffi.php --header D:\FerryAI\llama.h --strip LLAMA_API,GGML_API,GGML_CALL`
+  reduced the 39 KB header to clean, brace-balanced declarations (no macros/`#`/comments/`extern`),
+  containing `llama_model_load_from_file`. `composer check` green; example `examples/25-ffi-generator.php`.
 
-**Or:** the C-wrapper DLL approach (§12 Option A) which hides all struct complexity behind
-simple functions with `char*` and `int` parameters.
+### Honest limitations (not a full C preprocessor)
+- **Enum values referencing cross-header macros** (e.g. `LLAMA_ROPE_TYPE_NEOX = GGML_ROPE_TYPE_NEOX`)
+  are left as-is → `\FFI::cdef()` on the real `llama.h` fails there until such values are resolved
+  to integers (needs the macro definitions from `ggml.h`, i.e. real preprocessing). This is a real
+  boundary of a header-only cleaner.
+- `#define` integer constants are dropped (FFI ignores macros).
+- Function-like macros keep their argument list (only bare export tokens are stripped).
+- Struct-by-value ABI issues (§12) are unaffected — the generator produces declarations, not a
+  working binding; the C-wrapper DLL (§12 Option A) is still the robust path for llama.cpp.
 
-**Debt:** no universal loader exists. Each backend's FFI binding is hand-crafted and build-specific.
+**Remaining:** the generated CDEF is not yet auto-wired into `LlamaCpp::CDEF`; it is a developer
+tool. Backends still ship hand-verified CDEFs.
 
 ---
 

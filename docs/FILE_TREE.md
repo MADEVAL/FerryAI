@@ -284,8 +284,12 @@ php-inference/
 | 36 | `PlatformDetector.php` | class `PlatformDetector` — OS/arch detection (Фаза 4) | (нет) |
 | 37 | `Logger.php` | class `Logger` — PSR-3 compatible (Фаза 4) | (нет) |
 | 38 | `RetryHandler.php` | class `RetryHandler` — retry logic (Фаза 4) | (нет) |
+| 39 | `FFI/CdefGenerator.php` | class `CdefGenerator` — C header → `\FFI::cdef()` string | (нет) |
 
-**Всего: 38 файлов**
+**Всего: 39 файлов**
+
+> Developer tooling: `bin/generate-ffi.php` — CLI wrapper around `CdefGenerator`
+> (`--header/--output/--class/--strip`).
 
 ---
 

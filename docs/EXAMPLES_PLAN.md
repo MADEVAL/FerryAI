@@ -1,6 +1,6 @@
 # FerryAI Examples — Coverage Reference
 
-> **All 24 examples are implemented** in `examples/`. This document is the capability coverage matrix.
+> **All 25 examples are implemented** in `examples/`. This document is the capability coverage matrix.
 > Each example is a standalone PHP script: `php examples/<name>.php`.
 
 ---
@@ -294,6 +294,7 @@ examples/
 ├── 22-observability.php        # Metrics/Profiler/Logger, ModelPool eviction, RetryHandler, shared memory
 ├── 23-sqlite-vec.php           # SQLite + sqlite-vec (vec0): native KNN, opt-in index sync, brute-force fallback
 ├── 24-rubix-cpu.php            # CpuNativeTensor arithmetic + RubixML .rbm inference (isolated process)
+├── 25-ffi-generator.php        # Generate FFI cdef from a C header (strip comments/macros/extern)
 └── README.md                  # How to run, prerequisites, expected output
 ```
 
@@ -309,4 +310,5 @@ examples/
 8. **Milestone policy:** every notable feature or backend added to the project MUST ship
    with (a) a runnable example in `examples/` and (b) at least a short section (~5+ lines)
    in the root `README.md`. "No example + README entry ⇒ the milestone is not done."
+
 

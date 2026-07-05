@@ -1,0 +1,104 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+use FerryAI\Core\FFI\CdefGenerator;
+
+$autoloads = [
+    __DIR__ . '/../vendor/autoload.php',
+    __DIR__ . '/../../../autoload.php',
+];
+
+foreach ($autoloads as $autoload) {
+    if (\is_file($autoload)) {
+        require $autoload;
+
+        break;
+    }
+}
+
+/**
+ * @return array<string, string>
+ */
+$parseArgs = static function (array $argv): array {
+    $options = [];
+
+    foreach (\array_slice($argv, 1) as $i => $arg) {
+        if (!\str_starts_with($arg, '--')) {
+            continue;
+        }
+
+        $arg = \substr($arg, 2);
+
+        if (\str_contains($arg, '=')) {
+            [$key, $value] = \explode('=', $arg, 2);
+            $options[$key] = $value;
+        } else {
+            $options[$arg] = $argv[$i + 2] ?? '';
+        }
+    }
+
+    return $options;
+};
+
+$options = $parseArgs($argv);
+
+if (!isset($options['header']) || $options['header'] === '') {
+    \fwrite(\STDERR, <<<'USAGE'
+        Generate an \FFI::cdef()-compatible declaration string from a C header.
+
+        Usage:
+          php bin/generate-ffi.php --header <path> [--output <path>] [--class <Name>] [--strip <A,B,C>]
+
+        Options:
+          --header  Path to the C header (e.g. llama.h).                    [required]
+          --output  Write a PHP class file instead of printing the cdef.
+          --class   Class name for --output (default: GeneratedCdef).
+          --strip   Comma-separated export/attribute macros to remove
+                    (e.g. LLAMA_API,GGML_API,GGML_CALL).
+
+        USAGE);
+
+    exit(1);
+}
+
+$headerPath = $options['header'];
+
+if (!\is_file($headerPath)) {
+    \fwrite(\STDERR, \sprintf("Header not found: %s\n", $headerPath));
+
+    exit(1);
+}
+
+$header = \file_get_contents($headerPath);
+
+if ($header === false) {
+    \fwrite(\STDERR, \sprintf("Cannot read header: %s\n", $headerPath));
+
+    exit(1);
+}
+
+$strip = isset($options['strip']) && $options['strip'] !== ''
+    ? \array_map('trim', \explode(',', $options['strip']))
+    : [];
+
+$cdef = (new CdefGenerator())->generate($header, $strip);
+
+if (!isset($options['output']) || $options['output'] === '') {
+    echo $cdef;
+
+    exit(0);
+}
+
+$class = $options['class'] ?? 'GeneratedCdef';
+$php = "<?php\n\ndeclare(strict_types=1);\n\n"
+    . \sprintf("final class %s\n{\n    public const CDEF = <<<'CDEF'\n%s\nCDEF;\n}\n", $class, \rtrim($cdef));
+
+if (\file_put_contents($options['output'], $php) === false) {
+    \fwrite(\STDERR, \sprintf("Cannot write output: %s\n", $options['output']));
+
+    exit(1);
+}
+
+\fwrite(\STDERR, \sprintf("Wrote %s (class %s).\n", $options['output'], $class));

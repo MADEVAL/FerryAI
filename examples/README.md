@@ -65,6 +65,7 @@ For LLM examples — a GGUF model and validated llama.cpp FFI binding (see READM
 | 21 | `postgres-vector.php` | PostgreSQL + pgvector: CRUD, native `<=>` ANN search, metadata filter, HNSW index | ext-pdo_pgsql + pgvector |
 | 23 | `sqlite-vec.php` | SQLite + sqlite-vec (vec0): native KNN, opt-in index sync, brute-force fallback with filters | ext-pdo_sqlite + vec0 lib |
 | 24 | `rubix-cpu.php` | CpuNativeTensor arithmetic (matmul/transpose/reshape/slice); RubixML `.rbm` inference (isolated) | rubix/ml (optional) |
+| 25 | `ffi-generator.php` | Generate `\FFI::cdef()`-ready declarations from a C header (strip comments/macros/extern) | None |
 
 ## Running
 
