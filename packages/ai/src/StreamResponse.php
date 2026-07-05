@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace FerryAI;
 
+use Psr\Http\Message\ResponseFactoryInterface;
+use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\StreamFactoryInterface;
+
 final class StreamResponse
 {
     /** @var iterable<int, string> */
@@ -18,14 +22,50 @@ final class StreamResponse
     }
 
     /**
+     * Builds a Server-Sent Events PSR-7 response from the tokens.
+     *
+     * Auto-detects an installed PSR-17 factory (nyholm/psr7 or guzzlehttp/psr7).
+     *
      * @param iterable<int, string> $tokens
      */
-    public static function create(iterable $tokens): \Psr\Http\Message\ResponseInterface
+    public static function create(iterable $tokens): ResponseInterface
     {
-        throw new \RuntimeException(
-            'StreamResponse::create() requires psr/http-message implementation (e.g. nyholm/psr7, guzzlehttp/psr7). '
-            . 'Use toSse() or toNdjson() for raw string output.',
-        );
+        $factory = self::psr17Factory();
+
+        if ($factory === null) {
+            throw new \RuntimeException(
+                'StreamResponse::create() requires a PSR-17 factory (install nyholm/psr7 or '
+                . 'guzzlehttp/psr7). Use toSse() or toNdjson() for raw string output.',
+            );
+        }
+
+        $body = (new self($tokens))->toSse();
+
+        return $factory->createResponse(200)
+            ->withHeader('Content-Type', 'text/event-stream')
+            ->withHeader('Cache-Control', 'no-cache')
+            ->withBody($factory->createStream($body));
+    }
+
+    /**
+     * @return (ResponseFactoryInterface&StreamFactoryInterface)|null
+     */
+    private static function psr17Factory(): (ResponseFactoryInterface&StreamFactoryInterface)|null
+    {
+        foreach (['Nyholm\Psr7\Factory\Psr17Factory', 'GuzzleHttp\Psr7\HttpFactory'] as $candidate) {
+            if (!\class_exists($candidate)) {
+                continue;
+            }
+
+            $factory = new $candidate();
+
+            /** @phpstan-ignore instanceof.alwaysTrue, instanceof.alwaysTrue, booleanAnd.alwaysTrue */
+            if ($factory instanceof ResponseFactoryInterface && $factory instanceof StreamFactoryInterface) {
+                return $factory;
+            }
+        }
+
+        return null;
     }
 
     public function toSse(): string

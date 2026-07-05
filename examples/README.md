@@ -66,6 +66,7 @@ For LLM examples — a GGUF model and validated llama.cpp FFI binding (see READM
 | 23 | `sqlite-vec.php` | SQLite + sqlite-vec (vec0): native KNN, opt-in index sync, brute-force fallback with filters | ext-pdo_sqlite + vec0 lib |
 | 24 | `rubix-cpu.php` | CpuNativeTensor arithmetic (matmul/transpose/reshape/slice); RubixML `.rbm` inference (isolated) | rubix/ml (optional) |
 | 25 | `ffi-generator.php` | Generate `\FFI::cdef()`-ready declarations from a C header (strip comments/macros/extern) | None |
+| 26 | `facade-embed.php` | `AI::embed()`/`similarity()` via `backends.embedding.model_path` config; PSR-7 `StreamResponse::create()` | ONNX Runtime + model (embed); nyholm/psr7 (stream) |
 
 ## Running
 

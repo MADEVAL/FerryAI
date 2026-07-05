@@ -1034,3 +1034,32 @@ declarations; FFI parsed up to an enum value referencing a cross-header macro
 **Example + docs (milestone policy):** `examples/25-ffi-generator.php`, `examples/README.md`,
 `docs/EXAMPLES_PLAN.md` (24 -> 25), `README.md` (counts + llama note), `FILE_TREE.md`
 (core 38 -> 39 + bin), `DEBT_REPORT.md` Section 16 -> RESOLVED (+ summary matrix), Section 9a.
+
+---
+
+## 2026-07-05 - Debt Section 4: AI facade config-wiring (embed / similarity / streamResponse)
+
+**What (TDD):** Wired the facade methods that were gated on config so they work end to end.
+
+- **`AIFactory::createEmbedder()`** now resolves an embedding model dir/file to `model.onnx` +
+  `tokenizer.json` (or an explicit `backends.embedding.tokenizer_path`) and reads
+  `embedding.pooling` / `embedding.normalize`. **`AI::embedder()`** reads
+  `backends.embedding.model_path` (falls back to `embedding.model`). `AI::embed()` /
+  `AI::similarity()` now run through the facade with real ONNX inference.
+- **`StreamResponse::create()`** auto-detects an installed PSR-17 factory (nyholm/psr7 or
+  guzzlehttp/psr7) and returns a real SSE `ResponseInterface`; clear error if none.
+  `AI::streamResponse()` now streams `AI::stream()` tokens. `ai` package `require`s
+  `psr/http-factory` and `suggest`s the factories; `nyholm/psr7` added as a dev dependency.
+
+**Legitimately model-gated (not code debt):** classify/moderate/predict need their model files;
+chat/stream additionally blocked by the llama ABI (Section 12). Errors stay actionable.
+
+**Verification (fresh):** `composer check` fully green - cs 0 - PHPStan L8 No errors - Psalm L3
+No errors - 615 unit tests. Integration: `AiEmbedIntegrationTest` (3) with real ONNX 1.27.0 +
+all-MiniLM-L6-v2 -> 384-dim normalized vector, `sim(cat,kitten) 0.788 > sim(cat,airplane) 0.337`.
+Full integration suite 27 (2 llama skips).
+
+**Example + docs (milestone policy):** `examples/26-facade-embed.php` (facade embed + PSR-7
+response), `examples/README.md`, `docs/EXAMPLES_PLAN.md` (25 -> 26), `README.md` (top sample now
+shows `backends.embedding.model_path`; counts). `DEBT_REPORT.md` Section 4 -> config-wiring RESOLVED
+(+ summary matrix, Section 6 integration list).

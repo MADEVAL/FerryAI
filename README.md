@@ -6,9 +6,13 @@ One API, full FFI bridge to native engines. Inference-only. PHP 8.5+.
 ```php
 use FerryAI\AI;
 
-AI::config(['backend' => 'onnx', 'device' => 'cpu']);
+AI::config([
+    'backend' => 'onnx',
+    'device' => 'cpu',
+    'backends' => ['embedding' => ['model_path' => '/path/to/all-MiniLM-L6-v2-onnx']],
+]);
 
-$vec = AI::embed('Hello world');
+$vec = AI::embed('Hello world');              // reads model.onnx + tokenizer.json from the dir
 echo $vec->dimension;                         // 384
 
 $sim = AI::similarity('cat', 'kitten');       // 0.79
@@ -214,7 +218,7 @@ composer check               # cs-fix + PHPStan lvl8 + Psalm lvl3 + tests — fu
 
 ## Examples
 
-See [`examples/`](examples/) — 25 standalone scripts covering every capability:
+See [`examples/`](examples/) — 26 standalone scripts covering every capability:
 embedding, tokenizer, chat, streaming, RAG, pipeline, vector store (SQLite +
 sqlite-vec & PostgreSQL/pgvector), grammar, model hub, profiling, async, model pool,
 observability, retry, CPU tensor math + RubixML, benchmarks, Laravel, Symfony.
@@ -239,4 +243,5 @@ php examples/01-hello-embedding.php
 | [`docs/EXAMPLES_PLAN.md`](docs/EXAMPLES_PLAN.md) | Examples coverage matrix |
 | [`docs/SOURCES.md`](docs/SOURCES.md) | External stack reference |
 | [`docs/README.md`](docs/README.md) | Full navigator |
+
 

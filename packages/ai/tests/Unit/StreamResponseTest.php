@@ -11,11 +11,18 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(StreamResponse::class)]
 final class StreamResponseTest extends TestCase
 {
-    public function testCreateThrowsWithoutPsr7Implementation(): void
+    public function testCreateReturnsPsr7ResponseWhenFactoryAvailable(): void
     {
-        $this->expectException(\RuntimeException::class);
+        if (!\class_exists('Nyholm\Psr7\Factory\Psr17Factory') && !\class_exists('GuzzleHttp\Psr7\HttpFactory')) {
+            self::markTestSkipped('No PSR-17 factory (nyholm/psr7 or guzzlehttp/psr7) installed.');
+        }
 
-        StreamResponse::create(['hello', 'world']);
+        $response = StreamResponse::create(['Hello', 'World']);
+
+        self::assertInstanceOf(\Psr\Http\Message\ResponseInterface::class, $response);
+        self::assertSame(200, $response->getStatusCode());
+        self::assertSame('text/event-stream', $response->getHeaderLine('Content-Type'));
+        self::assertStringContainsString('data: Hello', (string) $response->getBody());
     }
 
     public function testToSseFormatsTokens(): void

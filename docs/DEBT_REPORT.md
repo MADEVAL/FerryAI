@@ -46,7 +46,7 @@
 | `CpuNativeModel::run()` | Returns | `['output' => [0.5, 0.3, 0.2]]` — hardcoded, not real inference |
 | `RubixMLAdapter` | `predict()`, `proba()` | `throw new RuntimeException('RubixML adapter not fully implemented')` |
 | `RubixMLAdapter` | `loadModel()` | Works if `rubix/ml` installed — otherwise throws |
-| `StreamResponse::create()` | Returns PSR-7 ResponseInterface | `throw new RuntimeException` — needs `nyholm/psr7` or `guzzlehttp/psr7` |
+| `StreamResponse::create()` | Returns PSR-7 ResponseInterface | ✅ **RESOLVED** — auto-detects a PSR-17 factory (nyholm/guzzle); see §4 |
 | `HuggingFaceTokenizer` | `encode()`, `decode()`, all Tokenizer methods | `throw new RuntimeException` — FFI not wired |
 | ~~`SqliteVecExtension`~~ | ~~`search()`~~ | ✅ **RESOLVED** — real sqlite-vec (vec0) KNN; see §3a |
 
@@ -80,17 +80,30 @@ instead of returning `[]`.
 
 ## 4. AI Facade — Gated Methods
 
-| Method | Gates on | What's missing |
-|--------|---------|---------------|
-| `AI::embed()` | `TokenizerFactory::create()` needs file path or Hub | Works via direct `Embedder` construction (see examples). Facade path needs `backends.embedding.model_path` in config |
-| `AI::similarity()` | Same as `embed()` | Same |
-| `AI::classify()` | `backends.classify.model_path` in config | Needs actual classification ONNX model file |
-| `AI::moderate()` | `backends.moderate.model_path` in config | Needs moderation ONNX model |
-| `AI::predict()` | `backends.predict.model_path` in config | Needs `.rbm` model or RubixML |
-| `AI::chat()` | llama.cpp backend available + `backends.llama.model_path` | llama.cpp ABI not validated |
-| `AI::stream()` | Same as `chat()` | Same |
-| `AI::streamResponse()` | PSR-7 implementation | `StreamResponse::create()` throws |
-| `AI::warmup()` | `no-op` | Not wired to ModelPool or Hub |
+### Status: config-wiring RESOLVED (2026-07-05)
+
+| Method | State |
+|--------|-------|
+| `AI::embed()` | ✅ Works via the facade — `backends.embedding.model_path` (dir or `model.onnx`); tokenizer auto-resolved from the same dir (or `backends.embedding.tokenizer_path`); `embedding.pooling`/`embedding.normalize`. Verified e2e (`AiEmbedIntegrationTest`, real all-MiniLM-L6-v2). |
+| `AI::similarity()` | ✅ Same wiring; verified (`sim(cat,kitten) > sim(cat,airplane)`). |
+| `AI::streamResponse()` | ✅ `StreamResponse::create()` auto-detects a PSR-17 factory (nyholm/psr7 or guzzlehttp/psr7) and returns a real SSE `ResponseInterface`; streams `AI::stream()` tokens. Clear error if no factory. |
+| `AI::warmup()` | ✅ Wired to `ModelPool` in §5 (no longer a no-op). |
+| `AI::classify()` | ⚠️ Wiring correct; needs a real classification ONNX model at `backends.classify.model_path`. Actionable `ConfigurationException` otherwise. Legitimately model-gated. |
+| `AI::moderate()` | ⚠️ Same — needs a moderation ONNX model at `backends.moderate.model_path`. |
+| `AI::predict()` | ⚠️ Same — needs a `.rbm` model at `backends.predict.model_path` + RubixML (§15). |
+| `AI::chat()` / `AI::stream()` | ⚠️ Needs `backends.llama.model_path` + a validated llama.cpp binding (ABI blocker — §12). |
+
+**Delivered:** `AIFactory::createEmbedder()` now resolves model dir/file → `model.onnx` + `tokenizer.json`
+and reads pooling/normalize; `AI::embedder()` reads `backends.embedding.model_path`.
+`StreamResponse::create()` returns a PSR-17-backed SSE response (`ai` now `require`s `psr/http-factory`,
+`suggest`s nyholm/guzzle). `nyholm/psr7` added as a dev dependency for verification.
+
+**Verification:** `AiEmbedIntegrationTest` (3, real ONNX + all-MiniLM-L6-v2), updated
+`StreamResponseTest` (PSR-7 response), example `examples/26-facade-embed.php`.
+`composer check` fully green · 615 unit tests.
+
+**Remaining (legitimately model-gated, not code debt):** classify/moderate/predict/chat need the
+respective model files; errors are actionable. chat/stream additionally blocked by §12 (llama ABI).
 
 ---
 
@@ -136,6 +149,7 @@ unavailable), rather than transparently sharing loaded `Model` instances.
 | Test file | Tests | Status |
 |-----------|-------|--------|
 | `tests/Integration/Onnx/OnnxRuntimeIntegrationTest.php` | 3 (version, devices, providers) | ✅ Pass with ONNX 1.27.0 |
+| `tests/Integration/Onnx/AiEmbedIntegrationTest.php` | 3 (facade embed/similarity/batch, real model) | ✅ Pass with ONNX 1.27.0 + all-MiniLM-L6-v2 |
 | `tests/Integration/Llama/LlamaBackendIntegrationTest.php` | 2 (version, devices) | ⊘ Skipped — `NativeLlamaRuntime::isAvailable()` = false |
 | `tests/Integration/Postgres/PostgresVectorIntegrationTest.php` | 14 (CRUD, native cosine search, filter, HNSW, AIFactory) | ✅ Pass with PostgreSQL 18.3 + pgvector 0.8.4 |
 | `tests/Integration/Sqlite/SqliteVecIntegrationTest.php` | 4 (load, CRUD/KNN, Collection ANN, filtered fallback) | ✅ Pass with sqlite-vec vec0 v0.1.10 |
@@ -254,7 +268,7 @@ Listed in `composer.json` scripts but not installed:
 | ONNX inference | ✅ e2e proved | — | — | — |
 | ONNX providers | CPU ✅ | CUDA/TensorRT/ROCm/OpenVINO/DirectML | GPU probing | — |
 | llama.cpp | ✅ DLL loads, init, probes, metadata | — | ⚠️ Model load crashes (hparams:55) — PHP FFI struct ABI mismatch with Clang 20.1.8. See §12. | — |
-| Embedding | ✅ via Embedder direct | — | AI::embed() via facade | Config wiring |
+| Embedding | ✅ e2e via `AI::embed()` facade (config wiring, §4) | — | — | — |
 | Tokenizer | ✅ pure-PHP BPE/WordPiece | — | Native tokenizers-cpp | DLL |
 | Vector store | ✅ brute-force + sqlite-vec (vec0) native KNN | — | Opt-in via `FERRY_AI_VEC_EXTENSION_LIB` (§3a) | — |
 | Model Hub | ✅ HF API, SHA-256, Ed25519, format detect | — | Download cycle | Token for private models |

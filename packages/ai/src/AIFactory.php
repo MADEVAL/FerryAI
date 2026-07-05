@@ -138,8 +138,36 @@ final class AIFactory
     public function createEmbedder(string $modelName): Embedder
     {
         $backend = $this->createBackend($this->config->backend());
-        $tokenizer = $this->createTokenizer($modelName);
+        [$modelPath, $tokenizerPath] = self::resolveEmbeddingPaths(
+            $modelName,
+            $this->config->get('backends.embedding.tokenizer_path'),
+        );
+        $tokenizer = (new TokenizerFactory())->createFromFile($tokenizerPath);
+        $pooling = (string) $this->config->get('embedding.pooling', 'mean');
+        $normalize = (bool) $this->config->get('embedding.normalize', true);
 
-        return new EmbedderImpl($modelName, $backend, $tokenizer);
+        return new EmbedderImpl($modelPath, $backend, $tokenizer, $pooling, $normalize);
+    }
+
+    /**
+     * Resolves the ONNX model file and the tokenizer.json for an embedding model.
+     * Accepts a model directory, a model file, or a bare name (left to the backend/tokenizer
+     * to raise an actionable error). An explicit tokenizer path overrides the default.
+     *
+     * @return array{0: string, 1: string}
+     */
+    private static function resolveEmbeddingPaths(string $modelName, mixed $tokenizerPath): array
+    {
+        $explicit = \is_string($tokenizerPath) && $tokenizerPath !== '' ? $tokenizerPath : null;
+
+        if (\is_dir($modelName)) {
+            return [$modelName . '/model.onnx', $explicit ?? $modelName . '/tokenizer.json'];
+        }
+
+        if (\is_file($modelName)) {
+            return [$modelName, $explicit ?? \dirname($modelName) . '/tokenizer.json'];
+        }
+
+        return [$modelName, $explicit ?? $modelName];
     }
 }

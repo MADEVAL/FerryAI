@@ -314,7 +314,10 @@ final class AI
     private static function embedder(): Embedder
     {
         $config = self::configuration();
-        $modelName = $config->get('embedding.model', 'all-MiniLM-L6-v2');
+        $modelPath = $config->get('backends.embedding.model_path');
+        $modelName = \is_string($modelPath) && $modelPath !== ''
+            ? $modelPath
+            : (string) $config->get('embedding.model', 'all-MiniLM-L6-v2');
 
         return self::factory()->createEmbedder($modelName);
     }
@@ -373,7 +376,7 @@ final class AI
     {
         self::ensureConfigured();
 
-        return StreamResponse::create([]);
+        return StreamResponse::create(self::stream($messages, $options));
     }
 
     private static function ensureConfigured(): void
