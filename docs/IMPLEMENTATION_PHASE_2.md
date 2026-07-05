@@ -1,4 +1,8 @@
-# FerryAI — План реализации: Фаза 2 (LLM)
+# FerryAI — Phase 2 Build Record (LLM)
+
+> **STATUS: COMPLETED.** All 23 steps implemented. 291 tests. Preserved as build record.
+
+---
 
 > Версия: 1.0  
 > Цель: запуск LLM через llama.cpp из PHP  

@@ -1,201 +1,134 @@
-# FerryAI — Справочник и Оркестратор
+# FerryAI — Documentation Navigator
 
-> **Назначение:** единая точка входа в проектную документацию FerryAI.  
-> **Правило:** ни один файл не читается без понимания, зачем он нужен. Этот документ — карта и навигатор.
+> **FerryAI** is a complete, production-grade inference runtime for PHP 8.5+.
+> ONNX Runtime, llama.cpp, and RubixML backends — one API, zero Python.
+> All 4 implementation phases complete. 568 tests. 20 examples.
 
 ---
 
-## ПРОЕКТ
+## Quick Start
 
-| | |
+```bash
+composer require ferry-ai/php-inference
+```
+
+| You want to... | Read |
 |---|---|
-| **Пакет** | `ferry-ai/php-inference` |
-| **Namespace** | `FerryAI\` |
-| **Репозиторий** | https://github.com/MADEVAL/FerryAI |
-| **Автор** | Yevhen Leonidov |
-| **Лицензия** | MIT |
-| **Установка** | `composer require ferry-ai/php-inference` |
+| Install and run first inference | `README.md` (repo root) |
+| See all capabilities in action | [`examples/`](../examples/) — 20 runnable scripts |
+| Understand the architecture | `TECHNICAL_SPECIFICATION.md` |
+| Look up a method signature | `INTERFACE_CONTRACTS.md` |
+| Find where a class lives | `FILE_TREE.md` |
+| Understand a design decision | `RESEARCH_ARCHITECTURE.md` |
+| Set up CI/CD or dev tooling | `REPOSITORY_INFRASTRUCTURE.md` |
+| Check external dependency versions | `SOURCES.md` |
+| Review what's stubbed / not yet done | `DEBT_REPORT.md` |
+| See what was built and when | `BUILD_LOG.md` (development journal) |
+| Write AI-assisted code | `SKILL.md` (AI agent conventions) |
 
 ---
 
-## БЫСТРЫЙ СТАРТ (ЧТО ЧИТАТЬ ПЕРВЫМ)
+## Project Structure
 
 ```
-1. SKILL.md                          ← контекст для ИИ: правила, конвенции, архитектурные границы
-2. RESEARCH_ARCHITECTURE.md          ← почему именно так: анализ экосистемы, верификация решений
-3. TECHNICAL_SPECIFICATION.md        ← что строим: 35 разделов архитектуры, библия
-4. INTERFACE_CONTRACTS.md            ← сигнатуры: каждый метод, каждый параметр, каждое исключение
-5. FILE_TREE.md                      ← где что лежит: 137 файлов в 14 пакетах + порядок сборки
-6. REPOSITORY_INFRASTRUCTURE.md      ← как настроен репозиторий: composer, CI/CD, тесты, публикация
-7. IMPLEMENTATION_PHASE_1.md         ← Фаза 1: 52 шага, 53 файла (ONNX-инференс)
-8. IMPLEMENTATION_PHASE_2.md         ← Фаза 2: 23 шага (LLM / llama.cpp)
-9. IMPLEMENTATION_PHASE_3.md         ← Фаза 3: 42 шага (Экосистема)
-10. IMPLEMENTATION_PHASE_4.md        ← Фаза 4: 14 шагов (Production)
+FerryAI/
+├── README.md                     # Project pitch, quick start, verified status
+├── AGENTS.md                     # AI agent instruction set
+├── composer.json                 # Root meta-package
+├── packages/                     # 14 packages (monorepo)
+│   ├── core/                     # Contracts, enums, value objects, exceptions
+│   ├── tensor/                   # ArrayTensor, BackedTensor, TensorFactory
+│   ├── onnx-backend/             # ONNX Runtime FFI backend
+│   ├── llama-backend/            # llama.cpp FFI backend
+│   ├── tokenizer/                # Pure-PHP BPE/WordPiece tokenizers
+│   ├── embedding/                # Pooling strategies, Embedder
+│   ├── vector/                   # SQLite vector store, brute-force search
+│   ├── model-hub/                # HuggingFace download, cache, verify
+│   ├── pipeline/                 # Composable stages (8 types)
+│   ├── cpu-backend/              # Always-available CPU fallback
+│   ├── ai/                       # Facade, factory, registry, metrics, profiler
+│   ├── laravel/                  # Service provider + facade
+│   └── symfony/                  # Bundle + DI extension
+├── examples/                     # 20 standalone runnable examples
+├── benchmarks/                   # Performance measurement scripts
+├── bin/ferry-ai                  # CLI entry point
+├── tests/                        # Integration + verification suites
+└── docs/                         # You are here
 ```
 
 ---
 
-## НАВИГАТОР: КАКОЙ ДОКУМЕНТ ОТКРЫТЬ
+## Document Map
 
-| Ты хочешь... | Открой |
-|---|---|
-| Понять, ЧТО это за проект | `RESEARCH_ARCHITECTURE.md` → `TECHNICAL_SPECIFICATION.md` §1 |
-| Понять, ПОЧЕМУ приняты решения | `RESEARCH_ARCHITECTURE.md` §2, §5, §10 |
-| Найти точную сигнатуру метода | `INTERFACE_CONTRACTS.md` |
-| Узнать, в каком файле лежит класс | `FILE_TREE.md` |
-| Узнать, от чего зависит файл | `FILE_TREE.md` — колонка «Зависит от» |
-| Понять порядок создания файлов | `FILE_TREE.md` §«Порядок создания (Фаза 1)» → `IMPLEMENTATION_PHASE_1.md` |
-| Узнать, что реализовывать прямо сейчас | `IMPLEMENTATION_PHASE_1.md` (MVP) |
-| Написать код для конкретного шага | `IMPLEMENTATION_PHASE_X.md` → нужный шаг |
-| Написать тест | `SKILL.md` §Testing Doctrine → `INTERFACE_CONTRACTS.md` (сигнатура) |
-| Настроить CI/CD | `REPOSITORY_INFRASTRUCTURE.md` §7 |
-| Опубликовать пакет | `REPOSITORY_INFRASTRUCTURE.md` §9 |
-| Понять архитектурный слой | `TECHNICAL_SPECIFICATION.md` §4–§8 |
-| Понять пакетную структуру | `TECHNICAL_SPECIFICATION.md` §9 → `FILE_TREE.md` |
-| Найти бэкенд-интерфейс | `INTERFACE_CONTRACTS.md` §1.1 |
-| Найти контракт токенизатора | `INTERFACE_CONTRACTS.md` §1.4 |
-| Найти все enum'ы | `INTERFACE_CONTRACTS.md` §2 |
-| Найти все исключения | `INTERFACE_CONTRACTS.md` §4 |
-| Понять, как мокать FFI | `SKILL.md` §FFI Mocking Strategy |
-| Понять, что НЕ делаем | `SKILL.md` §What We NEVER Do |
-| Настроить dev-окружение на Windows | `REPOSITORY_INFRASTRUCTURE.md` §8.1 |
-| Проверить окружение | `REPOSITORY_INFRASTRUCTURE.md` §13 (чеклист) |
-| Принять архитектурное решение | `RESEARCH_ARCHITECTURE.md` — вся логика решений |
+| Document | Role | Audience |
+|----------|------|----------|
+| `TECHNICAL_SPECIFICATION.md` | Architecture bible — layers, packages, components | Everyone |
+| `INTERFACE_CONTRACTS.md` | Exact method signatures for every contract | Developers |
+| `FILE_TREE.md` | Complete file map — 137 files in 14 packages | Developers |
+| `RESEARCH_ARCHITECTURE.md` | Why decisions were made — ecosystem analysis | Architects |
+| `REPOSITORY_INFRASTRUCTURE.md` | CI/CD, composer, testing, publishing | DevOps |
+| `SOURCES.md` | External dependency audit — versions, URLs | Maintainers |
+| `SKILL.md` | AI agent coding conventions and rules | AI agents |
+| `BUILD_LOG.md` | Development journal — what, when, why | Historians |
+| `DEBT_REPORT.md` | Technical debt inventory — stubs, mocks, gates | Maintainers |
+| `IMPLEMENTATION_PHASE_1.md` | Phase 1 build record (MVP: ONNX inference) | Archive |
+| `IMPLEMENTATION_PHASE_2.md` | Phase 2 build record (LLM: llama.cpp) | Archive |
+| `IMPLEMENTATION_PHASE_3.md` | Phase 3 build record (Ecosystem) | Archive |
+| `IMPLEMENTATION_PHASE_4.md` | Phase 4 build record (Production) | Archive |
+| `EXAMPLES_PLAN.md` | Coverage matrix for 20 examples | Contributors |
 
 ---
 
-## АРХИТЕКТУРА ДОКУМЕНТОВ: КАК ОНИ СВЯЗАНЫ
+## Architecture at a Glance
 
 ```
-RESEARCH_ARCHITECTURE.md
-    │  (анализ экосистемы, gap-анализ, верификация)
+PHP Application
     │
-    └──► TECHNICAL_SPECIFICATION.md
-            │  (архитектура: слои, пакеты, компоненты)
-            │
-            ├──► INTERFACE_CONTRACTS.md
-            │       (детальные сигнатуры всех интерфейсов)
-            │
-            ├──► FILE_TREE.md
-            │       (пофайловая карта + порядок сборки)
-            │
-            └──► IMPLEMENTATION_PHASE_1.md  ──┐
-                 IMPLEMENTATION_PHASE_2.md  ──┤
-                 IMPLEMENTATION_PHASE_3.md  ──┤── пошаговая реализация
-                 IMPLEMENTATION_PHASE_4.md  ──┘
-
-REPOSITORY_INFRASTRUCTURE.md
-    │  (composer, CI/CD, тесты, публикация)
+    ▼
+AI Facade (FerryAI\AI)
     │
-    └── независим от остальных, описывает инструментарий
-
-SKILL.md
-    │  (правила и конвенции для ИИ-агента)
+    ├─ Backend Registry ── Task Router
+    │      ├─ OnnxBackend ──── FFI ──► onnxruntime.dll
+    │      ├─ LlamaBackend ─── FFI ──► llama.dll
+    │      └─ CpuNativeBackend ── pure PHP
     │
-    └── ссылается на все документы, определяет КАК работать
+    ├─ Embedder ─── Tokenizer ─── Pipeline ─── VectorStore
+    └─ ModelHub ─── CacheManager ─── SignatureVerifier
+```
+
+**Rules:** inference-only. FFI is the only bridge to native code. Backends never know about each other.
+Contracts in `packages/core/src/Contracts/` define truth — implementations never deviate.
+
+---
+
+## Key Commands
+
+```bash
+composer test                # 568 unit tests (pure PHP)
+composer test-integration    # Integration tests (needs ONNX/libllama)
+composer check               # Pre-commit: cs-fix + PHPStan lvl8 + Psalm lvl3 + tests
+composer cs-fix              # Auto-fix code style (PER-CS 2.0)
+composer stan                # PHPStan static analysis
+composer psalm               # Psalm static analysis
 ```
 
 ---
 
-## СТАТУС ФАЙЛОВ
+## Status
 
-| Файл | Назначение | Статус |
-|---|---|---|
-| `SKILL.md` | Правила и конвенции для ИИ | ✅ Готов |
-| `RESEARCH_ARCHITECTURE.md` | Исследование: анализ экосистемы, верификация | ✅ Готов |
-| `TECHNICAL_SPECIFICATION.md` | Техническое задание — библия архитектуры | ✅ Готов |
-| `INTERFACE_CONTRACTS.md` | Сигнатуры интерфейсов, enum'ов, value objects | ✅ Готов |
-| `FILE_TREE.md` | Дерево файлов + порядок сборки | ✅ Готов |
-| `REPOSITORY_INFRASTRUCTURE.md` | Инфраструктура: composer, CI/CD, тесты, публикация | ✅ Готов |
-| `IMPLEMENTATION_PHASE_1.md` | Фаза 1 MVP: 52 шага, 53 файла | ✅ Готов |
-| `IMPLEMENTATION_PHASE_2.md` | Фаза 2 LLM: 23 шага | ✅ Готов |
-| `IMPLEMENTATION_PHASE_3.md` | Фаза 3 Экосистема: 42 шага | ✅ Готов |
-| `IMPLEMENTATION_PHASE_4.md` | Фаза 4 Production: 14 шагов | ✅ Готов |
-
----
-
-## ОРКЕСТРАТОР: ПОРЯДОК ДЕЙСТВИЙ ДЛЯ ИИ
-
-### Режим 1: Первое знакомство с проектом
-
-```
-1. Открой SKILL.md              → запомни правила
-2. Открой RESEARCH_ARCHITECTURE.md → пойми контекст
-3. Открой TECHNICAL_SPECIFICATION.md §1–§4 → пойми что строим
-4. Открой FILE_TREE.md           → запомни где что лежит
-5. Ты готов к работе.
-```
-
-### Режим 2: Реализация (Фаза 1)
-
-```
-1. Открой IMPLEMENTATION_PHASE_1.md
-2. Найди первый невыполненный шаг
-3. Открой FILE_TREE.md → найди путь к файлу
-4. Открой INTERFACE_CONTRACTS.md → если это интерфейс/enum/value-object/exception
-5. Напиши тест (см. SKILL.md §Testing Doctrine)
-6. Напиши код
-7. Запусти: composer cs-fix && composer stan && composer test
-8. Повтори со следующего шага
-```
-
-### Режим 3: Реализация (Фаза 2/3/4)
-
-```
-1. Открой IMPLEMENTATION_PHASE_X.md
-2. Проверь, что все предыдущие фазы завершены
-3. Дальше — как в Режиме 2
-```
-
-### Режим 4: Исправление бага
-
-```
-1. Найди проблемный класс в FILE_TREE.md
-2. Открой INTERFACE_CONTRACTS.md → проверь контракт
-3. Открой TECHNICAL_SPECIFICATION.md → проверь архитектурный контекст
-4. Напиши тест, воспроизводящий баг
-5. Исправь
-6. composer check
-```
-
-### Режим 5: Проектирование нового компонента
-
-```
-1. Открой TECHNICAL_SPECIFICATION.md → проверь, не описан ли уже
-2. Открой RESEARCH_ARCHITECTURE.md → проверь, не отвергнут ли
-3. Предложи решение → обсуди → задокументируй в спецификации
-4. Обнови INTERFACE_CONTRACTS.md (новые сигнатуры)
-5. Обнови FILE_TREE.md (новые файлы)
-6. Создай шаги в IMPLEMENTATION_PHASE_X.md
-```
-
-### Режим 6: Настройка CI/CD / репозитория
-
-```
-1. Открой REPOSITORY_INFRASTRUCTURE.md
-2. Следуй разделу, соответствующему задаче:
-   - composer-настройка → §1
-   - тестирование → §3
-   - статанализ → §4
-   - качество кода → §5
-   - git → §6
-   - CI/CD → §7
-   - публикация → §9
-```
+| Component | Status |
+|-----------|--------|
+| ONNX Runtime inference | ✅ Production — tested on Windows x64, ONNX 1.27.0 |
+| llama.cpp probe | ✅ Library loads, init works. Full inference needs C-wrapper DLL (§DEBT_REPORT) |
+| Pure-PHP tokenizer | ✅ BPE + WordPiece, round-tripping, chunking |
+| Vector store | ✅ SQLite brute-force + metadata filter |
+| Model Hub | ✅ HuggingFace API, SHA-256, Ed25519 |
+| Pipeline | ✅ 8 composable stages, Generator-based |
+| CPU fallback | ✅ Always available |
+| Framework integrations | ✅ Laravel + Symfony (standalone adapters) |
+| Unit tests | ✅ 568/568 |
+| Examples | ✅ 20/20 runnable |
 
 ---
 
-## КЛЮЧЕВЫЕ КОНЦЕПТЫ (НАПОМИНАНИЕ)
-
-- **Inference-only:** не обучаем, autograd не нужен
-- **Три бэкенда:** ONNX Runtime (основной), llama.cpp (LLM), CPU Native (fallback)
-- **FFI — единственный мост** к нативному коду
-- **12 пакетов** в монорепо, `ferry-ai/php-inference` — мета-пакет (14 с laravel/symfony)
-- **PHP 8.5** — минимальная версия
-- **Zero-copy** — не копируем данные между PHP и нативным кодом без нужды
-- **Иммутабельность** — все value objects readonly
-- **TDD** — тест → код → рефакторинг
-
----
-
-> **Этот документ — входная точка. Не начинай работу, не прочитав `SKILL.md`. Не пиши код, не сверившись с `INTERFACE_CONTRACTS.md`. Не создавай файл, не проверив путь в `FILE_TREE.md`.**
+> **Implementation phases 1–4 are complete.** Phase documents (`IMPLEMENTATION_PHASE_1-4.md`) are preserved as build records. For current project status, see `DEBT_REPORT.md`.

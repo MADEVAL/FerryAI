@@ -1,8 +1,7 @@
-# FerryAI Examples Plan
+# FerryAI Examples — Coverage Reference
 
-> Goal: 100% capability coverage through realistic, self-contained, production-quality PHP scripts.
-> Each example = one file under `examples/`. Runs standalone: `php examples/<name>.php`.
-> Language: English. Style: strict types, precise naming, no comments — code is the explanation.
+> **All 20 examples are implemented** in `examples/`. This document is the capability coverage matrix.
+> Each example is a standalone PHP script: `php examples/<name>.php`.
 
 ---
 

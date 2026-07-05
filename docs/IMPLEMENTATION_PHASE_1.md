@@ -1,4 +1,9 @@
-# FerryAI — План реализации: Фаза 1 (MVP)
+# FerryAI — Phase 1 Build Record (MVP)
+
+> **STATUS: COMPLETED.** All 52 steps implemented. 217 tests. Preserved as build record.
+> For current project status, see `DEBT_REPORT.md`.
+
+---
 
 > Версия: 1.0  
 > Цель: работающий ONNX-инференс с удобным API  
@@ -1192,3 +1197,4 @@ echo 'Classification OK, label: ' . \$result->label . PHP_EOL;
 ---
 
 > **План реализации Фазы 1 завершён. После успешного прохождения всех шагов и интеграционного теста можно переходить к Фазе 2.**
+
