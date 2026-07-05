@@ -231,7 +231,7 @@ keeps sampling fast. See `docs/DEBT_REPORT.md` §12.
 | CPU backend | ✅ Tensor math (matmul/transpose/reshape/slice); RubixML `.rbm` predict/proba (isolated) |
 | Shared memory (shmop) | ✅ Allocate 2.5B key, attach, detach |
 | Async fibers | ✅ Suspend/resume, parallel tasks, timeout 10ms |
-| Linux / WSL | ✅ 630 unit + PHPStan L8 + Psalm L3, and llama.cpp **CPU + CUDA GPU** (RTX 4060, ~176 tok/s) on WSL2 Ubuntu 24.04, PHP 8.5.8 |
+| Linux / WSL | ✅ 630 unit + static analysis, and llama.cpp **CPU+CUDA**, **ONNX embeddings**, **sqlite-vec** & **RubixML** on WSL2 Ubuntu 24.04, PHP 8.5.8 (PostgreSQL WSL auth pending) |
 
 ---
 

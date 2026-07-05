@@ -1308,3 +1308,49 @@ changes (wrapper/harness already cross-platform); Windows gate unaffected.
 
 Docs: native/llama-wrapper/README.md (Linux GPU/CUDA build recipe), DEBT_REPORT.md §14 (GPU works on
 Windows + Linux) and §17 (llama CPU + CUDA GPU verified on Linux), README Verified table.
+
+---
+
+## 2026-07-05 - Linux native completion: ONNX Runtime + sqlite-vec
+
+Completed the Linux native testing plan started in §17.
+
+- **ONNX Runtime:** OnnxRuntime\Vendor::check() fetched onnxruntime-linux-x64-1.27.0
+  (libonnxruntime.so.1.27.0) into vendor/. OnnxRuntimeIntegrationTest (3) and
+  AiEmbedIntegrationTest (4, all-MiniLM-L6-v2, incl. embedder caching) -> 7/7 OK.
+- **sqlite-vec:** Downloaded sqlite-vec-0.1.9-loadable-linux-x86_64 (vec0.so).
+  SqliteVecIntegrationTest (4, native KNN via Pdo\Sqlite::loadExtension) -> 4/4 OK.
+- Full Linux integration: 16 passed (ONNX 3 + embeddings 4 + sqlite-vec 4 + llama 5),
+  15 skipped (Postgres: no WSL->Windows PG networking; Rubix: isolated autoload not configured).
+
+No code changes; Windows gate unaffected (630 unit, all green).
+
+Docs: DEBT_REPORT.md §17 (ONNX/sqlite-vec items removed from remaining; header updated),
+summary matrix, README Verified row.
+
+---
+
+## 2026-07-05 - Linux RubixML + PostgreSQL diagnostics
+
+- **RubixML:** installed `rubix/ml ^2.5` in an isolated /opt/rubixml via composer; set
+  FERRY_AI_RUBIXML_AUTOLOAD; RubixCpuIntegrationTest (1: subprocess harness loads .rbm, predicts,
+  proba) -> 1/1 OK on Linux.
+- **PostgreSQL WSL diagnosis:** WSL reaches the Windows-host PG at 192.168.96.1:5432, but
+  pg_hba.conf rejects the WSL subnet (only localhost is allowed). One-line fix:
+  `host all all 192.168.0.0/16 md5` + restart. Pure environment — no code change.
+
+Full Linux integration: 17 passed (all 5 native backends — llama, ONNX/embeddings, sqlite-vec,
+RubixML), 14 skipped (Postgres auth). All items that did not require environment configuration
+are verified. Remaining: PostgreSQL auth (pg_hba.conf) and long-running runtimes (FPM/RoadRunner).
+
+---
+
+## 2026-07-05 - Debt clean-up: resolved items removed, findings preserved
+
+Rewrote DEBT_REPORT.md from scratch: all resolved sections (3a, 4, 5, 9a, 12, 15, 16, 17, 18)
+removed. Valuable runtime findings moved to capability docs:
+- Historical ABI investigation, struct layout and PHPUnit conflict notes -> appendix in
+  docs/backends/llama.md (the rest is already durably documented in the README, per-capability
+  guides and wrapper README).
+Final report (15 sections) covers only unresolved/by-design items + a new "Honest Notes" section
+for facts that are not debt. README matrix, BUILD_LOG and docs are in sync.

@@ -65,3 +65,53 @@ RTX 4060, llama.cpp build 9873: CPU and GPU chat/stream work; the model is poole
 - Runs in a normal PHP process; under PHPUnit the ggml global constructors conflict, so the
   integration test drives chat in a subprocess.
 - `ferry_llama.dll` is machine-built and not committed — build it or ship a prebuilt binary.
+
+---
+
+## Appendix: FFI ABI investigation (historical)
+
+The direct `llama.dll` → PHP FFI path was investigated and found to crash on
+`llama_model_load_from_file` — this is what the wrapper solves. Key findings kept for context.
+
+### Environment (build 9873, commit `a4107133a`)
+
+| Item | Value |
+|------|-------|
+| Native CLI | `llama-cli -m model.gguf -p "Hello" -n 5` → "Hello! How can I" at **309 t/s** ✅ |
+| `FFI::cdef` | Loads when the DLL dir is on `PATH` |
+| `llama_backend_init` | No crash (loaded backend from `ggml-cpu-x64.dll`) |
+| `supports_mmap` | `true` |
+| Model metadata read | ✅ 38 KV pairs, 290 tensors, tokenizer (151,936 tokens, BPE) |
+| GPU | RTX 4060, `ggml-cuda.dll` present; CUDA backend loads and is verified via the wrapper |
+
+### The crash: struct-by-value ABI
+
+`llama_model_load_from_file` takes `struct llama_model_params` **by value** (64 bytes on x64).
+PHP FFI infers the layout from the CDEF, but the DLL was compiled with **Clang 20.1.8** on
+GitHub Actions, while PHP FFI uses the platform-default C ABI (MSVC-compatible on Windows).
+The mismatch causes `llama-hparams.cpp:55: fatal error`.
+
+Layout verified via `FFI::sizeof`:
+```
+Offset  Size  Field
+0       8     devices (void*)
+8       8     tensor_buft_overrides (void*)
+16      4     n_gpu_layers (int32)
+20      4     split_mode (int32)
+24      4     main_gpu (int32)
+28      4     _pad (explicit padding)
+32      8     tensor_split (float*)
+40      8     progress_callback (fn ptr)
+48      8     progress_callback_user_data (void*)
+56      8     kv_overrides (void*)
+Total: 64 bytes
+```
+
+Despite byte-level match, the crash persisted → the flat C wrapper (`ferry_llama`) was chosen
+as the reliable solution.
+
+### PHPUnit conflict
+
+Under PHPUnit the DLL crashes on `FFI::cdef()` with `GGML_ASSERT(prev != ggml_uncaught_exception)`
+— a C++ exception-state conflict between PHPUnit's output buffering and GGML's global constructors.
+Standalone PHP scripts work fine. The integration test therefore runs the harness in a subprocess.
