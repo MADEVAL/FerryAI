@@ -40,16 +40,20 @@ final class SamplerMath
     }
 
     /**
-     * Numerically stable softmax.
+     * Numerically stable softmax with optional temperature scaling.
      *
      * @param float[] $logits
      *
      * @return float[] probabilities aligned to the input keys
      */
-    public static function softmax(array $logits): array
+    public static function softmax(array $logits, float $temperature = 1.0): array
     {
         if ($logits === []) {
             return [];
+        }
+
+        if ($temperature > 0.0 && $temperature !== 1.0) {
+            $logits = array_map(static fn(float $value): float => $value / $temperature, $logits);
         }
 
         $max = max($logits);

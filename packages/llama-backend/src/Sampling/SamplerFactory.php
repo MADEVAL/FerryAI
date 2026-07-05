@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 namespace FerryAI\LlamaBackend\Sampling;
 
+use FerryAI\Core\ValueObjects\SamplingParams;
 use FerryAI\LlamaBackend\Grammar\GbnfGrammar;
 
 /**
- * Creates samplers by name.
+ * Creates samplers by name or from sampling parameters.
  */
 final class SamplerFactory
 {
@@ -24,5 +25,23 @@ final class SamplerFactory
             ),
             default => new TopPSampler(),
         };
+    }
+
+    /**
+     * Selects a sampler from the request parameters:
+     * a grammar (if given) constrains output; temperature 0 is deterministic (greedy);
+     * otherwise nucleus (top-p) sampling, which also honours temperature/top-p.
+     */
+    public function forParams(SamplingParams $params, ?GbnfGrammar $grammar = null): Sampler
+    {
+        if ($grammar !== null) {
+            return new GrammarSampler($grammar);
+        }
+
+        if ($params->temperature <= 0.0) {
+            return new GreedySampler();
+        }
+
+        return new TopPSampler();
     }
 }

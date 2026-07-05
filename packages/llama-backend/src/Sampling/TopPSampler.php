@@ -22,7 +22,7 @@ final class TopPSampler implements Sampler
             throw new \InvalidArgumentException('Cannot sample from an empty logit list.');
         }
 
-        $probabilities = SamplerMath::softmax($logits);
+        $probabilities = SamplerMath::softmax($logits, $params->temperature);
 
         $indices = array_keys($probabilities);
         usort($indices, static fn(int $a, int $b): int => $probabilities[$b] <=> $probabilities[$a]);

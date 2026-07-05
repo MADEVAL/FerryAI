@@ -102,4 +102,43 @@ final class LlamaModelTest extends TestCase
         self::assertSame(Device::CPU, $model->device());
         self::assertSame('llama-test', $model->metadata()->name);
     }
+
+    public function testFactoryGreedyWhenNoSamplerAndTemperatureZero(): void
+    {
+        $result = $this->modelWithoutSampler()->runComplete(
+            [ChatMessage::user('Hi')],
+            new \FerryAI\Core\ValueObjects\SamplingParams(temperature: 0.0),
+        );
+
+        self::assertSame('Hello world', $result->text);
+    }
+
+    public function testFactoryTopPWhenTemperaturePositive(): void
+    {
+        $result = $this->modelWithoutSampler()->runComplete(
+            [ChatMessage::user('Hi')],
+            new \FerryAI\Core\ValueObjects\SamplingParams(temperature: 0.7, seed: 42),
+        );
+
+        // The scripted token dominates the logits, so nucleus sampling still yields it.
+        self::assertSame('Hello world', $result->text);
+    }
+
+    private function modelWithoutSampler(): LlamaModel
+    {
+        $runtime = new MockLlamaRuntime(
+            eos: 2,
+            scripted: [10, 11],
+            pieces: [10 => 'Hello', 11 => ' world'],
+            promptTokens: [1, 5],
+        );
+
+        $session = $runtime->createSession(
+            'model.gguf',
+            new \FerryAI\LlamaBackend\LlamaModelParams(),
+            new \FerryAI\LlamaBackend\LlamaContextParams(),
+        );
+
+        return new LlamaModel($session, $runtime, new ChatFormatter('chatml'));
+    }
 }

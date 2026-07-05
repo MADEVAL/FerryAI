@@ -11,10 +11,11 @@ use FerryAI\Core\ValueObjects\ChatMessage;
 use FerryAI\Core\ValueObjects\GenerationResult;
 use FerryAI\Core\ValueObjects\ModelMetadata;
 use FerryAI\Core\ValueObjects\SamplingParams;
+use FerryAI\LlamaBackend\Grammar\GbnfGrammar;
 use FerryAI\LlamaBackend\Runtime\LlamaRuntimeInterface;
 use FerryAI\LlamaBackend\Runtime\LlamaSession;
-use FerryAI\LlamaBackend\Sampling\GreedySampler;
 use FerryAI\LlamaBackend\Sampling\Sampler;
+use FerryAI\LlamaBackend\Sampling\SamplerFactory;
 
 /**
  * A loaded llama.cpp model.
@@ -31,10 +32,12 @@ final class LlamaModel implements Model
         private ?LlamaSession $session,
         private readonly LlamaRuntimeInterface $runtime,
         private readonly ChatFormatter $formatter,
-        private readonly Sampler $sampler = new GreedySampler(),
+        private readonly ?Sampler $sampler = null,
         private readonly ModelMetadata $metadata = new ModelMetadata('llama', '1.0', '', '', [], 0),
         private readonly Device $deviceType = Device::CPU,
         private readonly SamplingParams $defaultParams = new SamplingParams(),
+        private readonly SamplerFactory $samplerFactory = new SamplerFactory(),
+        private readonly ?GbnfGrammar $grammar = null,
     ) {}
 
     /**
@@ -48,7 +51,7 @@ final class LlamaModel implements Model
     public function run(array $inputs): array
     {
         [, $logits] = $this->open($inputs);
-        $token = $this->sampler->sample($logits, $this->defaultParams);
+        $token = $this->resolveSampler($this->defaultParams)->sample($logits, $this->defaultParams);
 
         return ['text' => $this->runtime->tokenToPiece($this->requireSession(), $token), 'token' => $token];
     }
@@ -172,9 +175,10 @@ final class LlamaModel implements Model
         $session = $this->requireSession();
         $nPast = \count($promptTokens);
         $eos = $this->runtime->eosToken($session);
+        $sampler = $this->resolveSampler($params);
 
         for ($i = 0; $i < $params->maxTokens; ++$i) {
-            $token = $this->sampler->sample($logits, $params);
+            $token = $sampler->sample($logits, $params);
 
             if ($token === $eos) {
                 return;
@@ -185,6 +189,15 @@ final class LlamaModel implements Model
             $logits = $this->runtime->evaluate($session, [$token], $nPast);
             ++$nPast;
         }
+    }
+
+    /**
+     * Uses the explicitly injected sampler when present, otherwise picks one from the
+     * request parameters (grammar / greedy / nucleus) via the {@see SamplerFactory}.
+     */
+    private function resolveSampler(SamplingParams $params): Sampler
+    {
+        return $this->sampler ?? $this->samplerFactory->forParams($params, $this->grammar);
     }
 
     /**

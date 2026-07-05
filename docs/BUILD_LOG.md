@@ -1132,3 +1132,31 @@ DEBT_REPORT.md Section 12 -> RESOLVED/wired (+ summary matrix), examples 03/04 u
 temperature/top-k/top-p/grammar - the seam already returns logits); standalone-process only
 (PHPUnit ggml ctor conflict); ferry_llama.dll not committed (needs prebuilt/CI); old
 LlamaCpp/LlamaContext/LlamaBatch files can be deleted.
+
+---
+
+## 2026-07-05 - SamplerFactory wired into LlamaBackend (temperature/top-p/top-k/grammar)
+
+**What (TDD):** Replaced the hardcoded GreedySampler in the llama path with per-request sampler
+selection driven by SamplingParams.
+
+- `SamplerMath::softmax()` gained an optional temperature (default 1.0; existing calls unchanged).
+  TopPSampler/TopKSampler now pass `$params->temperature`, so temperature actually shapes the
+  distribution.
+- New `SamplerFactory::forParams(SamplingParams, ?GbnfGrammar)`: grammar -> GrammarSampler;
+  temperature 0 -> GreedySampler (deterministic); temperature > 0 -> TopPSampler (nucleus).
+- `LlamaModel` now takes a nullable Sampler + a SamplerFactory + optional GbnfGrammar. When no
+  explicit sampler is injected it resolves one per request via the factory; an explicit sampler
+  (unit tests, advanced users) is still honoured. `LlamaBackend::load()` passes null -> factory.
+
+**Verification (fresh):** composer check fully green - cs 0 - PHPStan L8 No errors - Psalm L3 No
+errors - 620 unit tests (+5: SamplerFactory::forParams x3, LlamaModel factory greedy/top-p x2).
+Real chat via harness: greedy (temp 0) -> "Paris"; nucleus (temp 0.7) -> "Paris" (top-p path ran).
+Integration tests/Integration/Llama (3: greedy CPU, GPU, nucleus) pass.
+
+**Docs:** README (LLM section - per-request sampler selection), DEBT_REPORT.md §12 (GreedySampler
+item resolved; added top-p performance note), examples 03/04 unchanged (default now samples).
+
+**Remaining (honest):** PHP-side sampling scans the full ~152k-token vocab per step, so top-p/top-k
+are slow (~5 s/token for Qwen 0.5B); a native top-k pre-filter in the wrapper would fix it. Greedy
+is fast. Grammar/top_k need explicit wiring from AI::chat options (factory supports them already).

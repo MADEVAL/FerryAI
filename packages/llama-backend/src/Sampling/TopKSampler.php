@@ -26,7 +26,7 @@ final class TopKSampler implements Sampler
 
         $top = \array_slice($indices, 0, max(1, $params->topK));
         $topLogits = array_map(static fn(int $index): float => $logits[$index], $top);
-        $probabilities = SamplerMath::softmax($topLogits);
+        $probabilities = SamplerMath::softmax($topLogits, $params->temperature);
 
         $position = SamplerMath::weightedIndex($probabilities, SamplerMath::randomizer($params->seed));
 

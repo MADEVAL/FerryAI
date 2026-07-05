@@ -36,9 +36,13 @@ final class LlamaBackendIntegrationTest extends TestCase
         }
     }
 
-    private function chat(string $device): array
+    private function chat(string $device, float $temperature = 0.0): array
     {
-        $raw = \shell_exec(\escapeshellarg(\PHP_BINARY) . ' ' . \escapeshellarg($this->harness) . ' ' . $device . ' 16 2>' . (\PHP_OS_FAMILY === 'Windows' ? 'NUL' : '/dev/null'));
+        $raw = \shell_exec(
+            \escapeshellarg(\PHP_BINARY) . ' ' . \escapeshellarg($this->harness)
+            . ' ' . $device . ' 16 ' . $temperature
+            . ' 2>' . (\PHP_OS_FAMILY === 'Windows' ? 'NUL' : '/dev/null'),
+        );
 
         self::assertIsString($raw);
         $data = \json_decode(\trim($raw), true);
@@ -53,9 +57,9 @@ final class LlamaBackendIntegrationTest extends TestCase
         return $data;
     }
 
-    public function testChatOnCpu(): void
+    public function testChatOnCpuGreedy(): void
     {
-        $data = $this->chat('cpu');
+        $data = $this->chat('cpu', 0.0);
 
         self::assertGreaterThan(0, $data['tokens_prompt']);
         self::assertStringContainsStringIgnoringCase('paris', (string) $data['text']);
@@ -63,9 +67,17 @@ final class LlamaBackendIntegrationTest extends TestCase
 
     public function testChatOnGpu(): void
     {
-        $data = $this->chat('cuda');
+        $data = $this->chat('cuda', 0.0);
 
         self::assertGreaterThan(0, $data['tokens_prompt']);
+        self::assertNotSame('', (string) $data['text']);
+    }
+
+    public function testChatWithNucleusSampling(): void
+    {
+        // Non-zero temperature exercises the SamplerFactory top-p path end to end.
+        $data = $this->chat('cpu', 0.7);
+
         self::assertNotSame('', (string) $data['text']);
     }
 }

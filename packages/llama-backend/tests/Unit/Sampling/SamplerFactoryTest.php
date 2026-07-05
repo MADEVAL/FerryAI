@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace FerryAI\LlamaBackend\Tests\Unit\Sampling;
 
+use FerryAI\Core\ValueObjects\SamplingParams;
 use FerryAI\LlamaBackend\Grammar\GbnfGrammar;
 use FerryAI\LlamaBackend\Sampling\GrammarSampler;
 use FerryAI\LlamaBackend\Sampling\GreedySampler;
@@ -47,5 +48,29 @@ final class SamplerFactoryTest extends TestCase
     public function testDefaultsToTopP(): void
     {
         self::assertInstanceOf(TopPSampler::class, $this->factory->create('unknown'));
+    }
+
+    public function testForParamsGreedyWhenTemperatureZero(): void
+    {
+        $sampler = $this->factory->forParams(new SamplingParams(temperature: 0.0));
+
+        self::assertInstanceOf(GreedySampler::class, $sampler);
+    }
+
+    public function testForParamsTopPWhenTemperaturePositive(): void
+    {
+        $sampler = $this->factory->forParams(new SamplingParams(temperature: 0.7));
+
+        self::assertInstanceOf(TopPSampler::class, $sampler);
+    }
+
+    public function testForParamsGrammarWhenProvided(): void
+    {
+        $sampler = $this->factory->forParams(
+            new SamplingParams(temperature: 0.7),
+            GbnfGrammar::fromString('root ::= "a"'),
+        );
+
+        self::assertInstanceOf(GrammarSampler::class, $sampler);
     }
 }

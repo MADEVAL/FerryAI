@@ -13,7 +13,6 @@ use FerryAI\Core\Exception\ModelNotFoundException;
 use FerryAI\Core\ValueObjects\ModelMetadata;
 use FerryAI\LlamaBackend\Runtime\LlamaRuntimeInterface;
 use FerryAI\LlamaBackend\Runtime\NativeLlamaRuntime;
-use FerryAI\LlamaBackend\Sampling\GreedySampler;
 
 /**
  * llama.cpp backend. All native interaction is delegated to a {@see LlamaRuntimeInterface}.
@@ -80,7 +79,7 @@ final class LlamaBackend implements Backend
             $session,
             $this->runtime,
             new ChatFormatter(ChatFormatter::detectFormat($name)),
-            new GreedySampler(),
+            null,
             $metadata,
             $target,
         );

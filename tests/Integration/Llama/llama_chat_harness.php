@@ -16,6 +16,7 @@ use FerryAI\AI;
 
 $device = $argv[1] ?? 'cpu';
 $maxTokens = (int) ($argv[2] ?? 16);
+$temperature = isset($argv[3]) ? (float) $argv[3] : 0.0;
 
 $llamaDir = getenv('FERRY_AI_LLAMA_DIR') ?: 'D:\\FerryAI';
 $wrapper = $llamaDir . '\\ferry_llama.dll';
@@ -39,7 +40,7 @@ try {
     $t0 = microtime(true);
     $result = AI::chat(
         [['role' => 'user', 'content' => 'What is the capital of France? Answer in one word.']],
-        ['max_tokens' => $maxTokens],
+        ['max_tokens' => $maxTokens, 'temperature' => $temperature],
     );
     $ms = (microtime(true) - $t0) * 1000;
 
