@@ -1,0 +1,13 @@
+{
+    "commit-msg": {
+        "enabled": true
+    },
+    "pre-commit": {
+        "enabled": true,
+        "actions": [
+            {
+                "action": "composer check"
+            }
+        ]
+    }
+}

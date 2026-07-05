@@ -94,7 +94,7 @@
 - ankane/onnxruntime: https://packagist.org/packages/ankane/onnxruntime · https://github.com/ankane/onnxruntime-php
 - rubix/ml: https://packagist.org/packages/rubix/ml · https://github.com/RubixML/ML
 - rubix/tensor: https://packagist.org/packages/rubix/tensor · https://github.com/RubixML/Tensor
-- codewithkyrian/huggingface-php: https://packagist.org/packages/codewithkyrian/huggingface-php · https://github.com/codewithkyrian/huggingface-php
+- codewithkyrian/huggingface: https://packagist.org/packages/codewithkyrian/huggingface · https://github.com/codewithkyrian/huggingface-php
 - dstogov/php-tensorflow (справочно): https://github.com/dstogov/php-tensorflow
 - php-opencv (справочно): https://github.com/php-opencv/php-opencv
 - llama.php (справочно): https://github.com/CodeWithKyrian/llama.php

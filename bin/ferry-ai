@@ -1,0 +1,79 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+/**
+ * FerryAI CLI entry point.
+ *
+ * Usage: php bin/ferry-ai <command>
+ *
+ * Commands:
+ *   check         Verify environment (PHP version, extensions, backends)
+ *   models:list   List cached models
+ *   models:prune  Clear model cache
+ *   tokenize      Tokenize input text
+ */
+
+require __DIR__ . '/../vendor/autoload.php';
+
+$command = $argv[1] ?? 'check';
+
+match ($command) {
+    'check' => check(),
+    'models:list' => modelsList(),
+    'models:prune' => modelsPrune(),
+    'tokenize' => tokenize($argv[2] ?? 'Hello world'),
+    default => printf("Unknown command: %s\nAvailable: check, models:list, models:prune, tokenize\n", $command),
+};
+
+function check(): void
+{
+    echo "FerryAI Environment Check\n";
+    echo str_repeat('=', 30) . "\n";
+    printf("PHP:       %s\n", PHP_VERSION);
+    printf("OS:        %s\n", PHP_OS_FAMILY);
+    printf("ext-ffi:   %s\n", extension_loaded('ffi') ? 'OK' : 'MISSING');
+    printf("ext-json:  %s\n", extension_loaded('json') ? 'OK' : 'MISSING');
+    printf("ext-hash:  %s\n", extension_loaded('hash') ? 'OK' : 'MISSING');
+    printf("ext-pdo:   %s\n", extension_loaded('pdo') ? 'OK' : 'MISSING');
+
+    try {
+        $onnx = new FerryAI\OnnxBackend\OnnxBackend();
+        printf("ONNX:      %s\n", $onnx->isAvailable() ? "available ({$onnx->version()})" : 'unavailable');
+    } catch (\Throwable) {
+        echo "ONNX:      unavailable\n";
+    }
+
+    try {
+        $llama = new FerryAI\LlamaBackend\LlamaBackend();
+        printf("Llama:     %s\n", $llama->isAvailable() ? 'available' : 'unavailable');
+    } catch (\Throwable) {
+        echo "Llama:     unavailable\n";
+    }
+
+    printf("CPU:       %s\n", (new FerryAI\CpuBackend\CpuNativeBackend())->isAvailable() ? 'available' : 'unavailable');
+}
+
+function modelsList(): void
+{
+    \FerryAI\AI::config(['backend' => 'onnx']);
+    $models = \FerryAI\AI::hub()->list();
+    echo $models === [] ? "No cached models\n" : implode("\n", $models) . "\n";
+}
+
+function modelsPrune(): void
+{
+    \FerryAI\AI::config(['backend' => 'onnx']);
+    $pruned = \FerryAI\AI::hub()->prune();
+    printf("Pruned %d models\n", $pruned);
+}
+
+function tokenize(string $text): void
+{
+    \FerryAI\AI::config(['backend' => 'onnx']);
+    $modelDir = getenv('FERRY_AI_MODEL_DIR') ?: 'D:\FerryAI\all-MiniLM-L6-v2-onnx';
+    $tokenizer = \FerryAI\AI::tokenizer($modelDir . '/tokenizer.json');
+    $ids = $tokenizer->encode($text);
+    printf("Tokens: [%s] (%d)\n", implode(', ', array_slice($ids, 0, 20)), count($ids));
+}

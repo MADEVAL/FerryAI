@@ -18,7 +18,7 @@ final class AIConfigTest extends TestCase
     {
         $config = AIConfig::fromArray([]);
 
-        self::assertSame(BackendType::CpuNative, $config->backend());
+        self::assertSame(BackendType::Onnx, $config->backend());
         self::assertSame(Device::AUTO, $config->device());
         self::assertSame(2048, $config->maxTokens());
         self::assertSame(0.7, $config->temperature());

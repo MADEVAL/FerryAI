@@ -70,21 +70,26 @@ php-inference/
 │   │       └── ArrayTensor.php          # Pure-PHP реализация для CPU-fallback
 │   ├── onnx-backend/
 │   │   ├── composer.json
-│   │   ├── phpunit.xml.dist
 │   │   └── src/
 │   │       ├── OnnxBackend.php
 │   │       ├── OnnxModel.php
 │   │       ├── OnnxTensor.php
 │   │       ├── Provider/
-│   │       │   ├── ExecutionProvider.php       # Интерфейс провайдера
+│   │       │   ├── ExecutionProvider.php
 │   │       │   ├── CpuProvider.php
 │   │       │   ├── CudaProvider.php
 │   │       │   ├── TensorRtProvider.php
 │   │       │   ├── CoreMlProvider.php
 │   │       │   ├── DirectMlProvider.php
-│   │       │   ├── OpenVinoProvider.php         # Intel OpenVINO (Фаза 4)
-│   │       │   └── RocmProvider.php             # AMD ROCm (Фаза 4)
-│   │       └── OnnxRuntimeFactory.php          # Фабрика для создания OrtEnvironment/OrtSession
+│   │       │   ├── OpenVinoProvider.php
+│   │       │   └── RocmProvider.php
+│   │       ├── OnnxRuntimeFactory.php
+│   │       ├── OnnxTypeMapper.php        # ONNX type ↔ FerryAI enum mapping
+│   │       └── Runtime/
+│   │           ├── OnnxRuntimeInterface.php  # Mockable seam
+│   │           ├── OnnxSession.php           # Session handle marker
+│   │           ├── NativeOnnxRuntime.php     # Production FFI implementation
+│   │           └── NativeOnnxSession.php     # Production session wrapper
 │   ├── llama-backend/
 │   │   ├── composer.json
 │   │   ├── phpunit.xml.dist
@@ -92,15 +97,21 @@ php-inference/
 │   │       ├── LlamaBackend.php
 │   │       ├── LlamaModel.php
 │   │       ├── FFI/
-│   │       │   ├── LlamaCpp.php          # FFI-определения C API
-│   │       │   ├── LlamaContext.php       # Обёртка llama_context
-│   │       │   └── LlamaBatch.php         # Обёртка llama_batch
+│   │       │   ├── LlamaCpp.php
+│   │       │   ├── LlamaContext.php
+│   │       │   └── LlamaBatch.php
+│   │       ├── Runtime/
+│   │       │   ├── LlamaRuntimeInterface.php  # Mockable seam
+│   │       │   ├── LlamaSession.php           # Session handle marker
+│   │       │   ├── NativeLlamaRuntime.php     # Production FFI implementation
+│   │       │   └── NativeLlamaSession.php     # Production session wrapper
 │   │       ├── Sampling/
-│   │       │   ├── Sampler.php            # Интерфейс
+│   │       │   ├── Sampler.php
 │   │       │   ├── GreedySampler.php
 │   │       │   ├── TopPSampler.php
 │   │       │   ├── TopKSampler.php
 │   │       │   ├── GrammarSampler.php
+│   │       │   ├── SamplerMath.php            # Softmax/argmax/weighted pick
 │   │       │   └── SamplerFactory.php
 │   │       ├── Grammar/
 │   │       │   ├── GbnfGrammar.php
@@ -124,6 +135,7 @@ php-inference/
 │   │       ├── HuggingFaceTokenizer.php   # Приоритетный: биндинг к tokenizers-cpp через FFI
 │   │       ├── PureBpeTokenizer.php       # Fallback: Pure PHP BPE
 │   │       ├── PureWordPieceTokenizer.php # Fallback: Pure PHP WordPiece
+│   │       ├── SpecialTokens.php            # Bos/eos/unk/pad role extraction
 │   │       └── TokenizerLoader.php        # Загрузка tokenizer.json + определение типа
 │   ├── embedding/
 │   │   ├── composer.json

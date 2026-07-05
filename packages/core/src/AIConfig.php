@@ -57,12 +57,8 @@ final class AIConfig implements \ArrayAccess
 
     /**
      * Returns a value by key; supports dot notation for nested access.
-     *
-     * @param array|null|string $default
-     *
-     * @psalm-param ':memory:'|'all-MiniLM-L6-v2'|array|null $default
      */
-    public function get(string $key, array|string|null $default = null): mixed
+    public function get(string $key, mixed $default = null): mixed
     {
         $value = $this->config;
 
@@ -135,7 +131,8 @@ final class AIConfig implements \ArrayAccess
         return match ($value) {
             'onnx' => BackendType::Onnx,
             'llama' => BackendType::Llama,
-            'cpu', 'cpu_native', 'auto' => BackendType::CpuNative,
+            'cpu', 'cpu_native' => BackendType::CpuNative,
+            'auto' => BackendType::Onnx,
             default => throw new ConfigurationException('backend', \sprintf("unknown backend '%s'", $value)),
         };
     }

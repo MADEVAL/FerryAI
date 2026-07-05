@@ -180,7 +180,7 @@ Listed in `composer.json` scripts but not installed:
 |----------|------|--------|-------|---------|
 | ONNX inference | ✅ e2e proved | — | — | — |
 | ONNX providers | CPU ✅ | CUDA/TensorRT/ROCm/OpenVINO/DirectML | GPU probing | — |
-| llama.cpp | DLL loads | — | ABI not validated | Full CDEF |
+| llama.cpp | ✅ DLL loads, init, probes, metadata | — | ⚠️ Model load crashes (hparams:55) — PHP FFI struct ABI mismatch with Clang 20.1.8. See §12. | — |
 | Embedding | ✅ via Embedder direct | — | AI::embed() via facade | Config wiring |
 | Tokenizer | ✅ pure-PHP BPE/WordPiece | — | Native tokenizers-cpp | DLL |
 | Vector store | ✅ brute-force | sqlite-vec (FFI not wired) | — | sqlite-vec DLL |
@@ -198,3 +198,307 @@ Listed in `composer.json` scripts but not installed:
 | DataFrame | — | — | — | Entire package (6 files) |
 | Documentation | README + BUILD_LOG + design docs | — | — | All usage guides |
 | Dev tooling | PHPUnit + PHPStan + Psalm + CS Fixer | — | — | Infection, Pest, CaptainHook |
+| Safetensors loading | 🔴 Format detected only | — | — | No loader. Needs Python conversion to ONNX/GGUF. See §13. |
+| GPU inference | 🔴 Never tested | — | — | CPU-only ONNX + llama.cpp builds. CUDA DLLs present but unused. See §14. |
+| RubixML models | 🔴 Never tested | — | — | `rubix/ml` not installed. `predict()`/`proba()` throw. See §15. |
+| Universal model loader | 🔴 Manual CDEF per build | — | — | No auto-generator from .h files. See §16. |
+| WSL / Linux testing | 🔴 Never tested | — | — | All 568 tests pass only on Windows x64. See §17. |
+| PostgreSQL vector store | 🔴 Not implemented | — | — | SQLite only. PG available at 127.0.0.1:5432. See §18. |
+
+---
+
+## 12. llama.cpp FFI — Deep Dive (2026-07-05)
+
+### Environment
+
+| Item | Value |
+|------|-------|
+| Build | 9873 (commit `a4107133a`) |
+| Compiler | Clang 20.1.8, Windows x86_64 |
+| llama.dll | 2.6 MB, `D:\FerryAI\llama.dll` |
+| GGUF model | `Qwen2.5-0.5B-Instruct-Q4_K_M.gguf` (380 MB, 24 layers, 151K vocab, Q4_K quant) |
+| Model source | `bartowski/Qwen2.5-0.5B-Instruct-GGUF` on HuggingFace |
+| Native CLI test | `llama-cli.exe -m model.gguf -p "Hello" -n 5` → *"Hello! How can I"* at **309 t/s** ✅ |
+
+### What Works
+
+| Step | Detail |
+|------|--------|
+| `FFI::cdef(CDEF, llama.dll)` | ✅ Loads. Requires `D:\FerryAI` in PATH (dependent DLLs: `ggml.dll`, `ggml-base.dll`, `ggml-cpu-x64.dll`, `llama-common.dll`) |
+| `llama_backend_init()` | ✅ No crash when PATH includes DLL directory |
+| `llama_print_system_info()` | ⚠️ Returns empty string in this build |
+| `llama_supports_mmap()` | ✅ Returns `true` |
+| `llama_supports_gpu_offload()` | ✅ Returns `false` (CPU build) |
+| `llama_supports_mlock()` | ✅ Returns `true` |
+| CPU backend load | ✅ `load_backend: loaded CPU backend from ggml-cpu-x64.dll` |
+| Model metadata read | ✅ All 38 KV pairs, 290 tensors, tokenizer (151,936 tokens, BPE) |
+| Tensor load start | ✅ `layer 0 assigned to device CPU, is_swa = 0` |
+
+### What Crashes
+
+| Step | Error |
+|------|-------|
+| `llama_model_load_from_file(path, params)` | `D:/a/llama.cpp/llama.cpp/src/llama-hparams.cpp:55: fatal error` |
+| Same with `llama_model_default_params()` | Same crash |
+| Same with `FFI::new('llama_model_params')` (zero-init) | Same crash |
+
+### Root Cause Analysis
+
+`llama_model_load_from_file` takes `struct llama_model_params` **by value** (64 bytes on x64).
+The struct contains 10 fields including 7 pointers, 3 int32s, and 1 padding int32.
+
+PHP FFI's struct layout for C functions depends on:
+1. Platform ABI (Windows x64 = Microsoft x64 calling convention)
+2. Struct member alignment rules
+3. Compiler-specific padding (Clang vs MSVC vs GCC)
+
+**The `llama.dll` was compiled with Clang 20.1.8 on GitHub Actions (`D:/a/llama.cpp/`).**
+PHP FFI uses the platform-default C ABI (MSVC-compatible on Windows). Clang and MSVC
+agree on the x64 ABI, BUT:
+- Function pointers (`llama_progress_callback`) may have different size/alignment
+- `main_gpu` (int32) followed by `tensor_split` (float*) may have different padding
+
+The exact struct layout (verified via `FFI::sizeof`):
+```
+Offset  Size  Field
+0       8     devices (void*)
+8       8     tensor_buft_overrides (void*)
+16      4     n_gpu_layers (int32)
+20      4     split_mode (int32)
+24      4     main_gpu (int32)
+28      4     _pad (explicit padding)
+32      8     tensor_split (float*)
+40      8     progress_callback (fn ptr)
+48      8     progress_callback_user_data (void*)
+56      8     kv_overrides (void*)
+Total: 64 bytes
+```
+
+Despite the layout matching at the byte level (verified), the crash persists.
+Possible explanations:
+1. Clang adds tail padding to align struct size to 16 bytes → 80 bytes actual
+2. The `llama_model_load_from_file_impl` internal function has a different signature than the public one
+3. C++ name mangling or exception handling tables differ between Clang and MSVC
+4. The GGML library uses thread-local storage that conflicts with PHP's TLS
+
+### Attempted Fixes
+
+| Attempt | Result |
+|---------|--------|
+| `llama_model_default_params()` from DLL | Crash |
+| `FFI::new()` with zero-init | Crash |
+| Removing `llama_batch_get_one` from CDEF | Crash |
+| Explicit `int32_t _pad` field | Crash (same offset) |
+| Struct size 64 bytes confirmed | No effect |
+| Copy ggml-cpu-x64.dll to CWD | CPU backend found, but still crash |
+| Set `n_gpu_layers=0` explicitly | No effect |
+| Use defaults without modification | No effect |
+
+### What's Needed for Full Inference
+
+**Option A: C wrapper DLL** (recommended)
+Write a thin C wrapper that exposes flat-function API:
+```c
+// wrapper.c → wrapper.dll
+void* llama_wrap_load_model(const char* path);  // hides struct params
+void* llama_wrap_create_context(void* model, int n_ctx, int n_threads);
+int   llama_wrap_tokenize(void* model, const char* text, int* tokens, int max);
+// etc.
+```
+This avoids struct-by-value entirely. Can be compiled with the same Clang version.
+
+**Option B: Byte-perfect struct reverse-engineering**
+Dump the actual struct layout from the DLL using `dumpbin /all` or a C sizeof program
+compiled with the exact same Clang flags. Update CDEF byte-for-byte.
+
+**Option C: Dynamic struct sizing**
+Allocate `N * 8` bytes for the struct and try different sizes until one works.
+Clang may pad the struct to 80 bytes (16-byte alignment for SIMD).
+
+### Impact
+
+| What works | What doesn't |
+|-----------|-------------|
+| Library probe (`isAvailable()`) | Model loading (`llama_model_load_from_file`) |
+| Version/capability detection | Tokenization via native vocab |
+| CPU/GPU capability checks | `llama_decode` inference |
+| Backend init/teardown | Text generation |
+
+### PHPUnit-specific Crash
+
+In PHPUnit context, the DLL crashes on `FFI::cdef()` with `GGML_ASSERT(prev != ggml_uncaught_exception)`.
+This is a C++ exception state conflict between PHPUnit's output buffering and the GGML library's
+global constructors. Does NOT happen in standalone PHP scripts. `isAvailable()` reports `true`
+only in non-PHPUnit contexts. The integration test skips gracefully.
+
+**Workaround:** set `FERRY_AI_LLAMA_LIB` + DLL dir in PATH before PHP starts (not via `putenv()`).
+PHPUnit tests will skip; standalone scripts work for probing.
+
+---
+
+## 13. Safetensors — Not Supported
+
+**What:** `D:\FerryAI\Qwen3-0.6B\model.safetensors` exists but cannot be loaded.
+
+**Why safetensors doesn't work:**
+- `.safetensors` is a HuggingFace/PyTorch serialization format. It contains raw tensor weights, not a computation graph.
+- ONNX Runtime loads `.onnx` (Protobuf graph + weights).
+- llama.cpp loads `.gguf` (GGML quantized format with tokenizer embedded).
+- `.safetensors` requires a model architecture definition (`config.json`) + weights → needs to be **converted** first.
+
+**Conversion paths:**
+| From | To | Tool |
+|------|----|------|
+| `model.safetensors` + `config.json` | `model.onnx` | `optimum-cli export onnx` (Python, HuggingFace Optimum) |
+| `model.safetensors` + `config.json` | `model.gguf` | `convert_hf_to_gguf.py` (Python, llama.cpp) |
+
+**FerryAI can DETECT safetensors** (`FormatDetector` returns `'safetensors'`) but cannot load them.
+This is correct behaviour — detection ≠ loading. The format is recognized for informational purposes.
+
+**Debt:** document the conversion workflow for users who have safetensors models from HuggingFace.
+Add example: `python -m optimum.exporters.onnx --model Qwen/Qwen3-0.6B output/`
+
+---
+
+## 14. GPU — Never Tested
+
+### ONNX Runtime
+- Installed package is **CPU-build** (`onnxruntime-win-x64-1.27.0`).
+- `GetAvailableProviders` returns: `["AzureExecutionProvider", "CPUExecutionProvider"]`
+- CUDA provider (`CudaProvider`) correctly reports `isAvailable()=false`
+- All other GPU providers (`TensorRt`, `DirectMl`, `Rocm`, `OpenVino`) → `isAvailable()=false`
+
+### llama.cpp
+- `llama_supports_gpu_offload()` returns `false` (CPU build).
+- `cublas64_13.dll`, `cublasLt64_13.dll`, `cudart64_13.dll` exist in `D:\FerryAI` but unused.
+- The llama.cpp build we have is **CPU-only** (no CUDA backend).
+
+### What needs testing
+| Backend | GPU package needed |
+|---------|--------------------|
+| ONNX Runtime | `onnxruntime-win-x64-gpu-1.27.0.zip` (separate download with CUDA provider) |
+| llama.cpp | CUDA-enabled build (`llama-bXXXX-bin-win-cuda-cuXX-x64.zip`) |
+| Both | NVIDIA GPU + CUDA drivers + cuDNN |
+
+**Debt:** no GPU inference path has ever been exercised. All 568 tests and 20 examples run on CPU only.
+
+---
+
+## 15. RubixML Models — Never Tested
+
+### Current state
+- `CpuNativeBackend` exists, `isAvailable()=true` (always).
+- `RubixMLAdapter::isAvailable()` returns `false` because `class_exists('Rubix\ML\Estimator')` fails — `rubix/ml` is **not installed**.
+- `CpuNativeModel::run()` returns hardcoded `['output' => [0.5, 0.3, 0.2]]` — not real inference.
+- `RubixMLAdapter::predict()` / `proba()` throw `'RubixML adapter not fully implemented'`.
+- `CpuNativeTensor` arithmetic operations throw `'Not implemented in Phase 3.'`
+
+### What's missing
+- `rubix/ml` package (`composer require rubix/ml`)
+- A real `.rbm` model file (RubixML serialized estimator)
+- End-to-end test: load `.rbm` → `predict()` → classification result
+- Full `CpuNativeTensor` arithmetic (add/sub/mul/matmul) backed by RubixML/Tensor
+
+**Debt:** the `cpu-backend` package is a skeleton. It can load models in theory, but no real `.rbm` inference has been performed.
+
+---
+
+## 16. Universal Model Loader — Design Gap
+
+### Problem
+Currently, each backend requires hand-written FFI CDEF declarations:
+- `onnx-backend`: uses `ankane/onnxruntime` PHP library (managed dependency, solved)
+- `llama-backend`: requires `LlamaCpp::CDEF` to be manually aligned with `llama.h` per build
+- `cpu-backend`: requires `rubix/ml` PHP library (solved if installed)
+- `tokenizer`: `HuggingFaceTokenizer` requires hand-written CDEF for `tokenizers-cpp`
+
+### Why this is a problem
+Every new llama.cpp build potentially changes struct layouts, function signatures, or enum values.
+Users must diff `llama.h` against the CDEF and update manually. This is fragile and not user-friendly.
+
+### Proposed solution: Auto-generated CDEF
+A tool that reads a C header file and generates PHP FFI declarations:
+```
+php bin/generate-ffi.php --header llama.h --output LlamaCppCDEF.php
+```
+This would parse `llama.h`, extract function signatures and struct definitions, and produce
+a PHP-compatible CDEF string. Eliminates manual CDEF writing.
+
+**Or:** the C-wrapper DLL approach (§12 Option A) which hides all struct complexity behind
+simple functions with `char*` and `int` parameters.
+
+**Debt:** no universal loader exists. Each backend's FFI binding is hand-crafted and build-specific.
+
+---
+
+## 17. WSL Testing — Never Done
+
+### What
+FerryAI has only been tested on native Windows (PowerShell 5.1, PHP 8.5.4 x64).
+Windows Subsystem for Linux (WSL2) is a supported deployment target but never exercised.
+
+### What needs testing in WSL
+| Item | Reason |
+|------|--------|
+| `libonnxruntime.so` loading | Linux shared library path differs from Windows DLL |
+| `libllama.so` + `libggml.so` | Linux llama.cpp builds use different CPU backends |
+| `ext-ffi` with Linux `.so` files | Linux FFI uses ELF, not PE/COFF |
+| PHP-FPM + Nginx | Production deployment on Linux |
+| `ext-shmop` with Linux shared memory | Different SHM implementation |
+| `ext-pdo_pgsql` with Linux PostgreSQL | Different socket than Windows named pipes |
+| RoadRunner / FrankenPHP | Long-running PHP on Linux |
+| File paths | `/home/` vs `C:\Users\`, forward vs backslash |
+| `putenv('PATH=...')` | Works differently on Linux |
+
+**Debt:** zero tests on Linux/WSL. All 568 tests pass only on Windows x64. Linux is the primary
+production deployment target for PHP applications.
+
+---
+
+## 18. PostgreSQL Vector Store — Not Implemented
+
+### Current state
+- `vector` package supports **SQLite only** via `SQLiteStore`.
+- No PostgreSQL adapter exists.
+- PostgreSQL with `pgvector` extension is the industry standard for production vector databases.
+
+### Available infrastructure
+PostgreSQL is running locally:
+```
+DSN:  pgsql:host=127.0.0.1;port=5432
+User: postgres
+Pass: postgres
+```
+
+### What's needed
+
+**New file:** `packages/vector/src/PostgresStore.php`
+```php
+class PostgresStore {
+    __construct(string $dsn, string $user, string $pass)
+    createCollection(string $name, int $dimension): void
+    insertVector(string $collection, string $id, array $vector, ?array $metadata): void
+    search(array $queryVector, int $k, ?array $filter): array   // via pgvector <=> operator
+    // ... same interface as SQLiteStore
+}
+```
+
+**Key differences from SQLite:**
+- Uses `pgvector` extension (`CREATE EXTENSION vector`)
+- Vector column type: `vector(384)` instead of `BLOB`
+- ANN search via IVFFlat/HNSW indexes (native pgvector), no brute-force fallback needed
+- `<=>` operator for cosine distance, `<->` for Euclidean, `<#>` for dot product
+- Connection pooling via persistent PDO connections
+
+**New file:** `packages/vector/src/PostgresVecIndex.php`
+- `createIndex(string $collection, string $type = 'hnsw'): void`
+- HNSW index: `CREATE INDEX ON vectors_{name} USING hnsw (embedding vector_cosine_ops)`
+- IVF index: `CREATE INDEX ON vectors_{name} USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100)`
+
+**Integration:**
+- `CollectionManager` should accept a `$storeType = 'sqlite'` parameter
+- `AIFactory::createVectorStore()` should support `'pgsql'` driver
+- Environment-based config: `FERRY_AI_VECTOR_DRIVER=pgsql`
+
+**Debt:** no PostgreSQL vector store. SQLite works for dev/demos but not for production.
+PostgreSQL + pgvector is the expected production backend.

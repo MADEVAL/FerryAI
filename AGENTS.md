@@ -119,4 +119,5 @@ scope — имя пакета (`core`, `onnx-backend`, `ai`, …).
 | CI/CD, composer, публикация | `docs/REPOSITORY_INFRASTRUCTURE.md` |
 | Внешние источники и стек | `docs/SOURCES.md` |
 | Журнал разработки | `docs/BUILD_LOG.md` |
+| Технический долг (stubs, mocks, gates) | `docs/DEBT_REPORT.md` |
 | Навигатор по всему | `docs/README.md` |

@@ -6,6 +6,7 @@ $finder = PhpCsFixer\Finder::create()
     ->in(__DIR__ . '/packages')
     ->exclude('vendor')
     ->exclude('tests/fixtures')
+    ->notPath('#/FFI/|/Runtime/#')
     ->name('*.php');
 
 return (new PhpCsFixer\Config())

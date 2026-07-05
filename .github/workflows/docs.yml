@@ -1,0 +1,13 @@
+name: Docs
+
+on:
+  push:
+    branches: [main]
+    paths: ['docs/**']
+
+jobs:
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo "Docs CI — add doc generation and deployment steps"
