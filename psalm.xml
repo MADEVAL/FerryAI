@@ -13,6 +13,13 @@
         <directory name="packages/onnx-backend/src"/>
         <directory name="packages/llama-backend/src"/>
         <directory name="packages/tokenizer/src"/>
+        <directory name="packages/embedding/src"/>
+        <directory name="packages/vector/src"/>
+        <directory name="packages/model-hub/src"/>
+        <directory name="packages/pipeline/src"/>
+        <directory name="packages/cpu-backend/src"/>
+        <directory name="packages/laravel/src"/>
+        <directory name="packages/symfony/src"/>
         <directory name="packages/ai/src"/>
         <ignoreFiles>
             <directory name="packages/*/tests"/>

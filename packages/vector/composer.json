@@ -1,0 +1,43 @@
+{
+    "name": "ferry-ai/inference-vector",
+    "description": "FerryAI vector store: SQLite-backed vector storage with ANN search",
+    "type": "library",
+    "license": "MIT",
+    "homepage": "https://github.com/MADEVAL/FerryAI",
+    "authors": [
+        {
+            "name": "Yevhen Leonidov",
+            "homepage": "https://github.com/MADEVAL"
+        }
+    ],
+    "require": {
+        "php": ">=8.5",
+        "ferry-ai/inference-core": "^1.0",
+        "ext-pdo": "*"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^12.0 || ^13.0",
+        "phpstan/phpstan": "^2.0",
+        "vimeo/psalm": "^6.0"
+    },
+    "suggest": {
+        "ext-pdo_sqlite": "For SQLite-based vector storage",
+        "ext-ffi": "For sqlite-vec extension ANN search",
+        "ext-sqlite3": "Alternative to ext-pdo_sqlite"
+    },
+    "autoload": {
+        "psr-4": {
+            "FerryAI\\Vector\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "FerryAI\\Vector\\Tests\\": "tests/"
+        }
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

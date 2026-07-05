@@ -35,6 +35,13 @@
             "FerryAI\\OnnxBackend\\": "packages/onnx-backend/src/",
             "FerryAI\\LlamaBackend\\": "packages/llama-backend/src/",
             "FerryAI\\Tokenizer\\": "packages/tokenizer/src/",
+            "FerryAI\\Embedding\\": "packages/embedding/src/",
+            "FerryAI\\Vector\\": "packages/vector/src/",
+            "FerryAI\\ModelHub\\": "packages/model-hub/src/",
+            "FerryAI\\Pipeline\\": "packages/pipeline/src/",
+            "FerryAI\\CpuBackend\\": "packages/cpu-backend/src/",
+            "FerryAI\\Laravel\\": "packages/laravel/src/",
+            "FerryAI\\Symfony\\": "packages/symfony/src/",
             "FerryAI\\": "packages/ai/src/"
         }
     },
@@ -45,6 +52,11 @@
             "FerryAI\\OnnxBackend\\Tests\\": "packages/onnx-backend/tests/",
             "FerryAI\\LlamaBackend\\Tests\\": "packages/llama-backend/tests/",
             "FerryAI\\Tokenizer\\Tests\\": "packages/tokenizer/tests/",
+            "FerryAI\\Embedding\\Tests\\": "packages/embedding/tests/",
+            "FerryAI\\Vector\\Tests\\": "packages/vector/tests/",
+            "FerryAI\\ModelHub\\Tests\\": "packages/model-hub/tests/",
+            "FerryAI\\Pipeline\\Tests\\": "packages/pipeline/tests/",
+            "FerryAI\\CpuBackend\\Tests\\": "packages/cpu-backend/tests/",
             "FerryAI\\Tests\\": ["tests/", "packages/ai/tests/"]
         }
     },

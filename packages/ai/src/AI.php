@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace FerryAI;
 
 use FerryAI\Core\AIConfig;
+use FerryAI\Core\Contracts\Embedder;
 use FerryAI\Core\Contracts\ModelHub;
 use FerryAI\Core\Contracts\Pipeline;
 use FerryAI\Core\Contracts\Tokenizer;
@@ -49,6 +50,7 @@ final class AI
         self::$registry = new BackendRegistry();
         self::$registry->register(BackendType::Onnx, self::$factory->createBackend(BackendType::Onnx));
         self::$registry->register(BackendType::Llama, self::$factory->createBackend(BackendType::Llama));
+        self::$registry->register(BackendType::CpuNative, self::$factory->createBackend(BackendType::CpuNative));
         self::$activeBackend = BackendType::Onnx;
         self::$activeDevice = self::$config->device();
     }
@@ -150,27 +152,59 @@ final class AI
     {
         self::ensureConfigured();
 
-        throw new \RuntimeException(
-            'AI::embed() requires the tokenizer (Phase 2) and embedding (Phase 3) packages.',
-        );
+        $embedder = self::embedder();
+
+        if (\is_string($input)) {
+            $vector = $embedder->embed($input);
+
+            return new EmbeddingResult($vector, $embedder->dimension(), $embedder->modelName());
+        }
+
+        $vectors = $embedder->embedBatch($input);
+        $results = [];
+
+        foreach ($vectors as $vector) {
+            $results[] = new EmbeddingResult($vector, $embedder->dimension(), $embedder->modelName());
+        }
+
+        return $results;
     }
 
     public static function similarity(string $a, string $b): float
     {
-        self::ensureConfigured();
+        $embedder = self::embedder();
 
-        throw new \RuntimeException(
-            'AI::similarity() requires the tokenizer (Phase 2) and embedding (Phase 3) packages.',
+        return $embedder->cosineSimilarity(
+            $embedder->embed($a),
+            $embedder->embed($b),
         );
     }
 
     public static function classify(mixed $input): ClassificationResult
     {
         self::ensureConfigured();
+        $activeBackend = self::activeBackend();
 
-        throw new \RuntimeException(
-            'AI::classify() requires the tokenizer (Phase 2) and embedding (Phase 3) packages.',
-        );
+        $backend = self::registry()->get($activeBackend);
+        $config = self::configuration();
+        $modelPath = $config->get('backends.classify.model_path');
+
+        if (!\is_string($modelPath) || $modelPath === '') {
+            throw new ConfigurationException('backends.classify.model_path', 'a classification model path must be configured');
+        }
+
+        $model = $backend->load($modelPath);
+        $outputs = $model->run(['input' => $input]);
+        $scores = $outputs['output'] ?? \reset($outputs);
+
+        if (\is_array($scores) && isset($scores[0]) && \is_numeric($scores[0])) {
+            $maxScore = (float) \max($scores);
+            $label = (string) \array_search($maxScore, $scores, true);
+
+            return new ClassificationResult($label, $maxScore);
+        }
+
+        return new ClassificationResult('unknown', 0.0);
     }
 
     /**
@@ -179,10 +213,30 @@ final class AI
     public static function moderate(string $text): array
     {
         self::ensureConfigured();
+        $activeBackend = self::activeBackend();
 
-        throw new \RuntimeException(
-            'AI::moderate() requires the tokenizer (Phase 2) and embedding (Phase 3) packages.',
-        );
+        $backend = self::registry()->get($activeBackend);
+        $config = self::configuration();
+        $modelPath = $config->get('backends.moderate.model_path');
+
+        if (!\is_string($modelPath) || $modelPath === '') {
+            throw new ConfigurationException('backends.moderate.model_path', 'a moderation model path must be configured');
+        }
+
+        $model = $backend->load($modelPath);
+        $outputs = $model->run(['input' => $text]);
+        $scores = $outputs['output'] ?? \reset($outputs);
+
+        if (!\is_array($scores)) {
+            return ['categories' => [], 'flagged' => false];
+        }
+
+        $maxScore = $scores !== [] ? (float) \max($scores) : 0.0;
+
+        return [
+            'categories' => $scores,
+            'flagged' => $maxScore > 0.5,
+        ];
     }
 
     /**
@@ -192,7 +246,18 @@ final class AI
     {
         self::ensureConfigured();
 
-        throw new \RuntimeException('AI::predict() requires the cpu-backend package (Phase 3).');
+        $factory = self::factory();
+        $backend = $factory->createBackend(BackendType::CpuNative);
+        $config = self::configuration();
+        $modelPath = $config->get('backends.predict.model_path');
+
+        if (!\is_string($modelPath) || $modelPath === '') {
+            throw new ConfigurationException('backends.predict.model_path', 'a prediction model path must be configured');
+        }
+
+        $model = $backend->load($modelPath);
+
+        return $model->run($features);
     }
 
     public static function pipeline(): Pipeline
@@ -221,6 +286,14 @@ final class AI
      * @throws BackendNotAvailableException when no chat-capable backend is available
      * @throws ConfigurationException       when the llama model path is not configured
      */
+    private static function embedder(): Embedder
+    {
+        $config = self::configuration();
+        $modelName = $config->get('embedding.model', 'all-MiniLM-L6-v2');
+
+        return self::factory()->createEmbedder($modelName);
+    }
+
     private static function chatModel(): LlamaModel
     {
         self::ensureConfigured();

@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace FerryAI\Tests\Unit;
 
 use FerryAI\AIFactory;
+use FerryAI\Core\Contracts\Pipeline;
+use FerryAI\Core\Contracts\VectorStore;
 use FerryAI\Core\Enums\BackendType;
-use FerryAI\Core\Exception\BackendNotAvailableException;
+use FerryAI\CpuBackend\CpuNativeBackend;
 use FerryAI\LlamaBackend\LlamaBackend;
 use FerryAI\OnnxBackend\OnnxBackend;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -25,11 +27,9 @@ final class AIFactoryTest extends TestCase
         self::assertInstanceOf(LlamaBackend::class, (new AIFactory())->createBackend(BackendType::Llama));
     }
 
-    public function testCreateCpuNativeBackendThrowsInPhase1(): void
+    public function testCreateCpuNativeBackend(): void
     {
-        $this->expectException(BackendNotAvailableException::class);
-
-        (new AIFactory())->createBackend(BackendType::CpuNative);
+        self::assertInstanceOf(CpuNativeBackend::class, (new AIFactory())->createBackend(BackendType::CpuNative));
     }
 
     public function testCreateTokenizerByNameRequiresHub(): void
@@ -39,17 +39,19 @@ final class AIFactoryTest extends TestCase
         (new AIFactory())->createTokenizer('bert-base');
     }
 
-    public function testCreateVectorStoreIsNotImplementedInPhase1(): void
+    public function testCreateVectorStore(): void
     {
-        $this->expectException(\RuntimeException::class);
+        $store = (new AIFactory())->createVectorStore('docs', 384);
 
-        (new AIFactory())->createVectorStore('docs', 384);
+        self::assertInstanceOf(VectorStore::class, $store);
+        self::assertSame(384, $store->dimension());
+        self::assertSame('docs', $store->collectionName());
     }
 
-    public function testCreatePipelineIsNotImplementedInPhase1(): void
+    public function testCreatePipeline(): void
     {
-        $this->expectException(\RuntimeException::class);
+        $pipeline = (new AIFactory())->createPipeline();
 
-        (new AIFactory())->createPipeline();
+        self::assertInstanceOf(Pipeline::class, $pipeline);
     }
 }

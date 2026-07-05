@@ -1,0 +1,12 @@
+services:
+  ferry-ai:
+    build: .
+    environment:
+      FERRY_AI_BACKEND: auto
+      FERRY_AI_DEVICE: auto
+      FERRY_AI_MODEL_CACHE: /app/models
+    volumes:
+      - model-cache:/app/models
+
+volumes:
+  model-cache:

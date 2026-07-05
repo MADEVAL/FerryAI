@@ -6,6 +6,13 @@ parameters:
         - packages/onnx-backend/src
         - packages/llama-backend/src
         - packages/tokenizer/src
+        - packages/embedding/src
+        - packages/vector/src
+        - packages/model-hub/src
+        - packages/pipeline/src
+        - packages/cpu-backend/src
+        - packages/laravel/src
+        - packages/symfony/src
         - packages/ai/src
     excludePaths:
         analyseAndScan:

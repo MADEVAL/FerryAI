@@ -54,9 +54,9 @@ final class AITest extends TestCase
     {
         AI::config(['backend' => 'onnx']);
 
-        $this->expectException(BackendNotAvailableException::class);
+        $this->expectException(ConfigurationException::class);
 
-        AI::backend('cpu');
+        AI::backend('unknown-backend');
     }
 
     public function testSetDevice(): void
@@ -111,12 +111,11 @@ final class AITest extends TestCase
         }
     }
 
-    public function testEmbedRequiresLaterPhase(): void
+    public function testEmbedThrowsWhenNoTokenizerAvailable(): void
     {
         AI::config(['backend' => 'onnx']);
 
         $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessageMatches('/Phase [23]/');
 
         AI::embed('hello world');
     }

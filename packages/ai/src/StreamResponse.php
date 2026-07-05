@@ -4,43 +4,49 @@ declare(strict_types=1);
 
 namespace FerryAI;
 
-use Psr\Http\Message\ResponseInterface;
-
-/**
- * HTTP streaming response helper.
- *
- * Phase 1 stub: real SSE/NDJSON streaming requires the llama-backend (Phase 2) and is
- * finalised in Phase 4. Every method throws with an actionable message until then.
- */
 final class StreamResponse
 {
-    private const string MESSAGE = 'StreamResponse requires the llama-backend package (Phase 2); '
-        . 'streaming HTTP responses are finalised in Phase 4.';
+    /** @var iterable<int, string> */
+    private iterable $tokens;
 
     /**
-     * @param iterable<int, string> $tokens the token stream to render (used from Phase 2 onwards)
+     * @param iterable<int, string> $tokens
      */
     public function __construct(iterable $tokens = [])
     {
-        // Phase 1 stub: the token stream is accepted for API shape but not yet consumed.
-        unset($tokens);
+        $this->tokens = $tokens;
     }
 
     /**
      * @param iterable<int, string> $tokens
      */
-    public static function create(iterable $tokens = []): ResponseInterface
+    public static function create(iterable $tokens): \Psr\Http\Message\ResponseInterface
     {
-        throw new \RuntimeException(self::MESSAGE);
+        throw new \RuntimeException(
+            'StreamResponse::create() requires psr/http-message implementation (e.g. nyholm/psr7, guzzlehttp/psr7). '
+            . 'Use toSse() or toNdjson() for raw string output.',
+        );
     }
 
     public function toSse(): string
     {
-        throw new \RuntimeException(self::MESSAGE);
+        $lines = [];
+
+        foreach ($this->tokens as $token) {
+            $lines[] = 'data: ' . $token;
+        }
+
+        return \implode("\n\n", $lines) . "\n\n";
     }
 
     public function toNdjson(): string
     {
-        throw new \RuntimeException(self::MESSAGE);
+        $lines = [];
+
+        foreach ($this->tokens as $token) {
+            $lines[] = \json_encode(['token' => $token], JSON_UNESCAPED_UNICODE);
+        }
+
+        return \implode("\n", $lines) . "\n";
     }
 }

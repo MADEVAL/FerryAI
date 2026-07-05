@@ -1,0 +1,33 @@
+{
+    "name": "ferry-ai/inference-laravel",
+    "description": "FerryAI Laravel integration: service provider and facade",
+    "type": "library",
+    "license": "MIT",
+    "homepage": "https://github.com/MADEVAL/FerryAI",
+    "authors": [
+        {
+            "name": "Yevhen Leonidov",
+            "homepage": "https://github.com/MADEVAL"
+        }
+    ],
+    "require": {
+        "php": ">=8.5",
+        "ferry-ai/inference-ai": "^1.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^12.0 || ^13.0"
+    },
+    "suggest": {
+        "laravel/framework": "For Laravel integration"
+    },
+    "autoload": {
+        "psr-4": {
+            "FerryAI\\Laravel\\": "src/"
+        }
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

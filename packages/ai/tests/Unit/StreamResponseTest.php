@@ -11,24 +11,40 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(StreamResponse::class)]
 final class StreamResponseTest extends TestCase
 {
-    public function testCreateIsNotImplementedInPhase1(): void
+    public function testCreateThrowsWithoutPsr7Implementation(): void
     {
         $this->expectException(\RuntimeException::class);
 
-        StreamResponse::create([]);
+        StreamResponse::create(['hello', 'world']);
     }
 
-    public function testToSseIsNotImplementedInPhase1(): void
+    public function testToSseFormatsTokens(): void
     {
-        $this->expectException(\RuntimeException::class);
+        $tokens = ['Hello', 'World'];
+        $response = new StreamResponse($tokens);
 
-        (new StreamResponse([]))->toSse();
+        $sse = $response->toSse();
+
+        self::assertStringContainsString('data: Hello', $sse);
+        self::assertStringContainsString('data: World', $sse);
     }
 
-    public function testToNdjsonIsNotImplementedInPhase1(): void
+    public function testToNdjsonFormatsTokens(): void
     {
-        $this->expectException(\RuntimeException::class);
+        $tokens = ['Hello', 'World'];
+        $response = new StreamResponse($tokens);
 
-        (new StreamResponse([]))->toNdjson();
+        $ndjson = $response->toNdjson();
+
+        self::assertStringContainsString('"token":"Hello"', $ndjson);
+        self::assertStringContainsString('"token":"World"', $ndjson);
+    }
+
+    public function testEmptyTokensProducesOutput(): void
+    {
+        $response = new StreamResponse([]);
+
+        self::assertSame("\n\n", $response->toSse());
+        self::assertSame("\n", $response->toNdjson());
     }
 }

@@ -57,8 +57,12 @@ final class AIConfig implements \ArrayAccess
 
     /**
      * Returns a value by key; supports dot notation for nested access.
+     *
+     * @param array|null|string $default
+     *
+     * @psalm-param ':memory:'|'all-MiniLM-L6-v2'|array|null $default
      */
-    public function get(string $key, mixed $default = null): mixed
+    public function get(string $key, array|string|null $default = null): mixed
     {
         $value = $this->config;
 

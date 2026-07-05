@@ -12,16 +12,16 @@ use FerryAI\Core\Contracts\Pipeline;
 use FerryAI\Core\Contracts\Tokenizer;
 use FerryAI\Core\Contracts\VectorStore;
 use FerryAI\Core\Enums\BackendType;
-use FerryAI\Core\Exception\BackendNotAvailableException;
+use FerryAI\CpuBackend\CpuNativeBackend;
+use FerryAI\Embedding\Embedder as EmbedderImpl;
 use FerryAI\LlamaBackend\LlamaBackend;
+use FerryAI\ModelHub\Hub;
 use FerryAI\OnnxBackend\OnnxBackend;
+use FerryAI\Pipeline\Pipeline as PipelineImpl;
 use FerryAI\Tokenizer\TokenizerFactory;
+use FerryAI\Vector\CollectionManager;
+use FerryAI\Vector\SQLiteStore;
 
-/**
- * Creates platform components from configuration.
- *
- * In Phase 1 only the ONNX backend is available; other components are gated to later phases.
- */
 final class AIFactory
 {
     private readonly AIConfig $config;
@@ -36,18 +36,12 @@ final class AIFactory
         return $this->config;
     }
 
-    /**
-     * @throws BackendNotAvailableException when the backend is not available in this phase
-     */
     public function createBackend(BackendType $type): Backend
     {
         return match ($type) {
             BackendType::Onnx => new OnnxBackend(),
             BackendType::Llama => new LlamaBackend(),
-            BackendType::CpuNative => throw new BackendNotAvailableException(
-                $type->value,
-                'the cpu-backend package is introduced in Phase 3',
-            ),
+            BackendType::CpuNative => new CpuNativeBackend(),
         };
     }
 
@@ -58,21 +52,30 @@ final class AIFactory
 
     public function createVectorStore(string $collection, int $dimension): VectorStore
     {
-        throw new \RuntimeException('Vector stores are introduced in Phase 3 (vector package).');
+        $dbPath = $this->config->get('vector.db_path', ':memory:');
+        $store = new SQLiteStore($dbPath);
+        $manager = new CollectionManager($store);
+
+        return $manager->create($collection, $dimension);
     }
 
     public function createModelHub(): ModelHub
     {
-        throw new \RuntimeException('The model hub is introduced in Phase 3 (model-hub package).');
+        $cacheDir = $this->config->modelCache();
+
+        return new Hub($cacheDir);
     }
 
     public function createPipeline(): Pipeline
     {
-        throw new \RuntimeException('Pipelines are introduced in Phase 3 (pipeline package).');
+        return new PipelineImpl();
     }
 
     public function createEmbedder(string $modelName): Embedder
     {
-        throw new \RuntimeException('Embedders are introduced in Phase 3 (embedding package).');
+        $backend = $this->createBackend($this->config->backend());
+        $tokenizer = $this->createTokenizer($modelName);
+
+        return new EmbedderImpl($modelName, $backend, $tokenizer);
     }
 }

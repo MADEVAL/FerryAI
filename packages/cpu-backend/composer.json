@@ -1,0 +1,40 @@
+{
+    "name": "ferry-ai/inference-cpu-backend",
+    "description": "FerryAI CPU-native backend via RubixML for table-based prediction models",
+    "type": "library",
+    "license": "MIT",
+    "homepage": "https://github.com/MADEVAL/FerryAI",
+    "authors": [
+        {
+            "name": "Yevhen Leonidov",
+            "homepage": "https://github.com/MADEVAL"
+        }
+    ],
+    "require": {
+        "php": ">=8.5",
+        "ferry-ai/inference-core": "^1.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^12.0 || ^13.0",
+        "phpstan/phpstan": "^2.0",
+        "vimeo/psalm": "^6.0"
+    },
+    "suggest": {
+        "rubix/ml": "For PHP-native ML model loading and inference"
+    },
+    "autoload": {
+        "psr-4": {
+            "FerryAI\\CpuBackend\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "FerryAI\\CpuBackend\\Tests\\": "tests/"
+        }
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

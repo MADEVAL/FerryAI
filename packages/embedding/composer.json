@@ -1,0 +1,41 @@
+{
+    "name": "ferry-ai/inference-embedding",
+    "description": "FerryAI embedding: text embedding generation with pooling strategies",
+    "type": "library",
+    "license": "MIT",
+    "homepage": "https://github.com/MADEVAL/FerryAI",
+    "authors": [
+        {
+            "name": "Yevhen Leonidov",
+            "homepage": "https://github.com/MADEVAL"
+        }
+    ],
+    "require": {
+        "php": ">=8.5",
+        "ferry-ai/inference-core": "^1.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^12.0 || ^13.0",
+        "phpstan/phpstan": "^2.0",
+        "vimeo/psalm": "^6.0"
+    },
+    "suggest": {
+        "ferry-ai/inference-onnx-backend": "For ONNX Runtime inference of embedding models",
+        "ferry-ai/inference-tokenizer": "For tokenizing input text"
+    },
+    "autoload": {
+        "psr-4": {
+            "FerryAI\\Embedding\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "FerryAI\\Embedding\\Tests\\": "tests/"
+        }
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
