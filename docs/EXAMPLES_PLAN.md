@@ -1,6 +1,6 @@
 # FerryAI Examples — Coverage Reference
 
-> **All 20 examples are implemented** in `examples/`. This document is the capability coverage matrix.
+> **All 21 examples are implemented** in `examples/`. This document is the capability coverage matrix.
 > Each example is a standalone PHP script: `php examples/<name>.php`.
 
 ---
@@ -290,6 +290,7 @@ examples/
 ├── 18-stream-response.php
 ├── 19-laravel.php
 ├── 20-symfony.php
+├── 21-postgres-vector.php      # PostgreSQL + pgvector: native ANN, HNSW, metadata filter
 └── README.md                  # How to run, prerequisites, expected output
 ```
 
@@ -302,3 +303,6 @@ examples/
 5. Drops to lower-level classes (`OnnxBackend`, `CollectionManager`, `RetryHandler`) only when showcasing capabilities the facade doesn't expose
 6. No comments — code is self-documenting through clear variable/method names
 7. All output is plain text with structured sections: `=== Section Title ===`
+8. **Milestone policy:** every notable feature or backend added to the project MUST ship
+   with (a) a runnable example in `examples/` and (b) at least a short section (~5+ lines)
+   in the root `README.md`. "No example + README entry ⇒ the milestone is not done."

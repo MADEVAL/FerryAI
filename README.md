@@ -50,6 +50,35 @@ the same C APIs that Python uses. No subprocess, no shell_exec, no Python.
 
 ---
 
+## Vector store
+
+Two interchangeable backends behind the same `VectorStore` contract — pick per environment:
+
+| Backend | Status | Search | Best for |
+|---------|--------|--------|----------|
+| **SQLite** | 🟢 Production | PHP brute-force (cosine/euclidean/dot) | Dev, demos, small collections, zero-setup |
+| **PostgreSQL + pgvector** | 🟢 Production | Native `<=>` / `<->` / `<#>`, HNSW / IVFFlat indexes | Production, large collections, concurrent access |
+
+```php
+use FerryAI\AI;
+
+// Opt in via config or FERRY_AI_VECTOR_DRIVER=pgsql (default: sqlite)
+AI::config(['vector' => [
+    'driver' => 'pgsql',
+    'dsn' => 'pgsql:host=127.0.0.1;port=5432',
+    'user' => 'postgres', 'password' => 'postgres',
+]]);
+
+$store = AI::vector('docs');                       // PostgresCollection (implements VectorStore)
+$store->add('doc1', $vec->vector, ['lang' => 'en']);
+$hits = $store->search($query, k: 5, filter: ['lang' => ['eq' => 'en']]);
+```
+
+Vectors live in native `vector(dim)` columns with `jsonb` metadata; verified against
+PostgreSQL 18.3 + pgvector 0.8.4. See [`examples/21-postgres-vector.php`](examples/21-postgres-vector.php).
+
+---
+
 ## Quick Start
 
 ```bash
@@ -104,6 +133,7 @@ echo \$b->isAvailable() ? 'YES' : 'NO';
 | llama.cpp FFI load (build 9873) | ✅ DLL loads, `llama_backend_init()` OK, `supports_mmap()`=YES |
 | HuggingFace API | ✅ Qwen3-0.6B found, search works |
 | Vector store | ✅ SQLite CRUD, brute-force search, metadata filter |
+| Vector store (Postgres) | ✅ pgvector 0.8.4 native `<=>` search, HNSW index, metadata filter |
 | Shared memory (shmop) | ✅ Allocate 2.5B key, attach, detach |
 | Async fibers | ✅ Suspend/resume, parallel tasks, timeout 10ms |
 | GPU (CUDA) | 🔵 ONNX = CPU build. CUDA DLLs present for llama.cpp |
@@ -121,7 +151,7 @@ packages/
 │                  GBNF grammar, JSON Schema→GBNF, ChatFormatter (5 templates)
 ├── tokenizer/     Pure PHP BPE + WordPiece (round-tripping, chunking)
 ├── embedding/     Mean/CLS/EOS/Max pooling, 4 built-in models
-├── vector/        SQLite vector store, brute-force search, metadata filtering
+├── vector/        SQLite + PostgreSQL/pgvector store, brute-force & native ANN, metadata filtering
 ├── model-hub/     HF download, LRU cache, SHA-256+Ed25519, format detection
 ├── pipeline/      Generator-based stages (8 types)
 ├── cpu-backend/   Always-available CPU fallback
@@ -135,8 +165,8 @@ packages/
 ## Testing
 
 ```bash
-composer test                # 568 unit tests — pure PHP
-composer test-integration    # Integration — needs ONNX Runtime + llama.cpp
+composer test                # 580 unit tests — pure PHP
+composer test-integration    # Integration — needs ONNX Runtime / llama.cpp / PostgreSQL
 composer check               # cs-fix + PHPStan lvl8 + Psalm lvl3 + tests
 ```
 
@@ -144,9 +174,10 @@ composer check               # cs-fix + PHPStan lvl8 + Psalm lvl3 + tests
 
 ## Examples
 
-See [`examples/`](examples/) — 20 standalone scripts covering every capability:
-embedding, tokenizer, chat, streaming, RAG, pipeline, vector store, grammar,
-model hub, profiling, async, model pool, retry, benchmarks, Laravel, Symfony.
+See [`examples/`](examples/) — 21 standalone scripts covering every capability:
+embedding, tokenizer, chat, streaming, RAG, pipeline, vector store (SQLite &
+PostgreSQL/pgvector), grammar, model hub, profiling, async, model pool, retry,
+benchmarks, Laravel, Symfony.
 
 ```bash
 set FERRY_AI_MODEL_DIR=D:\FerryAI\all-MiniLM-L6-v2-onnx

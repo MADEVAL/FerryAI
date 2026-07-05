@@ -837,3 +837,49 @@ with `Fiber::suspend()` infinite loop. All test doubles are hand-rolled stubs im
 - Corrected `codewithkyrian/huggingface` package URL (was `huggingface-php`, wrong composer name)
 
 **Verification:** `composer cs-fix` → 0 of 246 fixable. `composer test` → 568/568.
+
+---
+
+## 2026-07-05 — Debt §18: PostgreSQL + pgvector vector store
+
+**What (TDD):** Implemented the production PostgreSQL vector backend for the `vector`
+package, closing `DEBT_REPORT.md` §18.
+
+**Environment provisioned:**
+- pgvector 0.8.4 built from source against PostgreSQL 18.3 (x64) with Visual Studio
+  2022 (`nmake /F Makefile.win` + `install`), extension verified at runtime
+  (`CREATE EXTENSION vector`, native `<=>` cosine ordering). pgvector 0.8.0 does not
+  compile against PG 18 (`vacuum_delay_point` signature change) — 0.8.4 required.
+
+**Files created:**
+- `packages/vector/src/PostgresStore.php` — PDO wrapper. Native `vector(dim)` columns
+  + `jsonb` metadata, `ferry_collections` registry, upsert/CRUD/iterate, native
+  `search()` via pgvector operators. Pure helpers `vectorTableName()` (identifier
+  injection guard), `vectorToLiteral()`, `distanceOperator()`.
+- `packages/vector/src/PostgresCollection.php` — `implements VectorStore`. Native ANN
+  ordering; metadata filter reuses `MetadataFilter` (matching ids → restricted query).
+- `packages/vector/src/PostgresVecIndex.php` — HNSW/IVFFlat index DDL builder + apply.
+- `packages/vector/tests/Unit/PostgresStoreHelpersTest.php` (7), 
+  `PostgresVecIndexHelpersTest.php` (5).
+- `tests/Integration/Postgres/PostgresVectorIntegrationTest.php` (14, `@group integration`,
+  `@coversNothing`).
+
+**Integration:** `AIFactory::createVectorStore()` driver switch — `vector.driver` /
+`FERRY_AI_VECTOR_DRIVER` (`pgsql` → `PostgresCollection`, default `sqlite` unchanged).
+Config keys `vector.dsn|user|password|metric`. `vector/composer.json` suggests
+`ext-pdo_pgsql`. Metric map `cosine <=>`, `euclidean <->`, `dot <#>`.
+
+**Verification:**
+- `composer test` → 580/580 (1014 assertions), +12 new unit tests.
+- Postgres integration (`FERRY_AI_SKIP_NATIVE=0`) → 14/14 against real server.
+- New files: PHPStan L8 `No errors`, Psalm L3 `No errors`, `composer cs-check` 0 fixable.
+- Note: repo-wide `composer stan` remains at 26 pre-existing cosmetic errors
+  (confirmed present on a clean `git stash` baseline; unrelated to this change).
+
+**Docs:** `DEBT_REPORT.md` §18 → RESOLVED (+ summary matrix, §6 integration list),
+`FILE_TREE.md` vector package (7 → 10 files), `tests/Integration/.env` PG vars.
+
+**Example + README (milestone policy):** `examples/21-postgres-vector.php` (runs green
+against the live server, skips gracefully otherwise), `examples/README.md` Tier 5,
+`docs/EXAMPLES_PLAN.md` (20 → 21), and root `README.md` — new "Vector store" section
+(SQLite vs PostgreSQL/pgvector), Verified table, Packages, test/example counts.

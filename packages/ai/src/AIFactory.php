@@ -20,6 +20,8 @@ use FerryAI\OnnxBackend\OnnxBackend;
 use FerryAI\Pipeline\Pipeline as PipelineImpl;
 use FerryAI\Tokenizer\TokenizerFactory;
 use FerryAI\Vector\CollectionManager;
+use FerryAI\Vector\PostgresCollection;
+use FerryAI\Vector\PostgresStore;
 use FerryAI\Vector\SQLiteStore;
 
 final class AIFactory
@@ -52,11 +54,45 @@ final class AIFactory
 
     public function createVectorStore(string $collection, int $dimension): VectorStore
     {
+        if ($this->vectorDriver() === 'pgsql') {
+            return $this->createPostgresVectorStore($collection, $dimension);
+        }
+
         $dbPath = $this->config->get('vector.db_path', ':memory:');
-        $store = new SQLiteStore($dbPath);
+        $store = new SQLiteStore(\is_string($dbPath) ? $dbPath : ':memory:');
         $manager = new CollectionManager($store);
 
         return $manager->create($collection, $dimension);
+    }
+
+    private function vectorDriver(): string
+    {
+        $driver = $this->config->get('vector.driver');
+
+        if (!\is_string($driver)) {
+            $env = \getenv('FERRY_AI_VECTOR_DRIVER');
+            $driver = $env !== false ? $env : 'sqlite';
+        }
+
+        return \strtolower($driver);
+    }
+
+    private function createPostgresVectorStore(string $collection, int $dimension): VectorStore
+    {
+        $dsn = (string) $this->config->get('vector.dsn', \getenv('FERRY_AI_PG_DSN') ?: 'pgsql:host=127.0.0.1;port=5432');
+        $user = (string) $this->config->get('vector.user', \getenv('FERRY_AI_PG_USER') ?: 'postgres');
+        $password = (string) $this->config->get('vector.password', \getenv('FERRY_AI_PG_PASSWORD') ?: 'postgres');
+        $metric = (string) $this->config->get('vector.metric', 'cosine');
+
+        $store = new PostgresStore($dsn, $user, $password);
+
+        if ($store->collectionExists($collection)) {
+            $dimension = $store->getDimension($collection) ?? $dimension;
+        } elseif ($dimension > 0) {
+            $store->createCollection($collection, $dimension, $metric);
+        }
+
+        return new PostgresCollection($collection, $dimension, $store, $metric);
     }
 
     public function createModelHub(): ModelHub

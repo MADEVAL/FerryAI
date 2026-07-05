@@ -1,6 +1,6 @@
 {
     "name": "ferry-ai/inference-vector",
-    "description": "FerryAI vector store: SQLite-backed vector storage with ANN search",
+    "description": "FerryAI vector store: SQLite and PostgreSQL/pgvector-backed vector storage with ANN search",
     "type": "library",
     "license": "MIT",
     "homepage": "https://github.com/MADEVAL/FerryAI",
@@ -22,6 +22,7 @@
     },
     "suggest": {
         "ext-pdo_sqlite": "For SQLite-based vector storage",
+        "ext-pdo_pgsql": "For PostgreSQL + pgvector vector storage with native ANN search",
         "ext-ffi": "For sqlite-vec extension ANN search",
         "ext-sqlite3": "Alternative to ext-pdo_sqlite"
     },

@@ -191,6 +191,9 @@ php-inference/
 │   │       ├── CollectionManager.php      # Управление коллекциями (создание, удаление)
 │   │       ├── SQLiteStore.php            # PDO-обёртка над SQLite
 │   │       ├── SqliteVecExtension.php     # FFI-биндинг к sqlite-vec extension
+│   │       ├── PostgresStore.php          # PDO-обёртка над PostgreSQL + pgvector
+│   │       ├── PostgresCollection.php     # Contracts\VectorStore поверх pgvector (native ANN)
+│   │       ├── PostgresVecIndex.php       # HNSW/IVFFlat индексы pgvector
 │   │       ├── BruteForceIndex.php        # Fallback brute force (PHP)
 │   │       ├── MetadataFilter.php         # WHERE-подобный парсер фильтров
 │   │       └── ExportImport.php           # Экспорт/Импорт в JSON/Parquet
@@ -430,7 +433,7 @@ php-inference/
 
 ---
 
-### Пакет `vector` (7 файлов)
+### Пакет `vector` (10 файлов)
 
 | # | Путь | Содержит | Зависит от |
 |---|---|---|---|
@@ -441,8 +444,11 @@ php-inference/
 | 5 | `BruteForceIndex.php` | class `BruteForceIndex` — fallback brute force поиск | (нет) |
 | 6 | `MetadataFilter.php` | class `MetadataFilter` — WHERE-парсер для JSON | (нет) |
 | 7 | `ExportImport.php` | class `ExportImport` — JSON/Parquet экспорт/импорт | (нет) |
+| 8 | `PostgresStore.php` | class `PostgresStore` — PDO-обёртка над PostgreSQL+pgvector | ext-pdo_pgsql |
+| 9 | `PostgresCollection.php` | class `PostgresCollection` implements VectorStore (native ANN) | core Contracts\VectorStore, PostgresStore, MetadataFilter |
+| 10 | `PostgresVecIndex.php` | class `PostgresVecIndex` — HNSW/IVFFlat индексы | PostgresStore |
 
-**Всего: 7 файлов**
+**Всего: 10 файлов**
 
 ---
 

@@ -88,6 +88,7 @@
 |-----------|-------|--------|
 | `tests/Integration/Onnx/OnnxRuntimeIntegrationTest.php` | 3 (version, devices, providers) | ✅ Pass with ONNX 1.27.0 |
 | `tests/Integration/Llama/LlamaBackendIntegrationTest.php` | 2 (version, devices) | ⊘ Skipped — `NativeLlamaRuntime::isAvailable()` = false |
+| `tests/Integration/Postgres/PostgresVectorIntegrationTest.php` | 14 (CRUD, native cosine search, filter, HNSW, AIFactory) | ✅ Pass with PostgreSQL 18.3 + pgvector 0.8.4 |
 
 **Missing integration tests:**
 - Model loading + inference (ONNX or llama)
@@ -203,7 +204,7 @@ Listed in `composer.json` scripts but not installed:
 | RubixML models | 🔴 Never tested | — | — | `rubix/ml` not installed. `predict()`/`proba()` throw. See §15. |
 | Universal model loader | 🔴 Manual CDEF per build | — | — | No auto-generator from .h files. See §16. |
 | WSL / Linux testing | 🔴 Never tested | — | — | All 568 tests pass only on Windows x64. See §17. |
-| PostgreSQL vector store | 🔴 Not implemented | — | — | SQLite only. PG available at 127.0.0.1:5432. See §18. |
+| PostgreSQL vector store | ✅ PostgresStore + PostgresCollection + PostgresVecIndex (pgvector 0.8.4) | — | — | Resolved. See §18. |
 
 ---
 
@@ -455,50 +456,58 @@ production deployment target for PHP applications.
 
 ---
 
-## 18. PostgreSQL Vector Store — Not Implemented
+## 18. PostgreSQL Vector Store — Implemented (2026-07-05)
 
-### Current state
-- `vector` package supports **SQLite only** via `SQLiteStore`.
-- No PostgreSQL adapter exists.
-- PostgreSQL with `pgvector` extension is the industry standard for production vector databases.
+### Status: RESOLVED
 
-### Available infrastructure
-PostgreSQL is running locally:
-```
-DSN:  pgsql:host=127.0.0.1;port=5432
-User: postgres
-Pass: postgres
-```
+The `vector` package now ships a full PostgreSQL + pgvector backend alongside SQLite.
 
-### What's needed
+### Environment provisioned
 
-**New file:** `packages/vector/src/PostgresStore.php`
-```php
-class PostgresStore {
-    __construct(string $dsn, string $user, string $pass)
-    createCollection(string $name, int $dimension): void
-    insertVector(string $collection, string $id, array $vector, ?array $metadata): void
-    search(array $queryVector, int $k, ?array $filter): array   // via pgvector <=> operator
-    // ... same interface as SQLiteStore
-}
-```
+- PostgreSQL 18.3 (x64, MSVC) at `127.0.0.1:5432`, user/pass `postgres`/`postgres`.
+- `pgvector` 0.8.4 built from source with Visual Studio 2022 (`nmake /F Makefile.win`)
+  and installed into `D:\_PROGRAMS\PostgreSQL\18\{lib,share\extension}`.
+  (pgvector 0.8.0 fails to compile against PG 18 — `vacuum_delay_point` signature
+  change; 0.8.4 is the first tag that builds cleanly.)
+- Verified runtime: `CREATE EXTENSION vector`, native `<=>` cosine ordering.
 
-**Key differences from SQLite:**
-- Uses `pgvector` extension (`CREATE EXTENSION vector`)
-- Vector column type: `vector(384)` instead of `BLOB`
-- ANN search via IVFFlat/HNSW indexes (native pgvector), no brute-force fallback needed
-- `<=>` operator for cosine distance, `<->` for Euclidean, `<#>` for dot product
-- Connection pooling via persistent PDO connections
+### Delivered
 
-**New file:** `packages/vector/src/PostgresVecIndex.php`
-- `createIndex(string $collection, string $type = 'hnsw'): void`
-- HNSW index: `CREATE INDEX ON vectors_{name} USING hnsw (embedding vector_cosine_ops)`
-- IVF index: `CREATE INDEX ON vectors_{name} USING ivfflat (embedding vector_cosine_ops) WITH (lists = 100)`
+**New files:**
+- `packages/vector/src/PostgresStore.php` — PDO wrapper. Multi-collection storage in
+  native `vector(dim)` columns + `jsonb` metadata; upsert, CRUD, iterate, native
+  `search()` via pgvector distance operators. Metadata table `ferry_collections`.
+- `packages/vector/src/PostgresCollection.php` — `implements VectorStore`. Native ANN
+  ordering (no brute force); metadata filtering reuses the tested `MetadataFilter`
+  (matching ids resolved first, distance query restricted to them).
+- `packages/vector/src/PostgresVecIndex.php` — HNSW / IVFFlat index DDL
+  (`vector_cosine_ops` / `vector_l2_ops` / `vector_ip_ops`).
 
 **Integration:**
-- `CollectionManager` should accept a `$storeType = 'sqlite'` parameter
-- `AIFactory::createVectorStore()` should support `'pgsql'` driver
-- Environment-based config: `FERRY_AI_VECTOR_DRIVER=pgsql`
+- `AIFactory::createVectorStore()` selects the driver via `vector.driver`
+  (config) or `FERRY_AI_VECTOR_DRIVER` (env); `pgsql` → `PostgresCollection`,
+  default `sqlite` → existing path (no regression).
+- Config keys: `vector.dsn`, `vector.user`, `vector.password`, `vector.metric`.
+- `composer.json` (`vector`): `suggest` `ext-pdo_pgsql`.
 
-**Debt:** no PostgreSQL vector store. SQLite works for dev/demos but not for production.
-PostgreSQL + pgvector is the expected production backend.
+**Metric mapping:** `cosine → <=>`, `euclidean → <->`, `dot → <#>`
+(matches `BruteForceIndex` semantics, incl. pgvector's negative inner product).
+
+### Verification
+
+- Unit: `PostgresStoreHelpersTest`, `PostgresVecIndexHelpersTest` (pure helpers:
+  identifier validation/injection guard, vector literal, operator/opclass, index DDL).
+- Integration: `tests/Integration/Postgres/PostgresVectorIntegrationTest.php`
+  (`@group integration`, `@coversNothing`) — 14 tests against the real server:
+  CRUD, native cosine ordering, metadata filter, update, deleteByFilter, iterator/
+  export, clear, dimension mismatch, HNSW index, `AIFactory` pgsql path. Skips
+  gracefully when `ext-pdo_pgsql`/server/pgvector is absent.
+- `composer test` → 580 tests OK. `composer test-integration` (with
+  `FERRY_AI_SKIP_NATIVE=0`) → Postgres suite 14/14 OK. New files pass PHPStan L8
+  and Psalm L3.
+
+### Remaining (minor)
+
+- IVFFlat `lists` is fixed at 100; not yet tuned to dataset size.
+- Index creation is opt-in (call `PostgresVecIndex::createIndex`); not auto-created
+  by `AIFactory`.

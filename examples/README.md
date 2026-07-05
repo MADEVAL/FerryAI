@@ -57,6 +57,12 @@ For LLM examples — a GGUF model and validated llama.cpp FFI binding (see READM
 | 19 | `laravel.php` | ServiceProvider config + register/boot, Facade proxy, config file | None |
 | 20 | `symfony.php` | Bundle boot, Configuration tree, DI extension load | None |
 
+## Tier 5 — Storage backends
+
+| # | File | What it shows | Needs |
+|---|------|--------------|-------|
+| 21 | `postgres-vector.php` | PostgreSQL + pgvector: CRUD, native `<=>` ANN search, metadata filter, HNSW index | ext-pdo_pgsql + pgvector |
+
 ## Running
 
 ```bash
