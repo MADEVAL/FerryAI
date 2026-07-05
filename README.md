@@ -278,6 +278,17 @@ php examples/01-hello-embedding.php
 
 ## Documents
 
+Guides: [getting-started](docs/getting-started.md) ·
+[configuration](docs/configuration.md) ·
+[ONNX](docs/backends/onnx.md) / [llama.cpp](docs/backends/llama.md) ·
+[embedding](docs/embedding.md) · [vector store](docs/vector-store.md) ·
+[pipeline](docs/pipeline.md) · [model hub](docs/model-hub.md) ·
+[tokenizer](docs/tokenizer.md) · [streaming](docs/streaming.md) ·
+[security](docs/security.md) · [deployment](docs/deployment.md) ·
+[Laravel](docs/laravel.md) / [Symfony](docs/symfony.md) ·
+[troubleshooting](docs/troubleshooting.md) · [API reference](docs/api-reference.md) ·
+[CHANGELOG](CHANGELOG.md)
+
 | Document | Purpose |
 |----------|---------|
 | [`docs/SKILL.md`](docs/SKILL.md) | AI coding conventions |

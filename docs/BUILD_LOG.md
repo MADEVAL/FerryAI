@@ -1209,3 +1209,38 @@ errors - 620 unit tests. Integration 30/30 (added embed-cache + chat-pool tests)
 unchanged (no regressions).
 
 **Docs:** DEBT_REPORT.md §4 (Embedder cached) and §5 (chat/stream genuinely pooled, with numbers).
+
+---
+
+## 2026-07-05 - Strict GrammarSampler (pure-PHP GBNF recogniser)
+
+**What (TDD):** Replaced the stub GrammarSampler (which ignored the grammar) with real,
+strict grammar-constrained sampling.
+
+- New `Grammar\GbnfNode` (typed AST node) + `Grammar\GbnfMatcher` - a pure-PHP GBNF recogniser
+  (parser + prefix/complete recogniser) for a practical subset: string literals, char classes
+  ([a-z], [^0-9], escapes), alternation, sequences, grouping, `* + ?`, rule references, `#`
+  comments. Fully unit-tested (GbnfMatcherTest, 7 tests / 35 assertions) with no model.
+- `GrammarSampler` now masks tokens: bound to a token->piece decoder + EOS id by LlamaModel, it
+  picks the highest-logit token whose piece keeps the output a viable grammar prefix, and emits
+  EOS only once the grammar is complete. Standalone (no decoder) it still delegates (back-compat).
+  Unit-tested with a fake decoder (GrammarSamplerTest, 5 tests) - no model needed.
+- LlamaModel::resolveSampler binds a GrammarSampler to the session (fresh state per generation)
+  and uses full-vocab evaluate() for it.
+
+**Verification (fresh):** composer check fully green - cs 0 - PHPStan L8 No errors - Psalm L3 No
+errors - 630 unit tests. Integration LlamaBackendIntegrationTest 5/5, incl.
+testChatWithGrammarIsStrictlyConstrained: `root ::= "yes" | "no"` now yields exactly `yes` (was
+"Yes."/"No, the sky is not"). DEBT §12 grammar note updated.
+
+---
+
+## 2026-07-05 - Per-capability documentation (Section 9)
+
+Wrote the previously-missing guides (English), grounded in the real API and examples:
+docs/getting-started, configuration, api-reference, backends/onnx, backends/llama, embedding,
+vector-store, pipeline, model-hub, tokenizer, streaming, security, laravel, symfony, deployment,
+troubleshooting, and root CHANGELOG.md. README gained a guides navigation block; DEBT_REPORT.md
+Section 9 marked written. docs/specs/ stays empty (populated via the brainstorming workflow).
+
+No code change; composer check remains green (630 unit tests).

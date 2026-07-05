@@ -1,25 +1,32 @@
 # Changelog
 
-All notable changes to FerryAI will be documented in this file.
+All notable changes to FerryAI. Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
+Detailed engineering notes live in [`docs/BUILD_LOG.md`](docs/BUILD_LOG.md).
 
 ## [Unreleased]
 
 ### Added
-- ONNX Runtime backend with full inference (embeddings, classification)
-- llama.cpp FFI probe and backend initialization
-- Pure-PHP tokenizer (BPE, WordPiece) with round-tripping and chunking
-- Embedding system with Mean/CLS/EOS/Max pooling strategies
-- SQLite vector store with brute-force search and metadata filtering
-- Model Hub: HuggingFace download, LRU cache, SHA-256 + Ed25519 verification
-- Composable pipeline with 8 stages (Transform, Filter, Normalize, Chunk, etc.)
-- CPU-native backend (always-available fallback)
-- Shared memory model loading via ext-shmop
-- Async inference with PHP Fibers
-- Metrics and Profiler
-- RetryHandler with exponential/linear backoff
-- PlatformDetector for OS/arch detection
-- Laravel integration (ServiceProvider + Facade)
-- Symfony integration (Bundle + DI Extension)
-- 568 unit tests, 20 runnable examples
-- CI/CD pipeline (GitHub Actions)
-- Docker image and docker-compose configuration
+- PostgreSQL + pgvector vector store (`PostgresStore`, `PostgresCollection`, `PostgresVecIndex`)
+  with native ANN (`<=>`/`<->`/`<#>`) and HNSW/IVFFlat indexes; driver switch in `AIFactory`.
+- SQLite native KNN via the sqlite-vec (`vec0`) extension, opt-in, with brute-force fallback.
+- `Observability` wrapper wiring `Metrics`/`Profiler`/`Logger` into the facade (opt-in);
+  `ModelPool` integration (pooled model loading, LRU eviction, real `warmup`).
+- `NativeBinaryManager` library resolution in `AIFactory`; `RetryHandler`+`Logger` in the model hub.
+- CPU backend: real pure-PHP tensor arithmetic and RubixML `.rbm` inference (isolated).
+- FFI CDEF generator (`Core\FFI\CdefGenerator`, `bin/generate-ffi.php`).
+- Facade config-wiring for `embed`/`similarity`; PSR-7 `StreamResponse::create()`.
+- llama.cpp CPU + GPU inference via the `ferry_llama` wrapper, wired into `LlamaBackend`
+  (`AI::chat()`/`AI::stream()`), with a native top-k pre-filter for fast sampling.
+- Strict grammar-constrained sampling (`GbnfMatcher` + `GrammarSampler`); `sampler`/`grammar`
+  options on `AI::chat()`.
+- Per-capability documentation under `docs/` and this changelog.
+
+### Changed
+- `AIFactory` caches embedders per model; `AI::chat` pools its model (no reload per call).
+- `SamplerFactory::forParams()` selects greedy/nucleus by temperature; `softmax` honours temperature.
+
+### Fixed
+- `RubixMLAdapter::isAvailable()` used `class_exists` for the `Estimator` interface (now `interface_exists`).
+- All PHPStan level 8 findings resolved (gate fully green).
+
+See `docs/DEBT_REPORT.md` for the honest status of everything, including limitations.

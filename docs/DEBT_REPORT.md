@@ -202,7 +202,7 @@ env var, cross-linked to `docs/SOURCES.md`. `docs/SOURCES.md` gained pgvector, P
 the NVIDIA CUDA/cuDNN/TensorRT pages.
 
 **Remaining honest gaps:**
-- Per-capability guides below are still unwritten (the README matrix is the single source for now).
+- `docs/specs/` stays empty until a design goes through the brainstorming workflow.
 - `SOURCES.md` recorded sqlite-vec `v0.1.9`, but the verified binary here is `v0.1.10-alpha`
   (pre-1.0 / alpha) — see §3a.
 - Packaging: the root `composer.json` `require` lists only `ext-ffi/json/hash/fileinfo`; extensions
@@ -212,25 +212,25 @@ the NVIDIA CUDA/cuDNN/TensorRT pages.
 
 | Document | Status |
 |----------|--------|
-| `docs/specs/` | Empty directory |
+| `docs/specs/` | Empty directory (validated design specs land here per the brainstorming workflow) |
 | README §Dependencies & downloads | ✅ Written (2026-07-05) |
-| `docs/getting-started.md` | Not written |
-| `docs/configuration.md` | Not written |
-| `docs/backends/onnx.md` | Not written |
-| `docs/backends/llama.md` | Not written |
-| `docs/embedding.md` | Not written |
-| `docs/vector-store.md` | Not written |
-| `docs/pipeline.md` | Not written |
-| `docs/model-hub.md` | Not written |
-| `docs/tokenizer.md` | Not written |
-| `docs/streaming.md` | Not written |
-| `docs/security.md` | Not written |
-| `docs/laravel.md` | Not written |
-| `docs/symfony.md` | Not written |
-| `docs/deployment.md` | Not written |
-| `docs/troubleshooting.md` | Not written |
-| `docs/api-reference.md` | Not written |
-| `CHANGELOG.md` | Not written |
+| `docs/getting-started.md` | ✅ Written (2026-07-05) |
+| `docs/configuration.md` | ✅ Written (2026-07-05) |
+| `docs/backends/onnx.md` | ✅ Written |
+| `docs/backends/llama.md` | ✅ Written |
+| `docs/embedding.md` | ✅ Written |
+| `docs/vector-store.md` | ✅ Written |
+| `docs/pipeline.md` | ✅ Written |
+| `docs/model-hub.md` | ✅ Written |
+| `docs/tokenizer.md` | ✅ Written |
+| `docs/streaming.md` | ✅ Written |
+| `docs/security.md` | ✅ Written |
+| `docs/laravel.md` | ✅ Written |
+| `docs/symfony.md` | ✅ Written |
+| `docs/deployment.md` | ✅ Written |
+| `docs/troubleshooting.md` | ✅ Written |
+| `docs/api-reference.md` | ✅ Written |
+| `CHANGELOG.md` | ✅ Written |
 
 ---
 
@@ -317,9 +317,12 @@ hot path, so greedy/top-p/top-k are fast (~300 ms for a short answer; was ~5 s/t
 `examples/03-chat.php` / `examples/04-streaming.php`.
 
 **Remaining:**
-- Grammar sampling still evaluates the full vocab each step (it must, to honour the grammar), so
-  it is slower than top-k paths; `GrammarSampler` GBNF enforcement is also simplified (e.g. it does
-  not strictly reject every off-grammar token).
+- Grammar sampling evaluates the full vocab each step (it must, to honour the grammar), so it is
+  slower than the top-k paths. Enforcement itself is now **strict**: `GbnfMatcher` (pure-PHP GBNF
+  recogniser) masks tokens so only grammar-viable pieces are sampled and EOS is emitted only when
+  the grammar is satisfied (`root ::= "yes" | "no"` yields exactly `yes`/`no`). Supported GBNF
+  subset: literals, char classes (`[a-z]`, `[^0-9]`, escapes), `|`, sequences, `( )`, `* + ?`,
+  rule refs, `#` comments.
 - Runs standalone only — under PHPUnit the ggml global ctors conflict, so the integration test
   runs the harness in a subprocess (§12 PHPUnit note).
 - `ferry_llama.dll` is machine-built (not committed); ship a prebuilt binary or build in CI.

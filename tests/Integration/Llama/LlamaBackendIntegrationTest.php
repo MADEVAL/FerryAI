@@ -91,4 +91,12 @@ final class LlamaBackendIntegrationTest extends TestCase
         self::assertStringContainsStringIgnoringCase('paris', (string) $data['text2']);
         self::assertLessThan((int) $data['ms1'], (int) $data['ms2']);
     }
+
+    public function testChatWithGrammarIsStrictlyConstrained(): void
+    {
+        // root ::= "yes" | "no" — output must be exactly one of them, nothing else.
+        $data = $this->chat('cuda', 0.0, 'grammar');
+
+        self::assertContains((string) $data['text'], ['yes', 'no']);
+    }
 }

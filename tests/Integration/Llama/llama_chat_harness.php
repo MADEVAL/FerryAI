@@ -48,6 +48,17 @@ try {
         return ['text' => $result->text, 'ms' => (microtime(true) - $t0) * 1000, 'result' => $result];
     };
 
+    if ($mode === 'grammar') {
+        $r = AI::chat(
+            [['role' => 'user', 'content' => 'Is the sky blue?']],
+            ['max_tokens' => 8, 'grammar' => 'root ::= "yes" | "no"'],
+        );
+
+        echo json_encode(['device' => $device, 'text' => trim($r->text)]);
+
+        return;
+    }
+
     if ($mode === 'twice') {
         // Second call must reuse the pooled model (no reload) => noticeably faster.
         $a = $chat();

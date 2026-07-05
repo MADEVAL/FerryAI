@@ -219,7 +219,17 @@ final class LlamaModel implements Model
      */
     private function resolveSampler(SamplingParams $params, ?Sampler $override): Sampler
     {
-        return $override ?? $this->sampler ?? $this->samplerFactory->forParams($params, $this->grammar);
+        $sampler = $override ?? $this->sampler ?? $this->samplerFactory->forParams($params, $this->grammar);
+
+        if ($sampler instanceof GrammarSampler) {
+            $session = $this->requireSession();
+            $sampler = $sampler->bind(
+                fn(int $token): string => $this->runtime->tokenToPiece($session, $token),
+                $this->runtime->eosToken($session),
+            );
+        }
+
+        return $sampler;
     }
 
     /**
