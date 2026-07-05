@@ -4,6 +4,19 @@
 > It covers architecture, API contracts, test coverage, static analysis, documentation,
 > cross-platform consistency, performance invariants, and debt honesty. Execute thoroughly.
 
+## Hard Rules (read first — non-negotiable)
+
+1. **Отчёт пишется на русском языке.** Весь — заголовки, описания, рекомендации.
+2. **Каждая найденная проблема должна быть подтверждена запуском (runtime verification).**
+   Недостаточно прочитать код и предположить ошибку. Если статанализатор показал нарушение —
+   запусти соответствующую команду и покажи её вывод. Если тест упал — запусти его и покажи
+   результат. Если кажется что контракт нарушен — докажи это `grep`-ом или `composer`-командой.
+   **Вывод команды = доказательство. Без вывода команды проблема не считается подтверждённой.**
+3. **Выдуманные проблемы — не писать вовсе.** Если в ходе runtime-проверки гипотеза не
+   подтвердилась — она удаляется из отчёта полностью. В отчёте только реальные, воспроизводимые
+   проблемы с конкретными доказательствами. Не пиши «возможно, …», «стоит проверить …»,
+   «потенциально …». Либо подтверждено запуском, либо не пишется.
+
 ---
 
 ## Context
@@ -365,23 +378,27 @@ each — this is **O(vocab)** per token and intentionally slow. It must NOT use 
 
 ## Deliverable
 
-After the audit, produce a concise report with these sections:
+После аудита выдай отчёт **на русском языке** со следующими разделами:
 
-1. **Gate status**: each tool + exit code + error count. If any fail, the root cause and whether
-   it's pre-existing or newly introduced.
-2. **Architecture violations**: any cross-backend import, circular dependency, contract deviation,
-   or generic exception throw.
-3. **Test gap summary**: untested classes, missing contract tests, integration tests that never
-   run because the skip guard is too aggressive.
-4. **Documentation gaps**: missing capability guides, stale counts, broken links, undocumented env
-   vars or config keys.
-5. **Performance concerns**: anything that violates pooling/caching invariants or uses full-vocab
-   eval where top-k should be used.
-6. **Cross-platform issues**: Windows-only paths, hardcoded `.dll`, missing Linux build artifacts.
-7. **Security findings**: hardcoded credentials, unsafe deserialization, unverified model loading.
-8. **Honest debt check**: every unresolved item in `DEBT_REPORT.md` is actually unresolved and
-   accurately described.
-9. **Actionable recommendations**: a prioritised list of what to fix, in order.
+1. **Статус гейта**: каждый инструмент + код выхода + количество ошибок + **вывод команды**.
+   Если есть failures — root cause. Если все зелёные — так и пиши: «Всё зелёное, 630 тестов».
+2. **Нарушения архитектуры**: каждый факт — с grep-выводом или ссылкой на файл:строку.
+   Если нарушений нет — раздел отсутствует в отчёте.
+3. **Проблемы с тестами**: пропущенные тесты, упавшие тесты, тесты без покрытия. Каждый пункт —
+   с конкретным именем теста/класса и подтверждением (вывод phpunit/grep).
+4. **Пробелы в документации**: отсутствующие гайды, устаревшие счётчики, битые ссылки,
+   незадокументированные env-переменные. Каждый пункт — с доказательством (grep, diff, HEAD-запрос).
+5. **Проблемы производительности**: нарушения инвариантов пуллинга/кэширования, использование
+   полного vocab там где должен быть top-k. Каждый пункт — с grep-подтверждением или ссылкой на код.
+6. **Кросс-платформенные проблемы**: Windows-only пути, хардкод `.dll`, отсутствующие Linux build-артефакты.
+   Каждый пункт — с конкретной строкой кода.
+7. **Проблемы безопасности**: хардкод-секреты, небезопасная десериализация, непроверенная загрузка моделей.
+   Каждый пункт — с конкретным местом в коде.
+8. **Честность долгового отчёта**: каждый unresolved пункт в `DEBT_REPORT.md` действительно unresolved
+   и точно описан. Если что-то уже решено но не убрано — указать.
+9. **Приоритетные рекомендации**: что исправлять и в каком порядке. Только подтверждённые проблемы.
 
-Be exhaustive. Flag everything, even minor inconsistencies. The project has zero known runtime
-bugs — any finding is valuable.
+**Важно:** если в ходе проверки по какому-то разделу проблем не найдено — раздел **не включается
+в отчёт**. Не пиши «проблем не обнаружено» на 2 абзаца — просто пропусти раздел. Отчёт должен быть
+плотным, каждое утверждение подкреплено конкретным выводом команды, и ни одного выдуманного или
+неподтверждённого пункта.
