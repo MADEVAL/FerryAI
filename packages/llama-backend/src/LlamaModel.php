@@ -14,6 +14,7 @@ use FerryAI\Core\ValueObjects\SamplingParams;
 use FerryAI\LlamaBackend\Grammar\GbnfGrammar;
 use FerryAI\LlamaBackend\Runtime\LlamaRuntimeInterface;
 use FerryAI\LlamaBackend\Runtime\LlamaSession;
+use FerryAI\LlamaBackend\Sampling\GrammarSampler;
 use FerryAI\LlamaBackend\Sampling\Sampler;
 use FerryAI\LlamaBackend\Sampling\SamplerFactory;
 
@@ -50,28 +51,30 @@ final class LlamaModel implements Model
     #[\Override]
     public function run(array $inputs): array
     {
-        [, $logits] = $this->open($inputs);
-        $token = $this->resolveSampler($this->defaultParams)->sample($logits, $this->defaultParams);
+        $sampler = $this->resolveSampler($this->defaultParams, null);
+        [, $logits] = $this->open($inputs, $sampler, $this->defaultParams);
+        $token = $sampler->sample($logits, $this->defaultParams);
 
         return ['text' => $this->runtime->tokenToPiece($this->requireSession(), $token), 'token' => $token];
     }
 
     /**
-     * Generates a full response.
+     * Generates a full response. An explicit $sampler overrides per-request selection.
      *
      * @param array<array-key, mixed> $inputs
      */
-    public function runComplete(array $inputs, ?SamplingParams $params = null): GenerationResult
+    public function runComplete(array $inputs, ?SamplingParams $params = null, ?Sampler $sampler = null): GenerationResult
     {
         $params ??= $this->defaultParams;
+        $sampler = $this->resolveSampler($params, $sampler);
         $start = microtime(true);
 
-        [$promptTokens, $logits] = $this->open($inputs);
+        [$promptTokens, $logits] = $this->open($inputs, $sampler, $params);
 
         $text = '';
         $generated = 0;
 
-        foreach ($this->decodeLoop($promptTokens, $logits, $params) as $token) {
+        foreach ($this->decodeLoop($promptTokens, $logits, $sampler, $params) as $token) {
             $text .= $this->runtime->tokenToPiece($this->requireSession(), $token);
             ++$generated;
         }
@@ -88,19 +91,20 @@ final class LlamaModel implements Model
     }
 
     /**
-     * Streams generated pieces.
+     * Streams generated pieces. An explicit $sampler overrides per-request selection.
      *
      * @param array<array-key, mixed> $inputs
      *
      * @return \Generator<int, string>
      */
-    public function runStream(array $inputs, ?SamplingParams $params = null): \Generator
+    public function runStream(array $inputs, ?SamplingParams $params = null, ?Sampler $sampler = null): \Generator
     {
         $params ??= $this->defaultParams;
+        $sampler = $this->resolveSampler($params, $sampler);
 
-        [$promptTokens, $logits] = $this->open($inputs);
+        [$promptTokens, $logits] = $this->open($inputs, $sampler, $params);
 
-        foreach ($this->decodeLoop($promptTokens, $logits, $params) as $token) {
+        foreach ($this->decodeLoop($promptTokens, $logits, $sampler, $params) as $token) {
             yield $this->runtime->tokenToPiece($this->requireSession(), $token);
         }
     }
@@ -151,31 +155,30 @@ final class LlamaModel implements Model
      *
      * @param array<array-key, mixed> $inputs
      *
-     * @return array{0: list<int>, 1: list<float>}
+     * @return array{0: list<int>, 1: array<int, float>}
      */
-    private function open(array $inputs): array
+    private function open(array $inputs, Sampler $sampler, SamplingParams $params): array
     {
         $session = $this->requireSession();
         $prompt = $this->formatter->format($this->messages($inputs));
         $promptTokens = $this->runtime->tokenize($session, $prompt, true, true);
         $this->runtime->resetState($session);
-        $logits = $this->runtime->evaluate($session, $promptTokens, 0);
+        $logits = $this->nextLogits($session, $promptTokens, 0, $sampler, $params);
 
         return [$promptTokens, $logits];
     }
 
     /**
-     * @param list<int>   $promptTokens
-     * @param list<float> $logits
+     * @param list<int>         $promptTokens
+     * @param array<int, float> $logits
      *
      * @return \Generator<int, int>
      */
-    private function decodeLoop(array $promptTokens, array $logits, SamplingParams $params): \Generator
+    private function decodeLoop(array $promptTokens, array $logits, Sampler $sampler, SamplingParams $params): \Generator
     {
         $session = $this->requireSession();
         $nPast = \count($promptTokens);
         $eos = $this->runtime->eosToken($session);
-        $sampler = $this->resolveSampler($params);
 
         for ($i = 0; $i < $params->maxTokens; ++$i) {
             $token = $sampler->sample($logits, $params);
@@ -186,18 +189,37 @@ final class LlamaModel implements Model
 
             yield $token;
 
-            $logits = $this->runtime->evaluate($session, [$token], $nPast);
+            $logits = $this->nextLogits($session, [$token], $nPast, $sampler, $params);
             ++$nPast;
         }
     }
 
     /**
-     * Uses the explicitly injected sampler when present, otherwise picks one from the
+     * Grammar sampling needs the whole vocabulary; every other sampler works on a native
+     * top-k pre-filter, which keeps PHP off the ~150k-token hot path.
+     *
+     * @param list<int> $tokens
+     *
+     * @return array<int, float>
+     */
+    private function nextLogits(LlamaSession $session, array $tokens, int $nPast, Sampler $sampler, SamplingParams $params): array
+    {
+        if ($sampler instanceof GrammarSampler) {
+            return $this->runtime->evaluate($session, $tokens, $nPast);
+        }
+
+        $k = max(256, $params->topK);
+
+        return $this->runtime->evaluateTopK($session, $tokens, $nPast, $k);
+    }
+
+    /**
+     * An explicit override wins; otherwise an injected sampler; otherwise one picked from the
      * request parameters (grammar / greedy / nucleus) via the {@see SamplerFactory}.
      */
-    private function resolveSampler(SamplingParams $params): Sampler
+    private function resolveSampler(SamplingParams $params, ?Sampler $override): Sampler
     {
-        return $this->sampler ?? $this->samplerFactory->forParams($params, $this->grammar);
+        return $override ?? $this->sampler ?? $this->samplerFactory->forParams($params, $this->grammar);
     }
 
     /**

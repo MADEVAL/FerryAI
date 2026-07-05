@@ -18,7 +18,11 @@ use FerryAI\Core\ValueObjects\ClassificationResult;
 use FerryAI\Core\ValueObjects\EmbeddingResult;
 use FerryAI\Core\ValueObjects\GenerationResult;
 use FerryAI\Core\ValueObjects\SamplingParams;
+use FerryAI\LlamaBackend\Grammar\GbnfGrammar;
 use FerryAI\LlamaBackend\LlamaModel;
+use FerryAI\LlamaBackend\Sampling\GrammarSampler;
+use FerryAI\LlamaBackend\Sampling\Sampler;
+use FerryAI\LlamaBackend\Sampling\SamplerFactory;
 use Psr\Http\Message\ResponseInterface;
 
 /**
@@ -143,7 +147,7 @@ final class AI
         return self::observability()->measure('chat', static function () use ($messages, $options): GenerationResult {
             $model = self::chatModel();
 
-            return $model->runComplete($messages, self::samplingParams($options));
+            return $model->runComplete($messages, self::samplingParams($options), self::samplerFor($options));
         });
     }
 
@@ -155,7 +159,7 @@ final class AI
      */
     public static function stream(array $messages, ?array $options = null): \Generator
     {
-        return self::chatModel()->runStream($messages, self::samplingParams($options));
+        return self::chatModel()->runStream($messages, self::samplingParams($options), self::samplerFor($options));
     }
 
     /**
@@ -366,6 +370,33 @@ final class AI
             : $config->maxTokens();
 
         return new SamplingParams(temperature: $temperature, topP: $topP, maxTokens: $maxTokens);
+    }
+
+    /**
+     * Builds an explicit llama sampler from chat options, or null to let the model pick one
+     * from the sampling parameters. `grammar` (a GBNF string or a JSON-Schema array) forces
+     * grammar-constrained sampling; `sampler` selects `greedy|top_k|top_p|grammar` by name.
+     *
+     * @param array<string, mixed>|null $options
+     */
+    private static function samplerFor(?array $options): ?Sampler
+    {
+        $options ??= [];
+        $grammar = $options['grammar'] ?? null;
+
+        if ($grammar !== null) {
+            $gbnf = \is_array($grammar) ? GbnfGrammar::fromJsonSchema($grammar) : GbnfGrammar::fromString((string) $grammar);
+
+            return new GrammarSampler($gbnf);
+        }
+
+        $type = $options['sampler'] ?? null;
+
+        if (\is_string($type) && $type !== '') {
+            return (new SamplerFactory())->create($type);
+        }
+
+        return null;
     }
 
     /**

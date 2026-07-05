@@ -159,3 +159,51 @@ FERRY_API int ferry_generate_greedy(struct llama_context * ctx, struct llama_mod
     out[out_len] = 0;
     return out_len;
 }
+
+/*
+ * Like ferry_eval, but returns only the top-k tokens by logit (descending), as parallel
+ * arrays out_ids[k] / out_logits[k]. This keeps the expensive per-token work (over the full
+ * ~150k vocab) in C, so PHP sampling operates on a tiny set. Returns the number written (<= k),
+ * or -1 on decode error.
+ */
+FERRY_API int ferry_eval_topk(struct llama_context * ctx, struct llama_model * model,
+                              const int * tokens, int n_tokens, int k,
+                              int * out_ids, float * out_logits) {
+    struct llama_batch batch = llama_batch_get_one((int *) tokens, n_tokens);
+    if (llama_decode(ctx, batch) != 0) return -1;
+
+    int n_vocab = llama_vocab_n_tokens(llama_model_get_vocab(model));
+    float * logits = llama_get_logits_ith(ctx, -1);
+
+    if (k > n_vocab) k = n_vocab;
+    if (k < 1) k = 1;
+
+    int count = 0;
+
+    for (int t = 0; t < n_vocab; t++) {
+        float v = logits[t];
+
+        if (count < k) {
+            int pos = count;
+            while (pos > 0 && out_logits[pos - 1] < v) {
+                out_logits[pos] = out_logits[pos - 1];
+                out_ids[pos] = out_ids[pos - 1];
+                pos--;
+            }
+            out_logits[pos] = v;
+            out_ids[pos] = t;
+            count++;
+        } else if (v > out_logits[k - 1]) {
+            int pos = k - 1;
+            while (pos > 0 && out_logits[pos - 1] < v) {
+                out_logits[pos] = out_logits[pos - 1];
+                out_ids[pos] = out_ids[pos - 1];
+                pos--;
+            }
+            out_logits[pos] = v;
+            out_ids[pos] = t;
+        }
+    }
+
+    return count;
+}

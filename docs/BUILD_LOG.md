@@ -1160,3 +1160,30 @@ item resolved; added top-p performance note), examples 03/04 unchanged (default 
 **Remaining (honest):** PHP-side sampling scans the full ~152k-token vocab per step, so top-p/top-k
 are slow (~5 s/token for Qwen 0.5B); a native top-k pre-filter in the wrapper would fix it. Greedy
 is fast. Grammar/top_k need explicit wiring from AI::chat options (factory supports them already).
+
+---
+
+## 2026-07-05 - Native top-k pre-filter + sampler/grammar plumbing from AI::chat (Section 12)
+
+**Native top-k (perf):** added ferry_eval_topk to the wrapper - computes the top-k tokens by
+logit in C over the full vocab and returns parallel id/logit arrays. New seam method
+LlamaRuntimeInterface::evaluateTopK returns a sparse token-id => logit map (implemented in
+NativeLlamaRuntime via FerryLlama::evalTopK, and in MockLlamaRuntime). LlamaModel now uses top-k
+(k = max(256, topK)) for greedy/top-k/top-p and full-vocab evaluate() only for grammar. Result:
+top-k/top-p sampling dropped from ~5 s/token to ~300 ms for a short answer. The PHP Sampler
+classes work unchanged on the sparse (token-id-keyed) logit map.
+
+**Sampler/grammar plumbing:** LlamaModel::runComplete/runStream take an optional Sampler override;
+AI::chat/stream build it from options via AI::samplerFor(): 'grammar' (GBNF string or JSON-Schema
+array) -> GrammarSampler; 'sampler' => greedy|top_k|top_p|grammar -> SamplerFactory::create();
+otherwise null -> per-request temperature-based selection. Verified end to end:
+AI::chat(..., ['sampler'=>'top_k']) -> "Paris" (~300 ms); AI::chat(..., ['grammar'=>'root ::= "yes"|"no"'])
+runs the grammar path.
+
+**Verification (fresh):** composer check fully green - cs 0 - PHPStan L8 No errors - Psalm L3 No
+errors - 620 unit tests. Llama integration 3/3. examples/03-chat.php demonstrates top_k + grammar
+options.
+
+**Remaining (honest):** grammar sampling still scans the full vocab (required) so it is slower;
+GrammarSampler GBNF enforcement is simplified (does not strictly reject every off-grammar token);
+standalone-process only; ferry_llama.dll not committed.

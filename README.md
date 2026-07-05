@@ -205,8 +205,9 @@ php native/llama-wrapper/ffi-smoke.php
 
 Details, flat API and limits: [`native/llama-wrapper/README.md`](native/llama-wrapper/README.md).
 The wrapper is wired into `FerryAI\LlamaBackend` — `AI::chat()`/`AI::stream()` work on CPU and
-GPU. The sampler is chosen per request from `SamplingParams` (`temperature: 0` → greedy,
-`temperature > 0` → nucleus/top-p; `top_k`/grammar via an explicit `Sampler`). See `docs/DEBT_REPORT.md` §12.
+GPU. Sampling is per request: `temperature: 0` → greedy, `> 0` → nucleus; force one with
+`AI::chat($msgs, ['sampler' => 'top_k'])` or `['grammar' => '<gbnf>']`. A native top-k pre-filter
+keeps sampling fast. See `docs/DEBT_REPORT.md` §12.
 
 ---
 

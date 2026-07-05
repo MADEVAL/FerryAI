@@ -65,4 +65,18 @@ $result = AI::chat([
 
 printf("response: %s\n\n", $result->text);
 
+echo "--- Sampler options ---\n\n";
+
+$topK = AI::chat(
+    [['role' => 'user', 'content' => 'Capital of France in one word?']],
+    ['sampler' => 'top_k', 'temperature' => 0.7, 'max_tokens' => 4],
+);
+printf("top_k:   %s\n", trim($topK->text));
+
+$grammar = AI::chat(
+    [['role' => 'user', 'content' => 'Is the sky blue?']],
+    ['grammar' => 'root ::= "yes" | "no"', 'max_tokens' => 6],
+);
+printf("grammar: %s\n\n", trim($grammar->text));
+
 echo "=== OK ===\n";

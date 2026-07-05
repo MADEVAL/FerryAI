@@ -32,6 +32,7 @@ final class FerryLlama
         int ferry_tokenize(void* model, const char* text, int* out_tokens, int max_tokens, int add_bos);
         int ferry_token_to_piece(void* model, int token, char* buf, int buf_size);
         int ferry_eval(void* ctx, void* model, const int* tokens, int n_tokens, float* out, int out_size);
+        int ferry_eval_topk(void* ctx, void* model, const int* tokens, int n_tokens, int k, int* out_ids, float* out_logits);
         void ferry_reset(void* ctx);
         CDEF;
 
@@ -179,6 +180,38 @@ final class FerryLlama
     public function reset(\FFI\CData $ctx): void
     {
         $this->ffi->ferry_reset($ctx);
+    }
+
+    /**
+     * Top-k logits by token id (descending), computed natively over the full vocab.
+     *
+     * @param  list<int>        $tokens
+     * @return array<int, float> token id => logit
+     */
+    public function evalTopK(\FFI\CData $ctx, \FFI\CData $model, array $tokens, int $k): array
+    {
+        $n = \count($tokens);
+        $in = $this->ffi->new("int[$n]");
+
+        foreach ($tokens as $i => $token) {
+            $in[$i] = $token;
+        }
+
+        $ids = $this->ffi->new("int[$k]");
+        $vals = $this->ffi->new("float[$k]");
+        $written = $this->ffi->ferry_eval_topk($ctx, $model, $in, $n, $k, $ids, $vals);
+
+        if ($written < 0) {
+            throw new \RuntimeException('ferry_eval_topk failed (llama_decode error)');
+        }
+
+        $logits = [];
+
+        for ($i = 0; $i < $written; $i++) {
+            $logits[$ids[$i]] = $vals[$i];
+        }
+
+        return $logits;
     }
 
     public function freeContext(\FFI\CData $ctx): void

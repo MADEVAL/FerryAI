@@ -113,6 +113,20 @@ final class MockLlamaRuntime implements LlamaRuntimeInterface
         return $logits;
     }
 
+    /**
+     * @param list<int> $tokens
+     *
+     * @return array<int, float>
+     */
+    public function evaluateTopK(LlamaSession $session, array $tokens, int $nPast, int $k): array
+    {
+        $mock = $this->session($session);
+        $target = $mock->cursor < \count($this->scripted) ? $this->scripted[$mock->cursor] : $this->eos;
+        ++$mock->cursor;
+
+        return [$target => 10.0];
+    }
+
     public function resetState(LlamaSession $session): void
     {
         $this->session($session)->cursor = 0;

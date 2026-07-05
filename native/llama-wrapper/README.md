@@ -54,8 +54,11 @@ void  ferry_free_context(void* ctx);
 int   ferry_n_vocab(void* model);
 int   ferry_n_embd(void* model);
 int   ferry_tokenize(void* model, const char* text, int* out_tokens, int max_tokens, int add_bos);
-int   ferry_generate_greedy(void* ctx, void* model, const int* prompt_tokens, int n_prompt,
-                            int max_new, char* out, int out_size);
+int   ferry_eval(void* ctx, void* model, const int* tokens, int n_tokens,
+                 float* out, int out_size);          // full-vocab logits (for grammar)
+int   ferry_eval_topk(void* ctx, void* model, const int* tokens, int n_tokens, int k,
+                      int* out_ids, float* out_logits); // native top-k pre-filter (fast sampling)
+void  ferry_reset(void* ctx);                          // clear KV cache
 ```
 
 ## Notes / limits

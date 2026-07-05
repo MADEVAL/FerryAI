@@ -115,6 +115,18 @@ final class NativeLlamaRuntime implements LlamaRuntimeInterface
         return $s->ffi->eval($s->context, $s->model, $tokens, $s->nVocab);
     }
 
+    /**
+     * @param list<int> $tokens
+     *
+     * @return array<int, float>
+     */
+    public function evaluateTopK(LlamaSession $session, array $tokens, int $nPast, int $k): array
+    {
+        $s = $this->native($session);
+
+        return $s->ffi->evalTopK($s->context, $s->model, $tokens, $k);
+    }
+
     public function resetState(LlamaSession $session): void
     {
         $s = $this->native($session);

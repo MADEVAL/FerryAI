@@ -308,16 +308,18 @@ The struct-by-value ABI crash is solved by the flat C wrapper
 - Streaming: "Count from 1 to 5" → `1 2 3 4 5` token-by-token (+ SSE/NDJSON).
 
 Config: `FERRY_AI_LLAMA_WRAPPER` (or `FERRY_AI_LLAMA_LIB` in the same dir) + that dir on `PATH`;
-`backends.llama.model_path`; `device: cpu|cuda`. Sampling is selected per request by
-`SamplerFactory::forParams()` — `temperature: 0` → greedy, `temperature > 0` → nucleus (top-p,
-honouring `temperature`/`top_p`), or a grammar-constrained sampler when a `GbnfGrammar` is set;
-`top_k`/grammar also available via an explicit `Sampler`. Verified by
-`tests/Integration/Llama/LlamaBackendIntegrationTest` (subprocess harness — 3 tests: greedy CPU,
-GPU, nucleus) and `examples/03-chat.php` / `examples/04-streaming.php`.
+`backends.llama.model_path`; `device: cpu|cuda`. Sampling is selected per request:
+`AI::chat($msgs, ['sampler' => 'greedy|top_k|top_p'])` or `['grammar' => '<gbnf>' | <json-schema array>]`
+force a sampler; otherwise `SamplerFactory::forParams()` picks by `temperature` (0 → greedy,
+> 0 → nucleus). A **native top-k pre-filter** (`ferry_eval_topk`) keeps PHP off the ~150k-token
+hot path, so greedy/top-p/top-k are fast (~300 ms for a short answer; was ~5 s/token). Verified by
+`tests/Integration/Llama/LlamaBackendIntegrationTest` (3: greedy CPU, GPU, nucleus) and
+`examples/03-chat.php` / `examples/04-streaming.php`.
 
 **Remaining:**
-- PHP-side sampling scans the full vocab (~152k logits) per token, so `top_p`/`top_k` are slow
-  (~5 s/token for Qwen 0.5B) — a native top-k pre-filter in the wrapper would fix this. Greedy is fast.
+- Grammar sampling still evaluates the full vocab each step (it must, to honour the grammar), so
+  it is slower than top-k paths; `GrammarSampler` GBNF enforcement is also simplified (e.g. it does
+  not strictly reject every off-grammar token).
 - Runs standalone only — under PHPUnit the ggml global ctors conflict, so the integration test
   runs the harness in a subprocess (§12 PHPUnit note).
 - `ferry_llama.dll` is machine-built (not committed); ship a prebuilt binary or build in CI.

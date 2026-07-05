@@ -57,6 +57,16 @@ interface LlamaRuntimeInterface
     public function evaluate(LlamaSession $session, array $tokens, int $nPast): array;
 
     /**
+     * Like {@see evaluate()} but returns only the top-k tokens by logit as a sparse
+     * `token id => logit` map — the heavy per-token work over the full vocab stays native.
+     *
+     * @param list<int> $tokens
+     *
+     * @return array<int, float>
+     */
+    public function evaluateTopK(LlamaSession $session, array $tokens, int $nPast, int $k): array;
+
+    /**
      * Clears the KV cache so a new sequence can be generated.
      */
     public function resetState(LlamaSession $session): void;
