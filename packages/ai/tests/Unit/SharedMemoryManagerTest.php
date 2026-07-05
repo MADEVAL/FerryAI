@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace FerryAI\Tests\Unit;
 
+use FerryAI\Core\Exception\InvalidStateException;
+use FerryAI\Core\Exception\IoException;
 use FerryAI\SharedMemoryManager;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
@@ -23,10 +25,10 @@ final class SharedMemoryManagerTest extends TestCase
         $manager = new SharedMemoryManager();
 
         if ($manager->isAvailable()) {
-            $this->expectException(\RuntimeException::class);
+            $this->expectException(IoException::class);
             $manager->allocateModel('test', '/nonexistent/model.bin');
         } else {
-            $this->expectException(\RuntimeException::class);
+            $this->expectException(InvalidStateException::class);
             $this->expectExceptionMessage('ext-shmop');
 
             $manager->allocateModel('test', '/nonexistent');
@@ -40,7 +42,7 @@ final class SharedMemoryManagerTest extends TestCase
         if ($manager->isAvailable()) {
             self::assertTrue(true);
         } else {
-            $this->expectException(\RuntimeException::class);
+            $this->expectException(InvalidStateException::class);
             $this->expectExceptionMessage('ext-shmop');
 
             $manager->attachModel('test');

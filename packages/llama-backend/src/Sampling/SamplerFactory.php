@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace FerryAI\LlamaBackend\Sampling;
 
+use FerryAI\Core\Exception\ValidationException;
 use FerryAI\Core\ValueObjects\SamplingParams;
 use FerryAI\LlamaBackend\Grammar\GbnfGrammar;
 
@@ -13,7 +14,7 @@ use FerryAI\LlamaBackend\Grammar\GbnfGrammar;
 final class SamplerFactory
 {
     /**
-     * @throws \InvalidArgumentException when 'grammar' is requested without a grammar
+     * @throws ValidationException when 'grammar' is requested without a grammar
      */
     public function create(string $type, ?GbnfGrammar $grammar = null): Sampler
     {
@@ -21,7 +22,7 @@ final class SamplerFactory
             'greedy' => new GreedySampler(),
             'top_k' => new TopKSampler(),
             'grammar' => new GrammarSampler(
-                $grammar ?? throw new \InvalidArgumentException("Sampler type 'grammar' requires a GbnfGrammar."),
+                $grammar ?? throw new ValidationException("Sampler type 'grammar' requires a GbnfGrammar."),
             ),
             default => new TopPSampler(),
         };

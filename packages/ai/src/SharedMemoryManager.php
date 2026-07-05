@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace FerryAI;
 
+use FerryAI\Core\Exception\InvalidStateException;
+use FerryAI\Core\Exception\IoException;
+
 final class SharedMemoryManager implements SharedMemory
 {
     /** @var array<string, int> */
@@ -19,20 +22,20 @@ final class SharedMemoryManager implements SharedMemory
     public function allocateModel(string $modelId, string $modelPath): int
     {
         if (!$this->isAvailable()) {
-            throw new \RuntimeException('ext-shmop is not available for shared memory');
+            throw new InvalidStateException('ext-shmop is not available for shared memory');
         }
 
         $key = \crc32($modelId);
         $size = \file_exists($modelPath) ? (int) \filesize($modelPath) : 0;
 
         if ($size === 0) {
-            throw new \RuntimeException(\sprintf('Model file is empty or missing: %s', $modelPath));
+            throw new IoException(\sprintf('Model file is empty or missing: %s', $modelPath));
         }
 
         $shmId = \shmop_open($key, 'c', 0644, $size);
 
         if ($shmId === false) {
-            throw new \RuntimeException(\sprintf('Cannot allocate shared memory for model: %s', $modelId));
+            throw new IoException(\sprintf('Cannot allocate shared memory for model: %s', $modelId));
         }
 
         $data = \file_get_contents($modelPath);
@@ -49,7 +52,7 @@ final class SharedMemoryManager implements SharedMemory
     public function attachModel(string $modelId): int
     {
         if (!$this->isAvailable()) {
-            throw new \RuntimeException('ext-shmop is not available');
+            throw new InvalidStateException('ext-shmop is not available');
         }
 
         $key = $this->segments[$modelId] ?? \crc32($modelId);

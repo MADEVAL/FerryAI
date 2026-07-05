@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace FerryAI;
 
+use FerryAI\Core\Exception\InvalidStateException;
 use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\StreamFactoryInterface;
@@ -33,7 +34,7 @@ final class StreamResponse
         $factory = self::psr17Factory();
 
         if ($factory === null) {
-            throw new \RuntimeException(
+            throw new InvalidStateException(
                 'StreamResponse::create() requires a PSR-17 factory (install nyholm/psr7 or '
                 . 'guzzlehttp/psr7). Use toSse() or toNdjson() for raw string output.',
             );

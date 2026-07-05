@@ -47,7 +47,9 @@ AI::config([
 |-----|---------|---------|
 | `vector.driver` | `sqlite` | `sqlite` or `pgsql` (`FERRY_AI_VECTOR_DRIVER`). |
 | `vector.db_path` | `:memory:` | SQLite path. |
-| `vector.dsn` / `vector.user` / `vector.password` | — | PostgreSQL connection (`FERRY_AI_PG_*`). |
+| `vector.dsn` | `pgsql:host=127.0.0.1;port=5432` | PostgreSQL DSN (`FERRY_AI_PG_DSN`). |
+| `vector.user` | `postgres` | PostgreSQL user (`FERRY_AI_PG_USER`). |
+| `vector.password` | `postgres` | PostgreSQL password (`FERRY_AI_PG_PASSWORD`). |
 | `vector.metric` | `cosine` | `cosine`, `euclidean`, `dot`. |
 
 See [vector-store](vector-store.md).

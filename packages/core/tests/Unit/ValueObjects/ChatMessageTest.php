@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace FerryAI\Core\Tests\Unit\ValueObjects;
 
+use FerryAI\Core\Exception\ValidationException;
 use FerryAI\Core\ValueObjects\ChatMessage;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
@@ -28,7 +29,7 @@ final class ChatMessageTest extends TestCase
 
     public function testInvalidRoleIsRejected(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(ValidationException::class);
 
         new ChatMessage('invalid', 'x');
     }

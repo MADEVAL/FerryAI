@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace FerryAI\Vector\Tests\Unit;
 
+use FerryAI\Core\Exception\ValidationException;
 use FerryAI\Vector\PostgresVecIndex;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
@@ -20,7 +21,7 @@ final class PostgresVecIndexHelpersTest extends TestCase
 
     public function testOpClassRejectsUnknownMetric(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(ValidationException::class);
 
         PostgresVecIndex::opClass('hamming');
     }
@@ -49,7 +50,7 @@ final class PostgresVecIndexHelpersTest extends TestCase
 
     public function testBuildCreateIndexSqlRejectsUnknownType(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(ValidationException::class);
 
         PostgresVecIndex::buildCreateIndexSql('docs', 'bogus', 'cosine');
     }

@@ -14,6 +14,7 @@ use FerryAI\Core\Enums\BackendType;
 use FerryAI\Core\Enums\Device;
 use FerryAI\Core\Exception\BackendNotAvailableException;
 use FerryAI\Core\Exception\ConfigurationException;
+use FerryAI\Core\Exception\InvalidStateException;
 use FerryAI\Core\ValueObjects\ClassificationResult;
 use FerryAI\Core\ValueObjects\EmbeddingResult;
 use FerryAI\Core\ValueObjects\GenerationResult;
@@ -118,7 +119,7 @@ final class AI
     public static function activeBackend(): BackendType
     {
         if (self::$activeBackend === null) {
-            throw new \RuntimeException('AI::config() must be called before using the facade.');
+            throw new InvalidStateException('AI::config() must be called before using the facade.');
         }
 
         return self::$activeBackend;
@@ -130,7 +131,7 @@ final class AI
     public static function activeDevice(): Device
     {
         if (self::$activeDevice === null) {
-            throw new \RuntimeException('AI::config() must be called before using the facade.');
+            throw new InvalidStateException('AI::config() must be called before using the facade.');
         }
 
         return self::$activeDevice;
@@ -413,7 +414,7 @@ final class AI
     private static function ensureConfigured(): void
     {
         if (self::$config === null) {
-            throw new \RuntimeException('AI::config() must be called before using the facade.');
+            throw new InvalidStateException('AI::config() must be called before using the facade.');
         }
     }
 
@@ -458,7 +459,7 @@ final class AI
     private static function registry(): BackendRegistry
     {
         if (self::$registry === null) {
-            throw new \RuntimeException('AI::config() must be called before using the facade.');
+            throw new InvalidStateException('AI::config() must be called before using the facade.');
         }
 
         return self::$registry;
@@ -467,7 +468,7 @@ final class AI
     private static function factory(): AIFactory
     {
         if (self::$factory === null) {
-            throw new \RuntimeException('AI::config() must be called before using the facade.');
+            throw new InvalidStateException('AI::config() must be called before using the facade.');
         }
 
         return self::$factory;
@@ -476,7 +477,7 @@ final class AI
     private static function configuration(): AIConfig
     {
         if (self::$config === null) {
-            throw new \RuntimeException('AI::config() must be called before using the facade.');
+            throw new InvalidStateException('AI::config() must be called before using the facade.');
         }
 
         return self::$config;

@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace FerryAI\Core\ValueObjects;
 
+use FerryAI\Core\Exception\ValidationException;
+
 readonly class ChatMessage implements \JsonSerializable
 {
     private const array VALID_ROLES = ['system', 'user', 'assistant', 'tool'];
@@ -15,7 +17,7 @@ readonly class ChatMessage implements \JsonSerializable
      * @param string|null         $toolCallId tool call id (for role=tool)
      * @param array<mixed>|null   $toolCalls  tool calls (for role=assistant)
      *
-     * @throws \InvalidArgumentException when the role is not supported
+     * @throws ValidationException when the role is not supported
      */
     public function __construct(
         public string $role,
@@ -25,7 +27,7 @@ readonly class ChatMessage implements \JsonSerializable
         public ?array $toolCalls = null,
     ) {
         if (!\in_array($role, self::VALID_ROLES, true)) {
-            throw new \InvalidArgumentException(\sprintf(
+            throw new ValidationException(\sprintf(
                 "Invalid chat role '%s'. Expected one of: %s.",
                 $role,
                 implode(', ', self::VALID_ROLES),

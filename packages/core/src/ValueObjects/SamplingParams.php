@@ -4,12 +4,14 @@ declare(strict_types=1);
 
 namespace FerryAI\Core\ValueObjects;
 
+use FerryAI\Core\Exception\ValidationException;
+
 readonly class SamplingParams
 {
     /**
      * @param string[]|null $stop
      *
-     * @throws \InvalidArgumentException when a parameter is out of its valid range
+     * @throws ValidationException when a parameter is out of its valid range
      */
     public function __construct(
         public float $temperature = 0.7,
@@ -23,23 +25,23 @@ readonly class SamplingParams
         public ?int $seed = null,
     ) {
         if ($temperature < 0.0 || $temperature > 2.0) {
-            throw new \InvalidArgumentException(\sprintf('temperature must be in [0.0, 2.0], got %F.', $temperature));
+            throw new ValidationException(\sprintf('temperature must be in [0.0, 2.0], got %F.', $temperature));
         }
 
         if ($topP < 0.0 || $topP > 1.0) {
-            throw new \InvalidArgumentException(\sprintf('topP must be in [0.0, 1.0], got %F.', $topP));
+            throw new ValidationException(\sprintf('topP must be in [0.0, 1.0], got %F.', $topP));
         }
 
         if ($topK < 1) {
-            throw new \InvalidArgumentException(\sprintf('topK must be >= 1, got %d.', $topK));
+            throw new ValidationException(\sprintf('topK must be >= 1, got %d.', $topK));
         }
 
         if ($repetitionPenalty < 0.0) {
-            throw new \InvalidArgumentException(\sprintf('repetitionPenalty must be >= 0.0, got %F.', $repetitionPenalty));
+            throw new ValidationException(\sprintf('repetitionPenalty must be >= 0.0, got %F.', $repetitionPenalty));
         }
 
         if ($maxTokens < 1) {
-            throw new \InvalidArgumentException(\sprintf('maxTokens must be >= 1, got %d.', $maxTokens));
+            throw new ValidationException(\sprintf('maxTokens must be >= 1, got %d.', $maxTokens));
         }
     }
 }

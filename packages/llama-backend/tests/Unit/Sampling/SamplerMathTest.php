@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace FerryAI\LlamaBackend\Tests\Unit\Sampling;
 
+use FerryAI\Core\Exception\ValidationException;
 use FerryAI\LlamaBackend\Sampling\SamplerMath;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
@@ -19,7 +20,7 @@ final class SamplerMathTest extends TestCase
 
     public function testArgmaxRejectsEmpty(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(ValidationException::class);
 
         SamplerMath::argmax([]);
     }

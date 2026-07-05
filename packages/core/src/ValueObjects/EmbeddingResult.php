@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace FerryAI\Core\ValueObjects;
 
+use FerryAI\Core\Exception\ValidationException;
+
 readonly class EmbeddingResult
 {
     /**
@@ -11,7 +13,7 @@ readonly class EmbeddingResult
      * @param int     $dimension the vector dimension (must equal count($vector))
      * @param string  $modelName the model that produced the embedding
      *
-     * @throws \InvalidArgumentException when $dimension does not match the vector length
+     * @throws ValidationException when $dimension does not match the vector length
      */
     public function __construct(
         public array $vector,
@@ -19,7 +21,7 @@ readonly class EmbeddingResult
         public string $modelName,
     ) {
         if ($dimension !== \count($vector)) {
-            throw new \InvalidArgumentException(\sprintf(
+            throw new ValidationException(\sprintf(
                 'dimension (%d) must equal the vector length (%d).',
                 $dimension,
                 \count($vector),

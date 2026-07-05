@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace FerryAI\Vector;
 
+use FerryAI\Core\Exception\InvalidStateException;
+
 final class CollectionManager
 {
     public function __construct(
@@ -30,7 +32,7 @@ final class CollectionManager
         );
 
         if ($rows === []) {
-            throw new \RuntimeException(\sprintf('Collection "%s" does not exist', $name));
+            throw new InvalidStateException(\sprintf('Collection "%s" does not exist', $name));
         }
 
         $dimension = (int) $rows[0]['dimension'];

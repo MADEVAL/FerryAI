@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace FerryAI\ModelHub\Format;
 
+use FerryAI\Core\Exception\IoException;
+
 final class AiArchive
 {
     /**
@@ -14,7 +16,7 @@ final class AiArchive
         $zip = new \ZipArchive();
 
         if ($zip->open($outputPath, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
-            throw new \RuntimeException(\sprintf('Cannot create archive: %s', $outputPath));
+            throw new IoException(\sprintf('Cannot create archive: %s', $outputPath));
         }
 
         foreach ($files as $name => $sourcePath) {
@@ -32,7 +34,7 @@ final class AiArchive
         $zip = new \ZipArchive();
 
         if ($zip->open($archivePath) !== true) {
-            throw new \RuntimeException(\sprintf('Cannot open archive: %s', $archivePath));
+            throw new IoException(\sprintf('Cannot open archive: %s', $archivePath));
         }
 
         $extracted = [];
@@ -62,7 +64,7 @@ final class AiArchive
         $zip = new \ZipArchive();
 
         if ($zip->open($archivePath) !== true) {
-            throw new \RuntimeException(\sprintf('Cannot open archive: %s', $archivePath));
+            throw new IoException(\sprintf('Cannot open archive: %s', $archivePath));
         }
 
         $files = [];

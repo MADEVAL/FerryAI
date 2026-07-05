@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace FerryAI\Tests\Unit;
 
 use FerryAI\AsyncInference;
+use FerryAI\Core\Exception\InferenceException;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
@@ -47,7 +48,7 @@ final class AsyncInferenceTest extends TestCase
     {
         $ai = new AsyncInference();
 
-        $this->expectException(\RuntimeException::class);
+        $this->expectException(InferenceException::class);
         $this->expectExceptionMessage('timed out');
 
         $ai->wait($ai->runAsync(static function (): never {

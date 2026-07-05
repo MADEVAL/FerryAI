@@ -10,6 +10,7 @@ use FerryAI\Core\Enums\BackendType;
 use FerryAI\Core\Enums\Device;
 use FerryAI\Core\Exception\BackendNotAvailableException;
 use FerryAI\Core\Exception\ConfigurationException;
+use FerryAI\Core\Exception\InvalidStateException;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
@@ -36,7 +37,7 @@ final class AITest extends TestCase
 
     public function testUsingFacadeBeforeConfigThrows(): void
     {
-        $this->expectException(\RuntimeException::class);
+        $this->expectException(InvalidStateException::class);
         $this->expectExceptionMessageMatches('/AI::config/');
 
         AI::embed('hello');
@@ -125,7 +126,7 @@ final class AITest extends TestCase
         AI::config(['backend' => 'onnx']);
         AI::reset();
 
-        $this->expectException(\RuntimeException::class);
+        $this->expectException(InvalidStateException::class);
         $this->expectExceptionMessageMatches('/AI::config/');
 
         AI::classify('text');

@@ -6,6 +6,7 @@ namespace FerryAI\CpuBackend\Tests\Unit;
 
 use FerryAI\Core\Contracts\Model;
 use FerryAI\Core\Exception\BackendNotAvailableException;
+use FerryAI\Core\Exception\InvalidStateException;
 use FerryAI\CpuBackend\CpuNativeModel;
 use FerryAI\CpuBackend\Predictor;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -67,7 +68,7 @@ final class CpuNativeModelTest extends TestCase
         $model = new CpuNativeModel('test', [], new \stdClass(), $predictor);
         $model->unload();
 
-        $this->expectException(\RuntimeException::class);
+        $this->expectException(InvalidStateException::class);
         $model->run([]);
     }
 

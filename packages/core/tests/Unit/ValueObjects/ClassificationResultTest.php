@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace FerryAI\Core\Tests\Unit\ValueObjects;
 
+use FerryAI\Core\Exception\ValidationException;
 use FerryAI\Core\ValueObjects\ClassificationResult;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
@@ -27,7 +28,7 @@ final class ClassificationResultTest extends TestCase
 
     public function testConfidenceOutOfRangeIsRejected(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(ValidationException::class);
 
         new ClassificationResult('x', 1.5);
     }

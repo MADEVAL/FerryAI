@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace FerryAI\Vector;
 
+use FerryAI\Core\Exception\ValidationException;
+
 /**
  * Manages pgvector ANN indexes (HNSW / IVFFlat) for a {@see PostgresStore}.
  *
@@ -36,7 +38,7 @@ final class PostgresVecIndex
             'cosine' => 'vector_cosine_ops',
             'euclidean' => 'vector_l2_ops',
             'dot' => 'vector_ip_ops',
-            default => throw new \InvalidArgumentException(\sprintf(
+            default => throw new ValidationException(\sprintf(
                 'Unknown distance metric "%s": expected one of cosine, euclidean, dot.',
                 $metric,
             )),
@@ -46,7 +48,7 @@ final class PostgresVecIndex
     public static function buildCreateIndexSql(string $collection, string $indexType, string $metric): string
     {
         if (!\in_array($indexType, self::VALID_INDEX_TYPES, true)) {
-            throw new \InvalidArgumentException(\sprintf(
+            throw new ValidationException(\sprintf(
                 'Unknown index type "%s": expected one of %s.',
                 $indexType,
                 \implode(', ', self::VALID_INDEX_TYPES),

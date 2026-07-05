@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace FerryAI\Vector\Tests\Unit;
 
+use FerryAI\Core\Exception\ValidationException;
 use FerryAI\Vector\PostgresStore;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
@@ -19,14 +20,14 @@ final class PostgresStoreHelpersTest extends TestCase
 
     public function testVectorTableNameRejectsInjection(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(ValidationException::class);
 
         PostgresStore::vectorTableName('docs"; DROP TABLE users; --');
     }
 
     public function testVectorTableNameRejectsLeadingDigit(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(ValidationException::class);
 
         PostgresStore::vectorTableName('1col');
     }
@@ -51,7 +52,7 @@ final class PostgresStoreHelpersTest extends TestCase
 
     public function testDistanceOperatorRejectsUnknownMetric(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(ValidationException::class);
 
         PostgresStore::distanceOperator('manhattan');
     }

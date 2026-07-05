@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace FerryAI\ModelHub;
 
+use FerryAI\Core\Exception\IoException;
 use FerryAI\Core\Logger;
 use FerryAI\Core\RetryHandler;
 
@@ -130,7 +131,7 @@ final class HuggingFaceClient
                         'attempt' => $attempt,
                     ]);
 
-                    throw new \RuntimeException(\sprintf('Failed to download: %s/%s', $modelId, $filename));
+                    throw new IoException(\sprintf('Failed to download: %s/%s', $modelId, $filename));
                 }
 
                 return $raw;

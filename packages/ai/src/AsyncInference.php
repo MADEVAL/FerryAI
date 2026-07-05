@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace FerryAI;
 
+use FerryAI\Core\Exception\InferenceException;
 use Fiber;
 
 final class AsyncInference
@@ -48,7 +49,7 @@ final class AsyncInference
             $elapsed = \microtime(true) * 1000.0 - $startTime;
 
             if ($elapsed >= $timeoutMs) {
-                throw new \RuntimeException(\sprintf(
+                throw new InferenceException(\sprintf(
                     'Async inference timed out after %d ms',
                     $timeoutMs,
                 ));

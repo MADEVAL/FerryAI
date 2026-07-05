@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace FerryAI\Vector;
 
+use FerryAI\Core\Exception\ValidationException;
+
 /**
  * PDO-backed vector store using PostgreSQL + the pgvector extension.
  *
@@ -274,7 +276,7 @@ final class PostgresStore
     public static function vectorTableName(string $collection): string
     {
         if (\preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $collection) !== 1) {
-            throw new \InvalidArgumentException(\sprintf(
+            throw new ValidationException(\sprintf(
                 'Invalid collection name "%s": only letters, digits and underscores are allowed, '
                 . 'and the name must not start with a digit. Rename the collection to a valid SQL identifier.',
                 $collection,
@@ -304,7 +306,7 @@ final class PostgresStore
             'cosine' => '<=>',
             'euclidean' => '<->',
             'dot' => '<#>',
-            default => throw new \InvalidArgumentException(\sprintf(
+            default => throw new ValidationException(\sprintf(
                 'Unknown distance metric "%s": expected one of cosine, euclidean, dot.',
                 $metric,
             )),
@@ -314,7 +316,7 @@ final class PostgresStore
     private static function assertMetric(string $metric): void
     {
         if (!\in_array($metric, self::VALID_METRICS, true)) {
-            throw new \InvalidArgumentException(\sprintf(
+            throw new ValidationException(\sprintf(
                 'Unknown distance metric "%s": expected one of %s.',
                 $metric,
                 \implode(', ', self::VALID_METRICS),

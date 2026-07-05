@@ -6,6 +6,7 @@ namespace FerryAI\CpuBackend;
 
 use FerryAI\Core\Contracts\Model;
 use FerryAI\Core\Enums\Device;
+use FerryAI\Core\Exception\InvalidStateException;
 use FerryAI\Core\ValueObjects\ModelMetadata;
 
 final class CpuNativeModel implements Model
@@ -31,7 +32,7 @@ final class CpuNativeModel implements Model
     public function run(array $inputs): array
     {
         if ($this->unloaded) {
-            throw new \RuntimeException('Model is unloaded');
+            throw new InvalidStateException('Model is unloaded');
         }
 
         if ($this->estimator !== null && $this->predictor !== null) {

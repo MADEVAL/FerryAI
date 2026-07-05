@@ -75,7 +75,7 @@ final class TokenizerFactoryTest extends TestCase
 
     public function testCreateByModelNameRequiresHub(): void
     {
-        $this->expectException(\RuntimeException::class);
+        $this->expectException(TokenizerException::class);
 
         $this->factory->create('gpt2');
     }

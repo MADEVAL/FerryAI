@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace FerryAI\Vector;
 
+use FerryAI\Core\Exception\IoException;
+
 final class ExportImport
 {
     public static function toJson(Collection $collection, string $path): void
@@ -11,7 +13,7 @@ final class ExportImport
         $handle = \fopen($path, 'w');
 
         if ($handle === false) {
-            throw new \RuntimeException(\sprintf('Cannot open file for writing: %s', $path));
+            throw new IoException(\sprintf('Cannot open file for writing: %s', $path));
         }
 
         foreach ($collection->iterator() as $item) {
@@ -27,7 +29,7 @@ final class ExportImport
         $handle = \fopen($path, 'r');
 
         if ($handle === false) {
-            throw new \RuntimeException(\sprintf('Cannot open file for reading: %s', $path));
+            throw new IoException(\sprintf('Cannot open file for reading: %s', $path));
         }
 
         $store->createCollection($collectionName, $dimension);
@@ -59,7 +61,7 @@ final class ExportImport
         $handle = \fopen($path, 'w');
 
         if ($handle === false) {
-            throw new \RuntimeException(\sprintf('Cannot open file for writing: %s', $path));
+            throw new IoException(\sprintf('Cannot open file for writing: %s', $path));
         }
 
         \fwrite($handle, "id,vector,metadata\n");

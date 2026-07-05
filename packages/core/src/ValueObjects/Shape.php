@@ -4,18 +4,20 @@ declare(strict_types=1);
 
 namespace FerryAI\Core\ValueObjects;
 
+use FerryAI\Core\Exception\ValidationException;
+
 readonly class Shape implements \JsonSerializable, \Stringable
 {
     /**
      * @param int[] $dimensions all dimensions >= 0; -1 is allowed for dynamic axes
      *
-     * @throws \InvalidArgumentException when a dimension is negative (other than -1)
+     * @throws ValidationException when a dimension is negative (other than -1)
      */
     public function __construct(public array $dimensions)
     {
         foreach ($dimensions as $dimension) {
             if ($dimension < -1) {
-                throw new \InvalidArgumentException(\sprintf(
+                throw new ValidationException(\sprintf(
                     'Invalid shape dimension %d: dimensions must be >= 0, or -1 for a dynamic axis.',
                     $dimension,
                 ));

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace FerryAI\Core\Tests\Unit\ValueObjects;
 
+use FerryAI\Core\Exception\ValidationException;
 use FerryAI\Core\ValueObjects\SamplingParams;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
@@ -25,28 +26,28 @@ final class SamplingParamsTest extends TestCase
 
     public function testTemperatureOutOfRangeIsRejected(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(ValidationException::class);
 
         new SamplingParams(temperature: 3.0);
     }
 
     public function testTopPOutOfRangeIsRejected(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(ValidationException::class);
 
         new SamplingParams(topP: 1.5);
     }
 
     public function testTopKBelowOneIsRejected(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(ValidationException::class);
 
         new SamplingParams(topK: 0);
     }
 
     public function testMaxTokensBelowOneIsRejected(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(ValidationException::class);
 
         new SamplingParams(maxTokens: 0);
     }

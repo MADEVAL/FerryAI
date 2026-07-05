@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace FerryAI\Core\Tests\Unit\ValueObjects;
 
+use FerryAI\Core\Exception\ValidationException;
 use FerryAI\Core\ValueObjects\EmbeddingResult;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
@@ -22,7 +23,7 @@ final class EmbeddingResultTest extends TestCase
 
     public function testDimensionMismatchIsRejected(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(ValidationException::class);
 
         new EmbeddingResult([1.0, 2.0], 3, 'test');
     }

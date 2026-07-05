@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace FerryAI\LlamaBackend\Grammar;
 
+use FerryAI\Core\Exception\ValidationException;
+
 /**
  * A pure-PHP GBNF recogniser used to strictly constrain generation.
  *
@@ -26,7 +28,7 @@ final class GbnfMatcher
         $this->rules = $this->parse($grammar->toString());
 
         if ($this->rules === []) {
-            throw new \InvalidArgumentException('GBNF grammar defines no rules.');
+            throw new ValidationException('GBNF grammar defines no rules.');
         }
 
         $this->root = isset($this->rules['root']) ? 'root' : array_key_first($this->rules);

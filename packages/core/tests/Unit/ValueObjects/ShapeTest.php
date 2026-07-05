@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace FerryAI\Core\Tests\Unit\ValueObjects;
 
+use FerryAI\Core\Exception\ValidationException;
 use FerryAI\Core\ValueObjects\Shape;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
@@ -46,7 +47,7 @@ final class ShapeTest extends TestCase
 
     public function testConstructorRejectsInvalidDimension(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(ValidationException::class);
 
         new Shape([-5]);
     }

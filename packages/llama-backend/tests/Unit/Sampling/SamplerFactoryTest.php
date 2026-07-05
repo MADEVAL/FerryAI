@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace FerryAI\LlamaBackend\Tests\Unit\Sampling;
 
+use FerryAI\Core\Exception\ValidationException;
 use FerryAI\Core\ValueObjects\SamplingParams;
 use FerryAI\LlamaBackend\Grammar\GbnfGrammar;
 use FerryAI\LlamaBackend\Sampling\GrammarSampler;
@@ -40,7 +41,7 @@ final class SamplerFactoryTest extends TestCase
 
     public function testGrammarSamplerWithoutGrammarThrows(): void
     {
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(ValidationException::class);
 
         $this->factory->create('grammar');
     }

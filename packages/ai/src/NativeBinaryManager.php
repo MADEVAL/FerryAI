@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace FerryAI;
 
+use FerryAI\Core\Exception\IoException;
 use FerryAI\Core\PlatformDetector;
 use FerryAI\ModelHub\Signature\Sha256Verifier;
 
@@ -55,7 +56,7 @@ final class NativeBinaryManager implements LibraryResolver
         $data = @\file_get_contents($url);
 
         if ($data === false) {
-            throw new \RuntimeException(\sprintf('Failed to download native binary: %s', $library));
+            throw new IoException(\sprintf('Failed to download native binary: %s', $library));
         }
 
         \file_put_contents($destPath, $data);

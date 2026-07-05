@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace FerryAI\ModelHub;
 
+use FerryAI\Core\Exception\IoException;
 use FerryAI\Core\Logger;
 use FerryAI\Core\RetryHandler;
 
@@ -62,7 +63,7 @@ final class Downloader
         $handle = @\fopen($url, 'rb', false, $context);
 
         if ($handle === false) {
-            throw new \RuntimeException(\sprintf('Cannot open URL: %s', $url));
+            throw new IoException(\sprintf('Cannot open URL: %s', $url));
         }
 
         $dir = \dirname($destination);
@@ -76,7 +77,7 @@ final class Downloader
         if ($outHandle === false) {
             \fclose($handle);
 
-            throw new \RuntimeException(\sprintf('Cannot write to: %s', $destination));
+            throw new IoException(\sprintf('Cannot write to: %s', $destination));
         }
 
         $downloaded = 0;

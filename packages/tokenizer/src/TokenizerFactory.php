@@ -24,7 +24,7 @@ final class TokenizerFactory
             return $this->createFromFile($modelName);
         }
 
-        throw new \RuntimeException(\sprintf(
+        throw new TokenizerException(\sprintf(
             "cannot resolve tokenizer '%s' by name: pass a tokenizer.json path, or use the "
             . 'model-hub package (Phase 3) to download it.',
             $modelName,

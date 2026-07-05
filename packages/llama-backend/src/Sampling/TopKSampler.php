@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace FerryAI\LlamaBackend\Sampling;
 
+use FerryAI\Core\Exception\ValidationException;
 use FerryAI\Core\ValueObjects\SamplingParams;
 
 /**
@@ -18,7 +19,7 @@ final class TopKSampler implements Sampler
     public function sample(array $logits, SamplingParams $params): int
     {
         if ($logits === []) {
-            throw new \InvalidArgumentException('Cannot sample from an empty logit list.');
+            throw new ValidationException('Cannot sample from an empty logit list.');
         }
 
         $indices = array_keys($logits);

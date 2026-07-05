@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace FerryAI\LlamaBackend\Sampling;
 
+use FerryAI\Core\Exception\ValidationException;
 use Random\Engine\Mt19937;
 use Random\IntervalBoundary;
 use Random\Randomizer;
@@ -18,12 +19,12 @@ final class SamplerMath
      *
      * @param float[] $logits
      *
-     * @throws \InvalidArgumentException when the list is empty
+     * @throws ValidationException when the list is empty
      */
     public static function argmax(array $logits): int
     {
         if ($logits === []) {
-            throw new \InvalidArgumentException('Cannot take argmax of an empty logit list.');
+            throw new ValidationException('Cannot take argmax of an empty logit list.');
         }
 
         $bestIndex = array_key_first($logits);
