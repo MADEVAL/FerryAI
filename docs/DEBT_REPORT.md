@@ -98,7 +98,7 @@ These work when the config points at a real file; wiring is correct, errors are 
 | Vector store with 10k+ vectors (performance threshold). |
 | Model Hub download → cache → verify cycle. |
 | HuggingFace API with auth token. |
-| ONNX GPU availability (requires cuDNN — §12). |
+| ONNX GPU availability (requires cuDNN / CUDA runtime — §13). |
 
 ---
 
@@ -156,10 +156,8 @@ Listed in `composer.json` scripts: Infection, Pest, CaptainHook, Monorepo-builde
 | PostgreSQL vector store | ✅ Windows (pgvector 0.8.4). WSL → PG blocked by `pg_hba.conf` (environment). |
 | RubixML | ✅ Windows + Linux (isolated, subprocess harness). |
 | Pure-PHP suite | ✅ 676 unit + PHPStan L8 + Psalm L3, Windows + Linux. |
-| Safetensors | 🔴 Format detected, no loader. Requires Python conversion. |
-| HuggingFace native tokenizer | Optional accelerator; pure-PHP covers all needed types. |
+| Safetensors | 🔴 Format detected, conversion to GGUF required (external Python tool). See §12. |
 | `ferry_llama.dll/.so` | Machine-built, not committed. Build via `native/llama-wrapper/build.{ps1,sh}`. |
-| Grammar sampling | Strict GBNF enforcement via pure-PHP `GbnfMatcher`. Full-vocab scan (inherent). |
 | llama under PHPUnit | Standalone-process only (ggml global ctor conflict); integration via subprocess harness. |
 
 ---
