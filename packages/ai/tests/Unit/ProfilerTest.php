@@ -11,27 +11,29 @@ use PHPUnit\Framework\TestCase;
 #[CoversClass(Profiler::class)]
 final class ProfilerTest extends TestCase
 {
+    private Profiler $profiler;
+
     protected function setUp(): void
     {
-        Profiler::reset();
+        $this->profiler = new Profiler();
     }
 
     public function testStartEndReturnsDuration(): void
     {
-        Profiler::start('test-op');
+        $this->profiler->start('test-op');
         \usleep(10000);
-        $duration = Profiler::end('test-op');
+        $duration = $this->profiler->end('test-op');
 
         self::assertGreaterThan(0.0, $duration);
     }
 
     public function testReportReturnsStats(): void
     {
-        Profiler::start('op');
+        $this->profiler->start('op');
         \usleep(5000);
-        Profiler::end('op');
+        $this->profiler->end('op');
 
-        $report = Profiler::report();
+        $report = $this->profiler->report();
 
         self::assertArrayHasKey('op', $report);
         self::assertSame(1, $report['op']['count']);
@@ -41,45 +43,64 @@ final class ProfilerTest extends TestCase
 
     public function testMultipleCallsAccumulate(): void
     {
-        Profiler::start('multiop');
+        $this->profiler->start('multiop');
         \usleep(5000);
-        Profiler::end('multiop');
-        Profiler::start('multiop');
+        $this->profiler->end('multiop');
+        $this->profiler->start('multiop');
         \usleep(5000);
-        Profiler::end('multiop');
+        $this->profiler->end('multiop');
 
-        $report = Profiler::report();
+        $report = $this->profiler->report();
 
         self::assertSame(2, $report['multiop']['count']);
     }
 
     public function testResetClearsData(): void
     {
-        Profiler::start('temp');
-        Profiler::end('temp');
-        Profiler::reset();
+        $this->profiler->start('temp');
+        $this->profiler->end('temp');
+        $this->profiler->reset();
 
-        $report = Profiler::report();
+        $report = $this->profiler->report();
         self::assertSame([], $report);
     }
 
     public function testEndWithoutStartReturnsZeroDuration(): void
     {
-        $duration = Profiler::end('never-started');
+        $duration = $this->profiler->end('never-started');
 
         self::assertSame(0.0, $duration);
     }
 
     public function testUnmatchedEndDoesNotSkewMinMs(): void
     {
-        Profiler::end('op'); // no matching start(): must not record a bogus 0.0 sample
-        Profiler::start('op');
+        $this->profiler->end('op'); // no matching start(): must not record a bogus 0.0 sample
+        $this->profiler->start('op');
         \usleep(3000);
-        Profiler::end('op');
+        $this->profiler->end('op');
 
-        $report = Profiler::report();
+        $report = $this->profiler->report();
 
         self::assertSame(1, $report['op']['count']);
         self::assertGreaterThan(0.0, $report['op']['min_ms']);
+    }
+
+    public function testTwoInstancesDoNotShareState(): void
+    {
+        $a = new Profiler();
+        $b = new Profiler();
+
+        $a->start('a-op');
+        $b->start('b-op');
+        $a->end('a-op');
+        $b->end('b-op');
+
+        $reportA = $a->report();
+        $reportB = $b->report();
+
+        self::assertArrayHasKey('a-op', $reportA);
+        self::assertArrayNotHasKey('b-op', $reportA, 'Profiler instances must be isolated.');
+        self::assertArrayHasKey('b-op', $reportB);
+        self::assertArrayNotHasKey('a-op', $reportB);
     }
 }

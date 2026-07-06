@@ -7,7 +7,6 @@ namespace FerryAI\Tests\Unit;
 use FerryAI\Core\AIConfig;
 use FerryAI\Metrics;
 use FerryAI\Observability;
-use FerryAI\Profiler;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 
@@ -17,7 +16,6 @@ final class ObservabilityTest extends TestCase
     protected function setUp(): void
     {
         Metrics::reset();
-        Profiler::reset();
     }
 
     public function testDisabledByDefaultRunsWithoutRecording(): void
@@ -48,7 +46,7 @@ final class ObservabilityTest extends TestCase
 
         $observability->measure('classify', static fn(): bool => true);
 
-        self::assertArrayHasKey('classify', Profiler::report());
+        self::assertArrayHasKey('classify', $observability->profilerReport());
     }
 
     public function testLoggingWritesEntry(): void

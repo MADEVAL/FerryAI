@@ -7,29 +7,28 @@ namespace FerryAI;
 final class Profiler
 {
     /** @var array<string, float> */
-    private static array $startTimes = [];
+    private array $startTimes = [];
 
     /** @var array<string, array{count: int, total_ms: float, min_ms: float, max_ms: float}> */
-    private static array $profiles = [];
+    private array $profiles = [];
 
-    public static function start(string $label): void
+    public function start(string $label): void
     {
-        self::$startTimes[$label] = \microtime(true) * 1000.0;
+        $this->startTimes[$label] = \microtime(true) * 1000.0;
     }
 
-    public static function end(string $label): float
+    public function end(string $label): float
     {
-        // An unmatched end() has no measured interval; ignore it so it cannot skew the stats.
-        if (!isset(self::$startTimes[$label])) {
+        if (!isset($this->startTimes[$label])) {
             return 0.0;
         }
 
         $endTime = \microtime(true) * 1000.0;
-        $startTime = self::$startTimes[$label];
+        $startTime = $this->startTimes[$label];
         $duration = $endTime - $startTime;
 
-        if (!isset(self::$profiles[$label])) {
-            self::$profiles[$label] = [
+        if (!isset($this->profiles[$label])) {
+            $this->profiles[$label] = [
                 'count' => 0,
                 'total_ms' => 0.0,
                 'min_ms' => $duration,
@@ -37,12 +36,12 @@ final class Profiler
             ];
         }
 
-        self::$profiles[$label]['count']++;
-        self::$profiles[$label]['total_ms'] += $duration;
-        self::$profiles[$label]['min_ms'] = \min(self::$profiles[$label]['min_ms'], $duration);
-        self::$profiles[$label]['max_ms'] = \max(self::$profiles[$label]['max_ms'], $duration);
+        $this->profiles[$label]['count']++;
+        $this->profiles[$label]['total_ms'] += $duration;
+        $this->profiles[$label]['min_ms'] = \min($this->profiles[$label]['min_ms'], $duration);
+        $this->profiles[$label]['max_ms'] = \max($this->profiles[$label]['max_ms'], $duration);
 
-        unset(self::$startTimes[$label]);
+        unset($this->startTimes[$label]);
 
         return $duration;
     }
@@ -50,11 +49,11 @@ final class Profiler
     /**
      * @return array<string, array{count: int, total_ms: float, avg_ms: float, min_ms: float, max_ms: float}>
      */
-    public static function report(): array
+    public function report(): array
     {
         $result = [];
 
-        foreach (self::$profiles as $label => $profile) {
+        foreach ($this->profiles as $label => $profile) {
             $result[$label] = [
                 'count' => $profile['count'],
                 'total_ms' => $profile['total_ms'],
@@ -67,9 +66,9 @@ final class Profiler
         return $result;
     }
 
-    public static function reset(): void
+    public function reset(): void
     {
-        self::$startTimes = [];
-        self::$profiles = [];
+        $this->startTimes = [];
+        $this->profiles = [];
     }
 }

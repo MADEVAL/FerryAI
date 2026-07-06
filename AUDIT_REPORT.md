@@ -1,11 +1,3 @@
-### 17. `Observability` creates a `Profiler` dependency but `Profiler` is never instantiated
-
-**File:** `packages/ai/src/Observability.php`
-
-`Profiler::start()` and `Profiler::end()` are static calls on the `Profiler` class, which uses its own static storage. The `Observability` class doesn't hold an instance or dependency. This works but means all profiles share a global state — parallel test runs would interfere.
-
----
-
 ### 18. `NativeBinaryManager` — hardcoded GitHub release URL with guessed format
 
 **File:** `packages/ai/src/NativeBinaryManager.php:42-48`

@@ -23,6 +23,8 @@ final class Observability
 {
     private ?Logger $logger = null;
 
+    private ?Profiler $profiler = null;
+
     public function __construct(
         private bool $metrics = false,
         private bool $profiling = false,
@@ -31,6 +33,10 @@ final class Observability
     ) {
         if ($this->logging) {
             $this->logger = new Logger($logFile);
+        }
+
+        if ($this->profiling) {
+            $this->profiler = new Profiler();
         }
     }
 
@@ -44,6 +50,14 @@ final class Observability
             logging: (bool) $config->get('observability.logging', false),
             logFile: \is_string($logFile) ? $logFile : null,
         );
+    }
+
+    /**
+     * @return array<string, array{count: int, total_ms: float, avg_ms: float, min_ms: float, max_ms: float}>
+     */
+    public function profilerReport(): array
+    {
+        return $this->profiler?->report() ?? [];
     }
 
     /**
@@ -64,7 +78,7 @@ final class Observability
         $tags = ['op' => $operation];
 
         if ($this->profiling) {
-            Profiler::start($operation);
+            $this->profiler->start($operation);
         }
 
         $this->logger?->info('ai.operation.start', $tags);
@@ -75,7 +89,7 @@ final class Observability
             $elapsedMs = (\microtime(true) - $start) * 1000.0;
 
             if ($this->profiling) {
-                Profiler::end($operation);
+                $this->profiler->end($operation);
             }
 
             if ($this->metrics) {
@@ -88,7 +102,7 @@ final class Observability
             return $result;
         } catch (\Throwable $e) {
             if ($this->profiling) {
-                Profiler::end($operation);
+                $this->profiler->end($operation);
             }
 
             if ($this->metrics) {
