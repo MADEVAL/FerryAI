@@ -2,7 +2,7 @@
 
 > **FerryAI** is a complete, production-grade inference runtime for PHP 8.5+.
 > ONNX Runtime, llama.cpp, and RubixML backends — one API, zero Python.
-> All 4 implementation phases complete. 568 tests. 20 examples.
+> All 4 implementation phases complete. 686 tests. 20 examples.
 
 ---
 
@@ -16,8 +16,8 @@ composer require ferry-ai/php-inference
 |---|---|
 | Install and run first inference | `README.md` (repo root) |
 | See all capabilities in action | [`examples/`](../examples/) — 20 runnable scripts |
-| Understand the architecture | `TECHNICAL_SPECIFICATION.md` |
-| Look up a method signature | `INTERFACE_CONTRACTS.md` |
+| Look up a method / facade signature | `api-reference.md` (+ interfaces in `packages/core/src/Contracts/`) |
+| Read a per-capability guide | the guides below (onnx, llama, cpu, embedding, vector-store, pipeline, model-hub, tokenizer, tensor, core, streaming, laravel, symfony) |
 | Find where a class lives | `FILE_TREE.md` |
 | Understand a design decision | `RESEARCH_ARCHITECTURE.md` |
 | Set up CI/CD or dev tooling | `REPOSITORY_INFRASTRUCTURE.md` |
@@ -35,7 +35,7 @@ FerryAI/
 ├── README.md                     # Project pitch, quick start, verified status
 ├── AGENTS.md                     # AI agent instruction set
 ├── composer.json                 # Root meta-package
-├── packages/                     # 14 packages (monorepo)
+├── packages/                     # 13 packages (monorepo; dataframe deferred — see DEBT_REPORT)
 │   ├── core/                     # Contracts, enums, value objects, exceptions
 │   ├── tensor/                   # ArrayTensor, BackedTensor, TensorFactory
 │   ├── onnx-backend/             # ONNX Runtime FFI backend
@@ -62,20 +62,25 @@ FerryAI/
 
 | Document | Role | Audience |
 |----------|------|----------|
-| `TECHNICAL_SPECIFICATION.md` | Architecture bible — layers, packages, components | Everyone |
-| `INTERFACE_CONTRACTS.md` | Exact method signatures for every contract | Developers |
-| `FILE_TREE.md` | Complete file map — 137 files in 14 packages | Developers |
+| `api-reference.md` | Facade + contracts/value-objects/exceptions quick reference | Developers |
+| `TECHNICAL_SPECIFICATION.md` | **Pruned** — implemented; redirects to code + guides + DEBT | Everyone |
+| `INTERFACE_CONTRACTS.md` | **Pruned** — signatures live in `packages/core/src/Contracts/` | Developers |
+| `FILE_TREE.md` | Complete file map across the built packages | Developers |
 | `RESEARCH_ARCHITECTURE.md` | Why decisions were made — ecosystem analysis | Architects |
 | `REPOSITORY_INFRASTRUCTURE.md` | CI/CD, composer, testing, publishing | DevOps |
 | `SOURCES.md` | External dependency audit — versions, URLs | Maintainers |
 | `SKILL.md` | AI agent coding conventions and rules | AI agents |
 | `BUILD_LOG.md` | Development journal — what, when, why | Historians |
-| `DEBT_REPORT.md` | Technical debt inventory — stubs, mocks, gates | Maintainers |
-| `IMPLEMENTATION_PHASE_1.md` | Phase 1 build record (MVP: ONNX inference) | Archive |
-| `IMPLEMENTATION_PHASE_2.md` | Phase 2 build record (LLM: llama.cpp) | Archive |
-| `IMPLEMENTATION_PHASE_3.md` | Phase 3 build record (Ecosystem) | Archive |
-| `IMPLEMENTATION_PHASE_4.md` | Phase 4 build record (Production) | Archive |
+| `DEBT_REPORT.md` | Technical debt + everything not yet implemented | Maintainers |
+| `IMPLEMENTATION_PHASE_1..4.md` | **Pruned** — phases done; redirect to code/guides/DEBT | Archive |
 | `EXAMPLES_PLAN.md` | Coverage matrix for 20 examples | Contributors |
+
+### Per-capability guides
+
+`getting-started.md`, `configuration.md`, `api-reference.md`, `backends/onnx.md`,
+`backends/llama.md`, `backends/cpu.md`, `embedding.md`, `vector-store.md`, `pipeline.md`,
+`model-hub.md`, `tokenizer.md`, `tensor.md`, `core.md`, `streaming.md`, `security.md`,
+`laravel.md`, `symfony.md`, `deployment.md`, `troubleshooting.md`.
 
 ---
 
@@ -104,7 +109,7 @@ Contracts in `packages/core/src/Contracts/` define truth — implementations nev
 ## Key Commands
 
 ```bash
-composer test                # 568 unit tests (pure PHP)
+composer test                # 686 unit tests (pure PHP)
 composer test-integration    # Integration tests (needs ONNX/libllama)
 composer check               # Pre-commit: cs-fix + PHPStan lvl8 + Psalm lvl3 + tests
 composer cs-fix              # Auto-fix code style (PER-CS 2.0)
@@ -118,15 +123,15 @@ composer psalm               # Psalm static analysis
 
 | Component | Status |
 |-----------|--------|
-| ONNX Runtime inference | ✅ Production — tested on Windows x64, ONNX 1.27.0 |
-| llama.cpp probe | ✅ Library loads, init works. Full inference needs C-wrapper DLL (§DEBT_REPORT) |
+| ONNX Runtime inference | ✅ Production — CPU verified (Windows + Linux, ONNX 1.27.0); GPU needs cuDNN (DEBT §13) |
+| llama.cpp chat/stream | ✅ Real inference on CPU + GPU via the `ferry_llama` wrapper (Windows + Linux) |
 | Pure-PHP tokenizer | ✅ BPE + WordPiece, round-tripping, chunking |
-| Vector store | ✅ SQLite brute-force + metadata filter |
-| Model Hub | ✅ HuggingFace API, SHA-256, Ed25519 |
+| Vector store | ✅ SQLite brute-force + sqlite-vec + PostgreSQL/pgvector + metadata filter |
+| Model Hub | ✅ HuggingFace API, streaming download, SHA-256, Ed25519 |
 | Pipeline | ✅ 8 composable stages, Generator-based |
-| CPU fallback | ✅ Always available |
+| CPU fallback | ✅ Always available (pure PHP; real `.rbm` via RubixML) |
 | Framework integrations | ✅ Laravel + Symfony (standalone adapters) |
-| Unit tests | ✅ 568/568 |
+| Unit tests | ✅ 686/686 |
 | Examples | ✅ 20/20 runnable |
 
 ---

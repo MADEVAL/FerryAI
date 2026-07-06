@@ -32,8 +32,9 @@ The primary surface is the static `FerryAI\AI` facade. Call `AI::config()` once 
 ## Core contracts (`FerryAI\Core\Contracts`)
 
 `Backend`, `Model`, `Tensor`, `Tokenizer`, `Embedder`, `VectorStore`, `Pipeline`, `Stage`,
-`ModelHub`, `DataFrame`. Exact signatures live in
-[`INTERFACE_CONTRACTS.md`](INTERFACE_CONTRACTS.md).
+`ModelHub`, `DataFrame`. The exact signatures are the interfaces themselves in
+[`packages/core/src/Contracts/`](../packages/core/src/Contracts/) (the source of truth).
+`DataFrame` has no implementation yet — see [`DEBT_REPORT.md`](DEBT_REPORT.md) §7.
 
 ## Value objects (`FerryAI\Core\ValueObjects`)
 

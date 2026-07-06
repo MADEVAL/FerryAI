@@ -3,7 +3,31 @@
 > Only unresolved items. Resolved/diagnosed issues are removed. By-design decisions are
 > kept where they explain a deliberate choice.
 >
-> Last pass: 2026-07-05.
+> This is now the single home for everything the specification described but which is **not yet
+> implemented**. The step-by-step ТЗ (`IMPLEMENTATION_PHASE_1..4.md`), the architecture bible
+> (`TECHNICAL_SPECIFICATION.md`) and the contracts doc (`INTERFACE_CONTRACTS.md`) have had their
+> implemented content removed — the implemented surface now lives in the code
+> (`packages/*/src`), `docs/api-reference.md` and the per-capability guides.
+>
+> Last pass: 2026-07-06. Baseline: 686 unit tests, PHPStan L8 + Psalm L3 clean.
+
+---
+
+## 0. Deferred / Not Implemented From the Specification
+
+The authoritative list of specified-but-unbuilt features (details in the numbered sections below):
+
+| Item | Spec phase | Status |
+|------|-----------|--------|
+| `dataframe` package (`DataFrame`, `Column`, CSV/JSON/Parquet IO) | Phase 4 | **Not created.** `Contracts\DataFrame` exists; no implementation. See §7. |
+| `BackedTensor` arithmetic (tensor over a native backend tensor) | Phase 1+ | **Stub** — every op throws `Not implemented in Phase 1.`. `ArrayTensor` is the working pure-PHP tensor. See §3. |
+| ONNX GPU execution providers (TensorRT / DirectML / OpenVINO / ROCm) | Phase 1/4 | **Planned**, not implemented. CoreML not FFI-wired; CUDA needs cuDNN. See §2 / §13. |
+| Safetensors **loader** | — | **Not supported** — detection only; conversion via Python required. See §12. |
+| HuggingFace native tokenizer (`tokenizers-cpp` binding) | Phase 2 | **Optional accelerator**, not built; pure-PHP BPE/WordPiece covers all needed types. See §1. |
+| Dev tooling (Infection, Pest, CaptainHook, Monorepo-builder, Composer-normalize) | Phase 4 | **Referenced in scripts, not installed.** See §9. |
+
+Everything else described in the specification is implemented and verified (see the guides and
+`docs/api-reference.md`).
 
 ---
 
@@ -43,6 +67,7 @@ PHPStan/Psalm and tested via hand-rolled stubs in unit tests. Real path: integra
 | Class | What happens |
 |-------|-------------|
 | `CpuNativeModel::run()` (no RubixML) | `throw BackendNotAvailableException` with actionable guidance. With RubixML it delegates to real predict/proba. |
+| `tensor/src/BackedTensor.php` | Phase-1 stub: `reshape`/`transpose`/arithmetic/`toArray` etc. throw `Not implemented in Phase 1.`. The working pure-PHP tensor is `ArrayTensor`; ONNX/CPU backends return their own `OnnxTensor`/`CpuNativeTensor`. `BackedTensor` (a tensor wrapping a native backend tensor) is not needed by any current path. |
 
 > `HuggingFaceTokenizer` — pure-PHP BPE/WordPiece covers all needed tokenizer types; native
 > binding is optional and not a stub.
@@ -99,8 +124,10 @@ inside real Laravel/Symfony applications.
 | `SOURCES.md` sqlite-vec version | Lists v0.1.9; verified binary on Windows is v0.1.10-alpha. |
 | Root `composer.json` | Only lists `ext-ffi/json/hash/fileinfo`; sub-package extensions declared per-package; optional exts `suggest`-only. Intentional but not centralised. |
 
-> All per-capability guides, API reference, configuration, getting-started, deployment,
-> security, troubleshooting and CHANGELOG exist.
+> Every engine package now has a guide (added `docs/backends/cpu.md`, `docs/tensor.md`,
+> `docs/core.md`). The spec docs (`TECHNICAL_SPECIFICATION.md`, `INTERFACE_CONTRACTS.md`,
+> `IMPLEMENTATION_PHASE_1..4.md`) were pruned of implemented content — the source of truth is the
+> code + `docs/api-reference.md` + the per-capability guides; unimplemented items live here.
 
 ---
 
@@ -113,7 +140,7 @@ Listed in `composer.json` scripts: Infection, Pest, CaptainHook, Monorepo-builde
 ## 10. Test Coverage Gaps — FFI Boundary
 
 8 FFI-boundary files excluded from unit tests **by design**. All pure-PHP classes are tested
-(639 unit tests).
+(686 unit tests).
 
 ---
 
@@ -127,7 +154,7 @@ Listed in `composer.json` scripts: Infection, Pest, CaptainHook, Monorepo-builde
 | sqlite-vec | ✅ Windows + Linux (native KNN). |
 | PostgreSQL vector store | ✅ Windows (pgvector 0.8.4). WSL → PG blocked by `pg_hba.conf` (environment). |
 | RubixML | ✅ Windows + Linux (isolated, subprocess harness). |
-| Pure-PHP suite | ✅ 639 unit + PHPStan L8 + Psalm L3, Windows + Linux. |
+| Pure-PHP suite | ✅ 686 unit + PHPStan L8 + Psalm L3, Windows + Linux. |
 | Safetensors | 🔴 Format detected, no loader. Requires Python conversion. |
 | HuggingFace native tokenizer | Optional accelerator; pure-PHP covers all needed types. |
 | `ferry_llama.dll/.so` | Machine-built, not committed. Build via `native/llama-wrapper/build.{ps1,sh}`. |
