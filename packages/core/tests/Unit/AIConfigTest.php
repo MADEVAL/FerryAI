@@ -82,6 +82,14 @@ final class AIConfigTest extends TestCase
         self::assertFalse(isset($config['missing']));
     }
 
+    public function testArrayAccessWriteIsRejectedBecauseConfigIsImmutable(): void
+    {
+        $config = AIConfig::fromArray([]);
+
+        $this->expectException(\LogicException::class);
+        $config['temperature'] = 0.9;
+    }
+
     public function testToArrayContainsDefaults(): void
     {
         $config = AIConfig::fromArray([]);

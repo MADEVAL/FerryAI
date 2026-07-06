@@ -31,6 +31,13 @@ final class ClsPoolingTest extends TestCase
         self::assertSame([0.1, 0.2, 0.3], $result);
     }
 
+    public function testPoolReturnsEmptyForEmptyInput(): void
+    {
+        $pooling = new ClsPooling();
+
+        self::assertSame([], $pooling->pool([]));
+    }
+
     public function testPoolIgnoresAttentionMask(): void
     {
         $pooling = new ClsPooling();

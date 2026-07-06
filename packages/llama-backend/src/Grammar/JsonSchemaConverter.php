@@ -100,27 +100,73 @@ final class JsonSchemaConverter
     {
         $this->terminal('ws', $terminals);
         $properties = \is_array($schema['properties'] ?? null) ? $schema['properties'] : [];
-        $required = \is_array($schema['required'] ?? null) ? $schema['required'] : array_keys($properties);
+        $required = \is_array($schema['required'] ?? null) ? $schema['required'] : [];
         $name = 'object-' . $counter++;
 
-        $parts = [];
+        /** @var list<array{bool, string}> $pieces */
+        $pieces = [];
 
-        foreach ($required as $key) {
-            if (!\is_string($key) || !isset($properties[$key]) || !\is_array($properties[$key])) {
+        foreach ($properties as $key => $propertySchema) {
+            if (!\is_string($key) || !\is_array($propertySchema)) {
                 continue;
             }
 
             /** @var array<string, mixed> $propertySchema */
-            $propertySchema = $properties[$key];
-            $parts[] = $this->literal('"' . $key . '"') . ' ws ":" ws '
+            $piece = $this->literal('"' . $key . '"') . ' ws ":" ws '
                 . $this->build($propertySchema, $rules, $terminals, $counter);
+            $pieces[] = [\in_array($key, $required, true), $piece];
         }
 
-        $rules[$name] = $parts === []
+        $rules[$name] = $pieces === []
             ? '"{" ws "}"'
-            : '"{" ws ' . implode(' ws "," ws ', $parts) . ' ws "}"';
+            : '"{" ws ' . $this->objectHead($pieces, 0) . ' ws "}"';
 
         return $name;
+    }
+
+    /**
+     * Grammar for properties[$i..] where the first present property carries no leading comma.
+     * Optional properties may be skipped so any in-order subset is accepted.
+     *
+     * @param list<array{bool, string}> $pieces
+     */
+    private function objectHead(array $pieces, int $i): string
+    {
+        if ($i >= \count($pieces)) {
+            return '""';
+        }
+
+        [$isRequired, $piece] = $pieces[$i];
+        $tail = $this->objectTail($pieces, $i + 1);
+        $present = '(' . $piece . ($tail === '""' ? '' : ' ' . $tail) . ')';
+
+        if ($isRequired) {
+            return $present;
+        }
+
+        return '(' . $present . ' | ' . $this->objectHead($pieces, $i + 1) . ')';
+    }
+
+    /**
+     * Grammar for properties[$i..] where every present property carries a leading comma.
+     *
+     * @param list<array{bool, string}> $pieces
+     */
+    private function objectTail(array $pieces, int $i): string
+    {
+        if ($i >= \count($pieces)) {
+            return '""';
+        }
+
+        [$isRequired, $piece] = $pieces[$i];
+        $sub = $this->objectTail($pieces, $i + 1);
+        $segment = 'ws "," ws ' . $piece . ($sub === '""' ? '' : ' ' . $sub);
+
+        if ($isRequired) {
+            return '(' . $segment . ')';
+        }
+
+        return '((' . $segment . ') | ' . $sub . ')';
     }
 
     /**

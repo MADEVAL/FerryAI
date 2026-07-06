@@ -93,7 +93,13 @@ final class AIFactory
         $store = new SQLiteStore(\is_string($dbPath) ? $dbPath : ':memory:');
         $manager = new CollectionManager($store);
 
-        return $manager->create($collection, $dimension);
+        if ($manager->exists($collection)) {
+            return $manager->open($collection);
+        }
+
+        $metric = (string) $this->config->get('vector.metric', 'cosine');
+
+        return $manager->create($collection, $dimension, ['metric' => $metric]);
     }
 
     private function vectorDriver(): string

@@ -6,12 +6,15 @@ namespace FerryAI\LlamaBackend\Sampling;
 
 use FerryAI\Core\Exception\ValidationException;
 use FerryAI\Core\ValueObjects\SamplingParams;
+use Random\Randomizer;
 
 /**
  * Top-K sampling: keeps the K highest logits, then samples proportionally.
  */
 final class TopKSampler implements Sampler
 {
+    private ?Randomizer $randomizer = null;
+
     /**
      * @param float[] $logits
      */
@@ -29,7 +32,8 @@ final class TopKSampler implements Sampler
         $topLogits = array_map(static fn(int $index): float => $logits[$index], $top);
         $probabilities = SamplerMath::softmax($topLogits, $params->temperature);
 
-        $position = SamplerMath::weightedIndex($probabilities, SamplerMath::randomizer($params->seed));
+        $this->randomizer ??= SamplerMath::randomizer($params->seed);
+        $position = SamplerMath::weightedIndex($probabilities, $this->randomizer);
 
         return $top[$position];
     }

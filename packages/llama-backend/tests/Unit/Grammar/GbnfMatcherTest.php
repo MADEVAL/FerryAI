@@ -17,6 +17,16 @@ final class GbnfMatcherTest extends TestCase
         return new GbnfMatcher(GbnfGrammar::fromString($gbnf));
     }
 
+    public function testAnyCharAtomMatchesSingleCharacter(): void
+    {
+        $m = $this->matcher('root ::= "a" . "b"');
+
+        self::assertTrue($m->isComplete('axb'));
+        self::assertTrue($m->isComplete('a9b'));
+        self::assertFalse($m->isComplete('ab'), '`.` must consume exactly one character');
+        self::assertFalse($m->isComplete('axxb'));
+    }
+
     public function testLiteralAlternation(): void
     {
         $m = $this->matcher('root ::= "yes" | "no"');

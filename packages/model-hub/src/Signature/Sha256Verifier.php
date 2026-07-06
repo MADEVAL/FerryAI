@@ -30,7 +30,8 @@ final class Sha256Verifier
             return false;
         }
 
-        $expected = \trim($content);
+        // Accept both a bare hash and the standard `sha256sum` format ("<hash>  <filename>").
+        $expected = (string) \strtok(\trim($content), " \t\r\n");
 
         return self::verify($path, $expected);
     }

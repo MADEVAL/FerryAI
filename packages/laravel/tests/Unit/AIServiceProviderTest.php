@@ -71,4 +71,43 @@ final class AIServiceProviderTest extends TestCase
 
         self::assertTrue(true);
     }
+
+    public function testGetConfigPreservesZeroTemperature(): void
+    {
+        \putenv('FERRY_AI_TEMPERATURE=0');
+
+        try {
+            $config = (new AIServiceProvider())->getConfig();
+
+            self::assertSame(0.0, $config['temperature']);
+        } finally {
+            \putenv('FERRY_AI_TEMPERATURE');
+        }
+    }
+
+    public function testGetConfigAllowsDisablingSignatureVerification(): void
+    {
+        \putenv('FERRY_AI_VERIFY_SIGNATURES=0');
+
+        try {
+            $config = (new AIServiceProvider())->getConfig();
+
+            self::assertFalse($config['verify_signatures']);
+        } finally {
+            \putenv('FERRY_AI_VERIFY_SIGNATURES');
+        }
+    }
+
+    public function testGetConfigSetsLogLevel(): void
+    {
+        \putenv('FERRY_AI_LOG_LEVEL=debug');
+
+        try {
+            $config = (new AIServiceProvider())->getConfig();
+
+            self::assertSame('debug', $config['log_level']);
+        } finally {
+            \putenv('FERRY_AI_LOG_LEVEL');
+        }
+    }
 }

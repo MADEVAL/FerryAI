@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace FerryAI\LlamaBackend\Tests\Unit\Grammar;
 
 use FerryAI\LlamaBackend\Grammar\GbnfGrammar;
+use FerryAI\LlamaBackend\Grammar\GbnfMatcher;
 use FerryAI\LlamaBackend\Grammar\JsonSchemaConverter;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
@@ -35,6 +36,24 @@ final class JsonSchemaConverterTest extends TestCase
         self::assertStringContainsString('root ::=', $gbnf);
         self::assertStringContainsString('\\"name\\"', $gbnf);
         self::assertStringContainsString('string ::=', $gbnf);
+    }
+
+    public function testObjectWithoutRequiredAcceptsPropertySubsets(): void
+    {
+        $grammar = $this->converter->convert([
+            'type' => 'object',
+            'properties' => [
+                'a' => ['type' => 'string'],
+                'b' => ['type' => 'integer'],
+            ],
+            // note: no "required" key — both should be OPTIONAL per JSON Schema
+        ]);
+        $matcher = new GbnfMatcher($grammar);
+
+        self::assertTrue($matcher->isComplete('{"a":"x"}'));
+        self::assertTrue($matcher->isComplete('{"b":42}'));
+        self::assertTrue($matcher->isComplete('{}'), 'empty object must be valid when no required');
+        self::assertTrue($matcher->isComplete('{"a":"x","b":42}'));
     }
 
     public function testPrimitiveRules(): void

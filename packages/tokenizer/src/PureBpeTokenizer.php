@@ -127,7 +127,12 @@ final class PureBpeTokenizer implements Tokenizer
             }
 
             $token = $this->idToToken[$id] ?? '';
-            $text .= $token === $this->endOfWord ? ' ' : $token;
+
+            if (\str_ends_with($token, $this->endOfWord)) {
+                $text .= \substr($token, 0, -\strlen($this->endOfWord)) . ' ';
+            } else {
+                $text .= $token;
+            }
         }
 
         return rtrim($text);

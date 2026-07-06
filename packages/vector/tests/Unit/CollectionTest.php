@@ -166,6 +166,21 @@ final class CollectionTest extends TestCase
         self::assertSame([], $this->collection->export());
     }
 
+    public function testSearchUsesConfiguredEuclideanMetric(): void
+    {
+        $store = new SQLiteStore(':memory:');
+        $store->createCollection('euc', 3, 'euclidean');
+        $collection = new Collection('euc', 3, $store, 'euclidean');
+
+        // Query [1,0,0]. Cosine nearest = A (colinear, dist 0); euclidean nearest = B (closest point).
+        $collection->add('A', [2.0, 0.0, 0.0]);
+        $collection->add('B', [0.9, 0.1, 0.0]);
+
+        $results = $collection->search([1.0, 0.0, 0.0], 1);
+
+        self::assertSame('B', $results[0]['id'], 'euclidean metric must be honoured, not cosine');
+    }
+
     public function testImplementsVectorStore(): void
     {
         self::assertInstanceOf(VectorStore::class, $this->collection);

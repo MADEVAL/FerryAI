@@ -31,6 +31,13 @@ final class EosPoolingTest extends TestCase
         self::assertSame([0.7, 0.8, 0.9], $result);
     }
 
+    public function testPoolReturnsEmptyForEmptyInput(): void
+    {
+        $pooling = new EosPooling();
+
+        self::assertSame([], $pooling->pool([]));
+    }
+
     public function testPoolIgnoresAttentionMask(): void
     {
         $pooling = new EosPooling();

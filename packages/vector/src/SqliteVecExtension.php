@@ -220,11 +220,24 @@ final class SqliteVecExtension
 
     private static function vecTable(string $collection): string
     {
-        return 'vec_' . $collection;
+        return 'vec_' . self::assertSafeName($collection);
     }
 
     private static function mapTable(string $collection): string
     {
-        return 'vecmap_' . $collection;
+        return 'vecmap_' . self::assertSafeName($collection);
+    }
+
+    private static function assertSafeName(string $collection): string
+    {
+        if (\preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $collection) !== 1) {
+            throw new \FerryAI\Core\Exception\ValidationException(\sprintf(
+                'Invalid collection name "%s": only letters, digits and underscores are allowed, '
+                . 'and it must not start with a digit.',
+                $collection,
+            ));
+        }
+
+        return $collection;
     }
 }

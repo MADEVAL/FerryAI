@@ -67,11 +67,17 @@ final class Embedder implements EmbedderContract
             $hiddenStates = $hiddenStates->toArray();
         }
 
-        $hiddenStates = \is_array($hiddenStates) ? ($hiddenStates[0] ?? $hiddenStates) : [];
+        $hiddenStates = \is_array($hiddenStates) ? $hiddenStates : [];
 
-        if (\is_array($hiddenStates) && isset($hiddenStates[0]) && \is_array($hiddenStates[0])) {
+        // Strip the batch dimension only when present: [batch, seq, hidden] -> [seq, hidden].
+        // Models that emit 2D [seq, hidden] are left untouched so pooling still runs.
+        if (isset($hiddenStates[0][0]) && \is_array($hiddenStates[0][0])) {
+            $hiddenStates = $hiddenStates[0];
+        }
+
+        if (isset($hiddenStates[0]) && \is_array($hiddenStates[0])) {
             $vector = $this->poolingStrategy->pool($hiddenStates, [$attentionMask]);
-        } elseif (\is_array($hiddenStates)) {
+        } elseif ($hiddenStates !== [] && \is_array($hiddenStates)) {
             $vector = $hiddenStates;
         } else {
             $vector = [];
@@ -129,6 +135,14 @@ final class Embedder implements EmbedderContract
     #[\Override]
     public function cosineSimilarity(array $a, array $b): float
     {
+        if (\count($a) !== \count($b)) {
+            throw new \FerryAI\Core\Exception\ValidationException(\sprintf(
+                'cosineSimilarity() requires vectors of equal length, got %d and %d.',
+                \count($a),
+                \count($b),
+            ));
+        }
+
         $dotProduct = 0.0;
         $normA = 0.0;
         $normB = 0.0;

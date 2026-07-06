@@ -62,4 +62,16 @@ final class Sha256VerifierTest extends TestCase
 
         self::assertTrue(Sha256Verifier::verifyFile($dataPath, $shaPath));
     }
+
+    public function testVerifyFileWithStandardSha256sumFormat(): void
+    {
+        $dataPath = $this->tempDir . '/data.bin';
+        $shaPath = $this->tempDir . '/data.bin.sha256';
+        $content = 'test data';
+        \file_put_contents($dataPath, $content);
+        // Standard `sha256sum` output: "<hash>  <filename>".
+        \file_put_contents($shaPath, \hash('sha256', $content) . '  data.bin' . "\n");
+
+        self::assertTrue(Sha256Verifier::verifyFile($dataPath, $shaPath));
+    }
 }

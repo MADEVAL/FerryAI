@@ -24,7 +24,7 @@ final class ChatFormatter
             str_contains($name, 'llama-3') || str_contains($name, 'llama3') => 'llama3',
             str_contains($name, 'mistral') || str_contains($name, 'mixtral') => 'mistral',
             str_contains($name, 'gemma') => 'gemma',
-            str_contains($name, 'phi') => 'phi',
+            \preg_match('/(?<![a-z])phi/', $name) === 1 => 'phi',
             default => 'chatml',
         };
     }

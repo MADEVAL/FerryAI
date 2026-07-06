@@ -21,6 +21,13 @@ final class ChatFormatterTest extends TestCase
         self::assertSame('chatml', ChatFormatter::detectFormat('some/unknown-model'));
     }
 
+    public function testDetectFormatDoesNotMatchPhiInsideDolphin(): void
+    {
+        self::assertSame('chatml', ChatFormatter::detectFormat('cognitivecomputations/dolphin-2.6'));
+        self::assertSame('phi', ChatFormatter::detectFormat('Phi-3-mini-4k-instruct'));
+        self::assertSame('phi', ChatFormatter::detectFormat('phi2'));
+    }
+
     public function testChatmlFormat(): void
     {
         $prompt = (new ChatFormatter('chatml'))->format([ChatMessage::user('Hello')]);

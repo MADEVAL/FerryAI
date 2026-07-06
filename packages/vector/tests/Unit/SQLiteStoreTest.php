@@ -25,6 +25,18 @@ final class SQLiteStoreTest extends TestCase
         self::assertTrue($this->store->collectionExists('test_collection'));
     }
 
+    public function testCreateCollectionRejectsUnsafeName(): void
+    {
+        $this->expectException(\FerryAI\Core\Exception\ValidationException::class);
+        $this->store->createCollection('a"b', 3);
+    }
+
+    public function testInsertVectorRejectsUnsafeCollectionName(): void
+    {
+        $this->expectException(\FerryAI\Core\Exception\ValidationException::class);
+        $this->store->insertVector('x"; DROP TABLE t; --', 'id', \pack('f*', 1.0));
+    }
+
     public function testCollectionExistsReturnsFalseForUnknown(): void
     {
         self::assertFalse($this->store->collectionExists('nonexistent'));

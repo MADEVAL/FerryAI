@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace FerryAI\Vector;
 
+use FerryAI\Core\Exception\ValidationException;
+
 final class SQLiteStore
 {
     private \PDO $pdo;
@@ -31,6 +33,8 @@ final class SQLiteStore
 
     public function createCollection(string $name, int $dimension, string $metric = 'cosine', string $indexType = 'flat'): void
     {
+        $tableName = $this->vectorTableName($name);
+
         $stmt = $this->pdo->prepare('INSERT INTO collections (name, dimension, metric, index_type) VALUES (:name, :dimension, :metric, :index_type)');
         $stmt->execute([
             ':name' => $name,
@@ -39,7 +43,6 @@ final class SQLiteStore
             ':index_type' => $indexType,
         ]);
 
-        $tableName = $this->vectorTableName($name);
         $this->pdo->exec(\sprintf(
             'CREATE TABLE IF NOT EXISTS "%s" (
                 id TEXT PRIMARY KEY,
@@ -147,6 +150,14 @@ final class SQLiteStore
 
     private function vectorTableName(string $collection): string
     {
+        if (\preg_match('/^[A-Za-z_][A-Za-z0-9_]*$/', $collection) !== 1) {
+            throw new ValidationException(\sprintf(
+                'Invalid collection name "%s": only letters, digits and underscores are allowed, '
+                . 'and it must not start with a digit.',
+                $collection,
+            ));
+        }
+
         return 'vectors_' . $collection;
     }
 }

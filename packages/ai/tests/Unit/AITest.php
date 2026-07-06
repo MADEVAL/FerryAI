@@ -35,6 +35,20 @@ final class AITest extends TestCase
         self::assertSame(Device::CPU, AI::activeDevice());
     }
 
+    public function testConfigHonorsConfiguredBackend(): void
+    {
+        AI::config(['backend' => 'llama']);
+
+        self::assertSame(BackendType::Llama, AI::activeBackend());
+    }
+
+    public function testConfigHonorsConfiguredCpuBackend(): void
+    {
+        AI::config(['backend' => 'cpu']);
+
+        self::assertSame(BackendType::CpuNative, AI::activeBackend());
+    }
+
     public function testUsingFacadeBeforeConfigThrows(): void
     {
         $this->expectException(InvalidStateException::class);
@@ -119,6 +133,18 @@ final class AITest extends TestCase
         $this->expectException(\RuntimeException::class);
 
         AI::embed('hello world');
+    }
+
+    public function testVectorStoreUsesConfiguredDimension(): void
+    {
+        AI::config(['backend' => 'onnx', 'vector' => ['dimension' => 3, 'db_path' => ':memory:']]);
+
+        $store = AI::vector('docs');
+
+        self::assertSame(3, $store->dimension());
+
+        $store->add('a', [1.0, 2.0, 3.0]);
+        self::assertSame(1, $store->count());
     }
 
     public function testResetClearsConfiguration(): void

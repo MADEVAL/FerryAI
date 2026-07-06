@@ -377,6 +377,13 @@ final class GbnfMatcher
             return $this->parseCharClass($s, $i);
         }
 
+        if ($ch === '.') {
+            $i++;
+
+            // Any single character: an empty negated char class matches every codepoint.
+            return new GbnfNode(GbnfNode::CHAR_CLASS, ranges: [], negated: true);
+        }
+
         if ($ch === '(') {
             $i++;
             $node = $this->parseAlternation($s, $i);

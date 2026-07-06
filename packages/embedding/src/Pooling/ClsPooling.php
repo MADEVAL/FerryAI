@@ -9,6 +9,10 @@ final class ClsPooling implements PoolingStrategy
     #[\Override]
     public function pool(array $hiddenStates, ?array $attentionMask = null): array
     {
+        if ($hiddenStates === []) {
+            return [];
+        }
+
         return $hiddenStates[0];
     }
 

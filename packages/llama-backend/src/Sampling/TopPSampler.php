@@ -6,6 +6,7 @@ namespace FerryAI\LlamaBackend\Sampling;
 
 use FerryAI\Core\Exception\ValidationException;
 use FerryAI\Core\ValueObjects\SamplingParams;
+use Random\Randomizer;
 
 /**
  * Nucleus (top-p) sampling: keeps the smallest set of tokens whose cumulative probability
@@ -13,6 +14,8 @@ use FerryAI\Core\ValueObjects\SamplingParams;
  */
 final class TopPSampler implements Sampler
 {
+    private ?Randomizer $randomizer = null;
+
     /**
      * @param float[] $logits
      */
@@ -41,7 +44,8 @@ final class TopPSampler implements Sampler
         }
 
         $keptProbabilities = array_map(static fn(int $index): float => $probabilities[$index], $kept);
-        $position = SamplerMath::weightedIndex($keptProbabilities, SamplerMath::randomizer($params->seed));
+        $this->randomizer ??= SamplerMath::randomizer($params->seed);
+        $position = SamplerMath::weightedIndex($keptProbabilities, $this->randomizer);
 
         return $kept[$position];
     }

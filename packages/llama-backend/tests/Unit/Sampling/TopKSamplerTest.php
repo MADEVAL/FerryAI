@@ -19,14 +19,22 @@ final class TopKSamplerTest extends TestCase
         self::assertSame(1, $sampler->sample([0.1, 5.0, 0.2], new SamplingParams(topK: 1)));
     }
 
-    public function testDeterministicWithSeed(): void
+    public function testDeterministicSequenceWithSeedAndDiversity(): void
     {
-        $sampler = new TopKSampler();
-        $logits = [1.0, 2.0, 3.0, 0.5];
+        $logits = [1.0, 2.0, 3.0, 2.5];
 
-        $a = $sampler->sample($logits, new SamplingParams(topK: 3, seed: 7));
-        $b = $sampler->sample($logits, new SamplingParams(topK: 3, seed: 7));
+        $first = new TopKSampler();
+        $second = new TopKSampler();
 
-        self::assertSame($a, $b);
+        $seqA = [];
+        $seqB = [];
+
+        for ($i = 0; $i < 30; $i++) {
+            $seqA[] = $first->sample($logits, new SamplingParams(topK: 4, seed: 7));
+            $seqB[] = $second->sample($logits, new SamplingParams(topK: 4, seed: 7));
+        }
+
+        self::assertSame($seqA, $seqB);
+        self::assertGreaterThan(1, \count(array_unique($seqA)));
     }
 }

@@ -9,6 +9,10 @@ final class EosPooling implements PoolingStrategy
     #[\Override]
     public function pool(array $hiddenStates, ?array $attentionMask = null): array
     {
+        if ($hiddenStates === []) {
+            return [];
+        }
+
         $lastIndex = \count($hiddenStates) - 1;
 
         return $hiddenStates[$lastIndex];

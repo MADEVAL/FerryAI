@@ -17,17 +17,19 @@ final class CollectionManager
      */
     public function create(string $name, int $dimension, array $options = []): Collection
     {
+        $metric = \is_string($options['metric'] ?? null) ? $options['metric'] : 'cosine';
+
         if (!$this->store->collectionExists($name)) {
-            $this->store->createCollection($name, $dimension);
+            $this->store->createCollection($name, $dimension, $metric);
         }
 
-        return new Collection($name, $dimension, $this->store);
+        return new Collection($name, $dimension, $this->store, $metric);
     }
 
     public function open(string $name): Collection
     {
         $rows = $this->store->rawQuery(
-            'SELECT dimension FROM collections WHERE name = :name',
+            'SELECT dimension, metric FROM collections WHERE name = :name',
             [':name' => $name],
         );
 
@@ -36,8 +38,9 @@ final class CollectionManager
         }
 
         $dimension = (int) $rows[0]['dimension'];
+        $metric = \is_string($rows[0]['metric'] ?? null) ? $rows[0]['metric'] : 'cosine';
 
-        return new Collection($name, $dimension, $this->store);
+        return new Collection($name, $dimension, $this->store, $metric);
     }
 
     public function delete(string $name): void

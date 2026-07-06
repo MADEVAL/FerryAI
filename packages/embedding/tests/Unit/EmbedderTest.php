@@ -86,6 +86,14 @@ final class EmbedderTest extends TestCase
         self::assertEqualsWithDelta(-1.0, $embedder->cosineSimilarity([1.0, 0.0], [-1.0, 0.0]), 0.0001);
     }
 
+    public function testCosineSimilarityThrowsOnLengthMismatch(): void
+    {
+        $embedder = new Embedder('test', new StubBackendForEmbedder(2), new StubTokenizerForEmbedder());
+
+        $this->expectException(\FerryAI\Core\Exception\ValidationException::class);
+        $embedder->cosineSimilarity([1.0, 2.0, 3.0], [1.0, 2.0]);
+    }
+
     public function testEmbedReturnsNormalizedVector(): void
     {
         $backend = new StubBackendForEmbedder(2);

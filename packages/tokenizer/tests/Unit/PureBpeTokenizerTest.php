@@ -76,6 +76,18 @@ final class PureBpeTokenizerTest extends TestCase
         self::assertSame(10, $ids[array_key_last($ids)]);
     }
 
+    public function testDecodeStripsFusedEndOfWordMarker(): void
+    {
+        $vocab = ['h' => 0, 'i' => 1, 'hi</w>' => 2];
+        $merges = ['h i', 'hi </w>'];
+        $tokenizer = new PureBpeTokenizer($vocab, $merges);
+
+        $decoded = $tokenizer->decode($tokenizer->encode('hi', false));
+
+        self::assertStringNotContainsString('</w>', $decoded);
+        self::assertSame('hi', $decoded);
+    }
+
     public function testCountTokens(): void
     {
         $tokenizer = $this->tokenizer();

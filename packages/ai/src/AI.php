@@ -60,7 +60,7 @@ final class AI
         self::$registry->register(BackendType::Onnx, self::$factory->createBackend(BackendType::Onnx));
         self::$registry->register(BackendType::Llama, self::$factory->createBackend(BackendType::Llama));
         self::$registry->register(BackendType::CpuNative, self::$factory->createBackend(BackendType::CpuNative));
-        self::$activeBackend = BackendType::Onnx;
+        self::$activeBackend = self::$config->backend();
         self::$activeDevice = self::$config->device();
         self::$observability = Observability::fromConfig(self::$config);
         $sharedMemory = (bool) self::$config->get('model_pool.shared_memory', false) ? new SharedMemoryManager() : null;
@@ -297,7 +297,10 @@ final class AI
 
     public static function vector(string $collection): VectorStore
     {
-        return self::factory()->createVectorStore($collection, 0);
+        self::ensureConfigured();
+        $dimension = (int) self::configuration()->get('vector.dimension', 0);
+
+        return self::factory()->createVectorStore($collection, $dimension);
     }
 
     public static function hub(): ModelHub

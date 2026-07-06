@@ -21,6 +21,7 @@ final class Collection implements VectorStore
         private string $name,
         private int $dimensionValue,
         private SQLiteStore $store,
+        private string $metric = 'cosine',
     ) {
         $this->bruteForce = new BruteForceIndex();
         $this->filter = new MetadataFilter();
@@ -35,7 +36,7 @@ final class Collection implements VectorStore
         }
 
         $this->useVec = true;
-        $this->vecExtension->createIndex($this->store, $this->name, $this->dimensionValue, 'cosine');
+        $this->vecExtension->createIndex($this->store, $this->name, $this->dimensionValue, $this->metric);
 
         foreach ($this->store->iterateVectors($this->name) as $row) {
             $this->vecExtension->upsert($this->store, $this->name, $row['id'], $this->unpackVector($row['vector']));
@@ -84,7 +85,7 @@ final class Collection implements VectorStore
             $vectors = \array_values($filtered);
         }
 
-        $results = $this->bruteForce->search($queryVector, $vectors, $k, 'cosine');
+        $results = $this->bruteForce->search($queryVector, $vectors, $k, $this->metric);
 
         $output = [];
 

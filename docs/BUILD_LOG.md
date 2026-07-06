@@ -1482,3 +1482,55 @@ counters that still read 630:
 - Historical dated `BUILD_LOG.md` entries left unchanged (they record the state at their time).
 - Verification: `composer test` -> `OK (639 tests, 1129 assertions)`; no current-state `630`
   references remain in `README.md`/`DEBT_REPORT.md`.
+
+---
+
+## 2026-07-06 - Audit fixes: 17 confirmed defects fixed via TDD (runtime-verified)
+
+Full cross-package audit (read every `src/` file, cross-checked against `INTERFACE_CONTRACTS.md`),
+each finding first reproduced with a failing runtime test, then fixed (red -> green). One reported
+item was rejected after verification (MaxPooling mask-ignore is by-design: existing tests assert it
+and `Embedder` never pads); one (`AI::predict` raw feature map) was a false positive
+(`CpuNativeModel::toSamples()` already wraps it).
+
+High:
+- `AI::config()` hardcoded `activeBackend = Onnx`, ignoring the configured `backend`. Now uses
+  `AIConfig::backend()` so `['backend'=>'llama'|'cpu']` is honoured (AITest +2).
+- SQL-injection surface: `SQLiteStore` and `SqliteVecExtension` interpolated collection names into
+  raw DDL/DML unescaped. Added the same `^[A-Za-z_][A-Za-z0-9_]*$` validation `PostgresStore`
+  already uses -> `ValidationException` on unsafe names (SQLiteStoreTest +2).
+- Vector `Collection` ignored the stored distance metric (always cosine). Added a `metric` field
+  threaded through `CollectionManager::create/open` (reads the `collections` row) and used in
+  `search()`/vec index (CollectionTest +1).
+
+Medium:
+- `PureBpeTokenizer::decode()` leaked a fused `</w>` marker (only stripped the standalone token).
+- `GbnfMatcher` did not implement the `.` any-char atom (parsed as empty literal) -> grammar JSON
+  strings with escapes were unmatchable. Added it as an empty negated char-class.
+- `JsonSchemaConverter` forced every property required when `required` was absent. Now defaults to
+  `[]` and emits an in-order optional-subset grammar (recursive head/tail construction).
+- `TopPSampler`/`TopKSampler` re-seeded the RNG every `sample()` call -> seeded generation
+  collapsed to one token. Randomizer is now created once per sampler instance and advances.
+- `Sha256Verifier::verifyFile()` failed on standard `sha256sum` files (`<hash>  <file>`); now takes
+  the first whitespace token.
+- `ChatFormatter::detectFormat()` matched `phi` inside `dolphin`; now boundary-aware.
+- `EosPooling`/`ClsPooling` crashed on empty input; added the guard `MeanPooling`/`MaxPooling` have.
+- `Embedder::embed()` bypassed pooling for 2D `[seq,hidden]` model output; batch dim is now
+  stripped only when present so pooling always runs (EmbedderPoolingDimensionsTest, new).
+- `Embedder::cosineSimilarity()` had no length guard (undefined offset, silent skew) -> throws
+  `ValidationException` on mismatch.
+- `AI::vector()` created dimension-0 (unusable) stores; now reads `vector.dimension`, opens
+  existing collections (real dimension), and threads `vector.metric`.
+- Laravel `AIServiceProvider` used `getenv() ?: default`, dropping valid falsy values
+  (`temperature=0`, `top_p=0`, `max_tokens=0`, `verify_signatures=0` even inverted). New `env()`
+  helper only falls back when unset; also sets `log_level` (core reads `log_level`, not
+  `log_channel`).
+
+Low:
+- `AIConfig` is immutable (`set()` returns a new instance) but `offsetSet`/`offsetUnset` mutated in
+  place. They now throw `\LogicException`, matching the immutability contract.
+
+Verification (fresh): `composer check` fully green - cs 0 - PHPStan L8 No errors - Psalm L3 No
+errors - **659 unit tests** (was 639; +20). `composer verify` -> **10/10** runtime regression
+guards in `tests/Verification/AuditFindingsTest.php` (each drives the real code path and asserts
+the corrected behaviour).
