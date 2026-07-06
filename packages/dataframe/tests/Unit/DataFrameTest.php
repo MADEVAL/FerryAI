@@ -307,4 +307,21 @@ final class DataFrameTest extends TestCase
             new Column('b', 'int', [1, 2]),
         );
     }
+
+    public function testFromCsvReadsFileAndReturnsDataFrame(): void
+    {
+        $path = \sys_get_temp_dir() . '/ferry-df-' . \uniqid() . '.csv';
+        \file_put_contents($path, "name,age,score\nalice,25,0.8\nbob,30,0.9\n");
+
+        try {
+            $df = DataFrame::fromCsv($path);
+
+            self::assertSame(['name', 'age', 'score'], $df->columns());
+            self::assertSame(2, $df->numRows());
+            self::assertSame('alice', $df->row(0)['name']);
+            self::assertSame(30, $df->row(1)['age']);
+        } finally {
+            @\unlink($path);
+        }
+    }
 }
