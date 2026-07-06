@@ -9,9 +9,10 @@ use FerryAI\Core\Exception\ValidationException;
 readonly class ClassificationResult
 {
     /**
-     * @param string               $label      the predicted label
-     * @param float                $confidence the confidence in [0.0, 1.0]
-     * @param array<string, float> $allScores  all labels with their scores
+     * @param string                  $label      the predicted label
+     * @param float                   $confidence the confidence in [0.0, 1.0]
+     * @param array<array-key, float> $allScores  all labels with their scores (label => score;
+     *                                            index-based labels are integer keys)
      *
      * @throws ValidationException when $confidence is out of [0.0, 1.0]
      */

@@ -181,6 +181,21 @@ final class CollectionTest extends TestCase
         self::assertSame('B', $results[0]['id'], 'euclidean metric must be honoured, not cosine');
     }
 
+    public function testSearchUsesConfiguredDotMetric(): void
+    {
+        $store = new SQLiteStore(':memory:');
+        $store->createCollection('dotc', 2, 'dot');
+        $collection = new Collection('dotc', 2, $store, 'dot');
+
+        // Dot product favours the larger-magnitude aligned vector.
+        $collection->add('small', [1.0, 0.0]);
+        $collection->add('big', [5.0, 0.0]);
+
+        $results = $collection->search([1.0, 0.0], 1);
+
+        self::assertSame('big', $results[0]['id']);
+    }
+
     public function testImplementsVectorStore(): void
     {
         self::assertInstanceOf(VectorStore::class, $this->collection);

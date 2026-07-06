@@ -19,8 +19,13 @@ final class Profiler
 
     public static function end(string $label): float
     {
+        // An unmatched end() has no measured interval; ignore it so it cannot skew the stats.
+        if (!isset(self::$startTimes[$label])) {
+            return 0.0;
+        }
+
         $endTime = \microtime(true) * 1000.0;
-        $startTime = self::$startTimes[$label] ?? $endTime;
+        $startTime = self::$startTimes[$label];
         $duration = $endTime - $startTime;
 
         if (!isset(self::$profiles[$label])) {

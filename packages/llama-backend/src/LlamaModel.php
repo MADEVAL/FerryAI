@@ -17,6 +17,7 @@ use FerryAI\LlamaBackend\Runtime\LlamaSession;
 use FerryAI\LlamaBackend\Sampling\GrammarSampler;
 use FerryAI\LlamaBackend\Sampling\Sampler;
 use FerryAI\LlamaBackend\Sampling\SamplerFactory;
+use FerryAI\LlamaBackend\Sampling\SamplerMath;
 
 /**
  * A loaded llama.cpp model.
@@ -27,6 +28,9 @@ use FerryAI\LlamaBackend\Sampling\SamplerFactory;
  */
 final class LlamaModel implements Model
 {
+    /** Number of recent tokens considered when applying repetition/frequency/presence penalties. */
+    private const int PENALTY_WINDOW = 64;
+
     private bool $unloaded = false;
 
     public function __construct(
@@ -180,14 +184,31 @@ final class LlamaModel implements Model
         $nPast = \count($promptTokens);
         $eos = $this->runtime->eosToken($session);
 
+        // Sliding window of recent tokens (prompt tail + generated) used for penalties.
+        $recent = \array_slice($promptTokens, -self::PENALTY_WINDOW);
+
         for ($i = 0; $i < $params->maxTokens; ++$i) {
-            $token = $sampler->sample($logits, $params);
+            $penalized = SamplerMath::applyPenalties(
+                $logits,
+                array_count_values($recent),
+                $params->repetitionPenalty,
+                $params->frequencyPenalty,
+                $params->presencePenalty,
+            );
+
+            $token = $sampler->sample($penalized, $params);
 
             if ($token === $eos) {
                 return;
             }
 
             yield $token;
+
+            $recent[] = $token;
+
+            if (\count($recent) > self::PENALTY_WINDOW) {
+                array_shift($recent);
+            }
 
             $logits = $this->nextLogits($session, [$token], $nPast, $sampler, $params);
             ++$nPast;

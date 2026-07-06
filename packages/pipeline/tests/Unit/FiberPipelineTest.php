@@ -41,6 +41,29 @@ final class FiberPipelineTest extends TestCase
         self::assertSame(['HELLO'], $results);
     }
 
+    public function testRunEnforcesTimeout(): void
+    {
+        $pipeline = new FiberPipeline();
+        $pipeline->pipe(new TransformStage(static function (string $x): string {
+            \usleep(5000);
+
+            return $x;
+        }));
+        $pipeline->setTimeout(0.001);
+
+        $this->expectException(\FerryAI\Core\Exception\InferenceException::class);
+        \iterator_to_array($pipeline->run('hello'));
+    }
+
+    public function testRunWithoutTimeoutCompletes(): void
+    {
+        $pipeline = new FiberPipeline();
+        $pipeline->pipe(new TransformStage(static fn(string $x): string => \strtoupper($x)));
+        $pipeline->setTimeout(10.0);
+
+        self::assertSame(['HELLO'], \iterator_to_array($pipeline->run('hello')));
+    }
+
     public function testExtendsPipeline(): void
     {
         self::assertInstanceOf(\FerryAI\Pipeline\Pipeline::class, new FiberPipeline());

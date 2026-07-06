@@ -81,7 +81,7 @@ final class MockOnnxRuntime implements OnnxRuntimeInterface
     }
 
     /**
-     * @param array<string, array<mixed>> $inputs
+     * @param array<string, array<mixed>|string> $inputs
      *
      * @return array<string, array{data: array<mixed>, shape: int[], dtype: string}>
      */

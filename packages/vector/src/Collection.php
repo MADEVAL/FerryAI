@@ -31,7 +31,13 @@ final class Collection implements VectorStore
 
     private function initVecIndex(): void
     {
-        if ($this->dimensionValue < 1 || !$this->vecExtension->load($this->store)) {
+        // sqlite-vec (vec0) only supports L2 and cosine; 'dot' must fall back to brute force
+        // so it is not silently computed as cosine.
+        if ($this->dimensionValue < 1 || !\in_array($this->metric, ['cosine', 'euclidean'], true)) {
+            return;
+        }
+
+        if (!$this->vecExtension->load($this->store)) {
             return;
         }
 
@@ -161,18 +167,20 @@ final class Collection implements VectorStore
     #[\Override]
     public function update(string $id, ?array $vector = null, ?array $metadata = null): void
     {
+        $existing = ($vector === null || $metadata === null)
+            ? $this->store->getVector($this->name, $id)
+            : null;
+
         if ($vector !== null) {
             $this->validateDimension($vector);
             $blob = $this->packVector($vector);
         } else {
-            $existing = $this->store->getVector($this->name, $id);
             $blob = $existing['vector'] ?? '';
         }
 
         if ($metadata !== null) {
             $metadataJson = \json_encode($metadata, JSON_UNESCAPED_UNICODE);
         } else {
-            $existing = $this->store->getVector($this->name, $id);
             $metadataJson = $existing['metadata'] ?? null;
         }
 

@@ -94,7 +94,15 @@ final class Downloader
                 break;
             }
 
-            \fwrite($outHandle, $chunk);
+            $written = \fwrite($outHandle, $chunk);
+
+            if ($written === false || $written !== \strlen($chunk)) {
+                \fclose($outHandle);
+                \fclose($handle);
+
+                throw new IoException(\sprintf('Failed to write downloaded data to: %s', $destination));
+            }
+
             $downloaded += \strlen($chunk);
 
             if ($onProgress !== null) {

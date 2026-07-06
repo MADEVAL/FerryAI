@@ -96,4 +96,49 @@ final class SamplerMath
     {
         return $seed === null ? new Randomizer() : new Randomizer(new Mt19937($seed));
     }
+
+    /**
+     * Applies repetition/frequency/presence penalties to a logit map, keyed by token id, using
+     * the occurrence counts of previously seen tokens. Mirrors llama.cpp semantics:
+     *  - repetition: positive logits are divided, negative logits multiplied by the penalty;
+     *  - frequency:  logit -= frequency * occurrences;
+     *  - presence:   logit -= presence for any token that has occurred.
+     *
+     * Returns the logits unchanged when every penalty is a no-op.
+     *
+     * @param array<int, float> $logits token id => logit
+     * @param array<int, int>   $counts token id => occurrence count
+     *
+     * @return array<int, float>
+     */
+    public static function applyPenalties(
+        array $logits,
+        array $counts,
+        float $repetition = 1.0,
+        float $frequency = 0.0,
+        float $presence = 0.0,
+    ): array {
+        if (($repetition === 1.0 && $frequency === 0.0 && $presence === 0.0) || $counts === []) {
+            return $logits;
+        }
+
+        foreach ($counts as $tokenId => $count) {
+            if ($count <= 0 || !\array_key_exists($tokenId, $logits)) {
+                continue;
+            }
+
+            $logit = $logits[$tokenId];
+
+            if ($repetition !== 1.0) {
+                $logit = $logit > 0.0 ? $logit / $repetition : $logit * $repetition;
+            }
+
+            $logit -= $frequency * (float) $count;
+            $logit -= $presence;
+
+            $logits[$tokenId] = $logit;
+        }
+
+        return $logits;
+    }
 }

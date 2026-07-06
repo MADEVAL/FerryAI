@@ -31,6 +31,15 @@ final class AIBundleTest extends TestCase
         self::assertSame(\FerryAI\Core\Enums\BackendType::Onnx, AI::activeBackend());
     }
 
+    public function testBootAppliesProvidedConfig(): void
+    {
+        $bundle = new AIBundle();
+
+        $bundle->boot([['backend' => 'llama']]);
+
+        self::assertSame(\FerryAI\Core\Enums\BackendType::Llama, AI::activeBackend());
+    }
+
     public function testGetDefaultConfigReturnsStructure(): void
     {
         $bundle = new AIBundle();

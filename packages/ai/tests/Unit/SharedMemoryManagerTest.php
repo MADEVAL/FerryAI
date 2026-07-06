@@ -64,4 +64,31 @@ final class SharedMemoryManagerTest extends TestCase
 
         self::assertFalse($manager->isShared('any'));
     }
+
+    public function testAllocateAttachReadAndDetachFreesSegment(): void
+    {
+        $manager = new SharedMemoryManager();
+
+        if (!$manager->isAvailable()) {
+            self::markTestSkipped('ext-shmop is not available.');
+        }
+
+        $modelId = 'ferry-shm-' . \uniqid();
+        $file = (string) \tempnam(\sys_get_temp_dir(), 'ferry_shm_');
+        \file_put_contents($file, 'MODELBYTES');
+
+        try {
+            $manager->allocateModel($modelId, $file);
+            self::assertTrue($manager->isShared($modelId));
+
+            // The bytes must be readable back through a stored handle (not a discarded one).
+            self::assertSame('MODELBYTES', \substr($manager->read($modelId), 0, 10));
+
+            $manager->detachModel($modelId);
+            self::assertFalse($manager->isShared($modelId));
+        } finally {
+            $manager->detachModel($modelId);
+            @\unlink($file);
+        }
+    }
 }

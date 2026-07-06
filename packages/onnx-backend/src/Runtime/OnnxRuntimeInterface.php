@@ -60,7 +60,7 @@ interface OnnxRuntimeInterface
     /**
      * Runs inference.
      *
-     * @param array<string, array<mixed>> $inputs input name => nested PHP array
+     * @param array<string, array<mixed>|string> $inputs input name => nested PHP array or string
      *
      * @return array<string, array{data: array<mixed>, shape: int[], dtype: string}>
      *                                                                               output name => materialised result

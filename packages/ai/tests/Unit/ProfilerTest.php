@@ -69,4 +69,17 @@ final class ProfilerTest extends TestCase
 
         self::assertSame(0.0, $duration);
     }
+
+    public function testUnmatchedEndDoesNotSkewMinMs(): void
+    {
+        Profiler::end('op'); // no matching start(): must not record a bogus 0.0 sample
+        Profiler::start('op');
+        \usleep(3000);
+        Profiler::end('op');
+
+        $report = Profiler::report();
+
+        self::assertSame(1, $report['op']['count']);
+        self::assertGreaterThan(0.0, $report['op']['min_ms']);
+    }
 }

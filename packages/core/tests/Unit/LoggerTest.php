@@ -96,4 +96,26 @@ final class LoggerTest extends TestCase
         self::assertStringNotContainsString('should be skipped', $content);
         self::assertStringContainsString('should be written', $content);
     }
+
+    public function testLevelThresholdIsCaseInsensitive(): void
+    {
+        $logger = new Logger($this->logFile, 'WARNING');
+        $logger->debug('should be skipped');
+        $logger->error('should be written');
+
+        $content = (string) \file_get_contents($this->logFile);
+        self::assertStringNotContainsString('should be skipped', $content);
+        self::assertStringContainsString('should be written', $content);
+    }
+
+    public function testUnknownLevelDefaultsToWarning(): void
+    {
+        $logger = new Logger($this->logFile, 'not-a-level');
+        $logger->debug('should be skipped');
+        $logger->warning('should be written');
+
+        $content = (string) \file_get_contents($this->logFile);
+        self::assertStringNotContainsString('should be skipped', $content);
+        self::assertStringContainsString('should be written', $content);
+    }
 }

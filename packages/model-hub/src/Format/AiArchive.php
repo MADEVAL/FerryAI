@@ -86,19 +86,12 @@ final class AiArchive
     {
         $files = self::list($archivePath);
 
-        $hasModel = false;
-        $hasConfig = false;
-
         foreach ($files as $file) {
             if (\str_contains($file, 'model.onnx') || \str_contains($file, 'model.gguf') || \str_contains($file, 'model.rbm')) {
-                $hasModel = true;
-            }
-
-            if (\str_contains($file, 'config.json') || \str_contains($file, 'tokenizer.json')) {
-                $hasConfig = true;
+                return true;
             }
         }
 
-        return $hasModel;
+        return false;
     }
 }

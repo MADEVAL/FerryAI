@@ -14,7 +14,8 @@ final class Logger
     public function __construct(?string $logFile = null, string $level = 'debug')
     {
         $this->logFile = $logFile ?? \sys_get_temp_dir() . '/ferry-ai.log';
-        $this->threshold = self::LEVELS[$level] ?? 0;
+        // Normalise case; fall back to 'warning' for unknown levels rather than logging everything.
+        $this->threshold = self::LEVELS[\strtolower($level)] ?? self::LEVELS['warning'];
     }
 
     /**

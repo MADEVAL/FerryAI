@@ -5,13 +5,19 @@ declare(strict_types=1);
 namespace FerryAI\Symfony;
 
 use FerryAI\AI;
+use FerryAI\Symfony\DependencyInjection\FerryAIExtension;
 
 final class AIBundle
 {
-    public function boot(): void
+    /**
+     * @param array<int, array<string, mixed>> $configs configuration layers (as Symfony would pass)
+     */
+    public function boot(array $configs = []): void
     {
-        $config = $this->getDefaultConfig();
-        AI::config($config);
+        $extension = new FerryAIExtension();
+        $extension->load($configs);
+
+        AI::config($extension->getConfig());
     }
 
     /**
@@ -19,23 +25,9 @@ final class AIBundle
      */
     public function getDefaultConfig(): array
     {
-        return [
-            'backend' => \getenv('FERRY_AI_BACKEND') ?: 'auto',
-            'device' => \getenv('FERRY_AI_DEVICE') ?: 'auto',
-            'model_cache' => \getenv('FERRY_AI_MODEL_CACHE') ?: \sys_get_temp_dir() . '/ferry-ai-models',
-            'max_tokens' => 2048,
-            'temperature' => 0.7,
-            'top_p' => 1.0,
-            'verify_signatures' => true,
-            'backends' => [
-                'onnx' => [
-                    'providers' => ['CUDA', 'CPU'],
-                ],
-                'llama' => [
-                    'model_path' => '',
-                ],
-            ],
-            'warmup' => [],
-        ];
+        $extension = new FerryAIExtension();
+        $extension->load([]);
+
+        return $extension->getConfig();
     }
 }

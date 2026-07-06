@@ -61,4 +61,21 @@ final class ChatFormatterTest extends TestCase
 
         self::assertStringContainsString('Hey', $prompt);
     }
+
+    public function testGemmaMapsToolRoleToUser(): void
+    {
+        $prompt = (new ChatFormatter('gemma'))->format([['role' => 'tool', 'content' => 'weather=sunny']]);
+
+        self::assertStringContainsString('weather=sunny', $prompt);
+        self::assertStringContainsString('<start_of_turn>user', $prompt);
+        self::assertStringNotContainsString('<start_of_turn>tool', $prompt);
+    }
+
+    public function testPhiMapsToolRoleToUser(): void
+    {
+        $prompt = (new ChatFormatter('phi'))->format([['role' => 'tool', 'content' => 'weather=sunny']]);
+
+        self::assertStringContainsString('weather=sunny', $prompt);
+        self::assertStringNotContainsString('<|tool|>', $prompt);
+    }
 }

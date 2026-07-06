@@ -41,7 +41,18 @@ final class ModelPool
 
     public function acquire(string $modelId): ?Model
     {
-        return $this->pool[$modelId] ?? null;
+        if (!isset($this->pool[$modelId])) {
+            return null;
+        }
+
+        // Move to the end to mark it most-recently-used (true LRU eviction order).
+        $model = $this->pool[$modelId];
+        $memory = $this->memoryUsage[$modelId];
+        unset($this->pool[$modelId], $this->memoryUsage[$modelId]);
+        $this->pool[$modelId] = $model;
+        $this->memoryUsage[$modelId] = $memory;
+
+        return $model;
     }
 
     public function release(string $modelId): void {}
@@ -104,7 +115,7 @@ final class ModelPool
     }
 
     /**
-     * Evicts least-recently-added models until the pool fits within its memory budget.
+     * Evicts least-recently-used models until the pool fits within its memory budget.
      * The model identified by $keep is never evicted, even if it alone exceeds the limit.
      */
     private function enforceMemoryLimit(string $keep): void

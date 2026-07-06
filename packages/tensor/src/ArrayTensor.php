@@ -144,6 +144,8 @@ final class ArrayTensor implements Tensor
 
         $axes ??= array_reverse(range(0, $rank - 1));
 
+        self::assertAxesPermutation($axes, $rank);
+
         $newDims = [];
 
         foreach ($axes as $axis) {
@@ -215,9 +217,7 @@ final class ArrayTensor implements Tensor
     public function offsetSet(mixed $offset, mixed $value): void
     {
         if ($offset === null) {
-            $this->data[] = $value;
-
-            return;
+            throw new \BadMethodCallException('A tensor has a fixed shape; appending via [] is not supported.');
         }
 
         $this->data[$offset] = $value;
@@ -226,7 +226,7 @@ final class ArrayTensor implements Tensor
     #[\Override]
     public function offsetUnset(mixed $offset): void
     {
-        unset($this->data[$offset]);
+        throw new \BadMethodCallException('A tensor has a fixed shape; unsetting elements is not supported.');
     }
 
     #[\Override]
@@ -368,6 +368,26 @@ final class ArrayTensor implements Tensor
         }
 
         return $result;
+    }
+
+    /**
+     * @param int[] $axes
+     *
+     * @throws \FerryAI\Core\Exception\ValidationException when $axes is not a permutation of 0..rank-1
+     */
+    private static function assertAxesPermutation(array $axes, int $rank): void
+    {
+        $expected = range(0, $rank - 1);
+        $sorted = $axes;
+        sort($sorted);
+
+        if (\count($axes) !== $rank || $sorted !== $expected) {
+            throw new \FerryAI\Core\Exception\ValidationException(\sprintf(
+                'transpose() axes must be a permutation of [0..%d]; got [%s].',
+                $rank - 1,
+                implode(', ', $axes),
+            ));
+        }
     }
 
     /**

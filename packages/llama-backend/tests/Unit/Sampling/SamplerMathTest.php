@@ -42,4 +42,35 @@ final class SamplerMathTest extends TestCase
 
         self::assertSame($a, $b);
     }
+
+    public function testApplyPenaltiesNoOpReturnsUnchanged(): void
+    {
+        $logits = [0 => 2.0, 1 => 1.0];
+
+        self::assertSame($logits, SamplerMath::applyPenalties($logits, [0 => 3], 1.0, 0.0, 0.0));
+    }
+
+    public function testApplyPenaltiesRepetitionDividesPositiveLogit(): void
+    {
+        $result = SamplerMath::applyPenalties([0 => 10.0, 1 => 5.0], [0 => 1], 2.0, 0.0, 0.0);
+
+        self::assertSame(5.0, $result[0]);
+        self::assertSame(5.0, $result[1]);
+    }
+
+    public function testApplyPenaltiesRepetitionMultipliesNegativeLogit(): void
+    {
+        $result = SamplerMath::applyPenalties([0 => -2.0], [0 => 1], 2.0, 0.0, 0.0);
+
+        self::assertSame(-4.0, $result[0]);
+    }
+
+    public function testApplyPenaltiesFrequencyAndPresence(): void
+    {
+        // 2.0 - frequency(0.5)*count(2) - presence(1.0) = 0.0
+        $result = SamplerMath::applyPenalties([0 => 2.0, 1 => 2.0], [0 => 2], 1.0, 0.5, 1.0);
+
+        self::assertEqualsWithDelta(0.0, $result[0], 1e-9);
+        self::assertSame(2.0, $result[1]);
+    }
 }

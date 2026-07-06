@@ -48,12 +48,22 @@ final class FormatDetectorTest extends TestCase
     public function testDetectSafetensorsFormat(): void
     {
         $path = $this->tempDir . '/model.safetensors';
-        $len = \pack('P', 10);
-        \file_put_contents($path, $len . \str_repeat("\x00", 100));
+        $json = '{"__metadata__":{}}';
+        $len = \pack('P', \strlen($json));
+        \file_put_contents($path, $len . $json . \str_repeat("\x00", 100));
 
         $format = FormatDetector::detect($path);
 
         self::assertSame('safetensors', $format);
+    }
+
+    public function testDetectSafetensorsWithOnnxLikeLengthByte(): void
+    {
+        // Header length 8 -> first byte 0x08, second 0x00: previously misread as ONNX.
+        $path = $this->tempDir . '/tricky.safetensors';
+        \file_put_contents($path, \pack('P', 8) . '{"a":"b"}' . \str_repeat("\x00", 32));
+
+        self::assertSame('safetensors', FormatDetector::detect($path));
     }
 
     public function testDetectAiArchive(): void

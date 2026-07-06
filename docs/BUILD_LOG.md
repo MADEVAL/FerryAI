@@ -1534,3 +1534,62 @@ Verification (fresh): `composer check` fully green - cs 0 - PHPStan L8 No errors
 errors - **659 unit tests** (was 639; +20). `composer verify` -> **10/10** runtime regression
 guards in `tests/Verification/AuditFindingsTest.php` (each drives the real code path and asserts
 the corrected behaviour).
+
+---
+
+## 2026-07-06 - Second audit pass: 20 further defects fixed via TDD (runtime-verified)
+
+Deep re-read of every `src/` file (areas not covered in the first pass: onnx/tensor internals,
+model-hub, ai infrastructure, Postgres, symfony). Each finding was reproduced with a failing test,
+then fixed (red -> green). Two reported items were rejected after verification: the
+`Collection`/`PostgresCollection` "null array offset on update" is a false positive (`??` already
+suppresses the warning and returns the default in PHP 8.5), and `AsyncInference::runParallel`
+sequential execution is by-design (its test asserts ordering).
+
+High:
+- `ArrayTensor::transpose()` did not validate `$axes`; duplicate/out-of-range axes produced garbage
+  or undefined-offset reads. Now asserts a permutation of `0..rank-1` (`ValidationException`).
+- `HuggingFaceClient::downloadFile()` loaded whole files into memory. The real network path now
+  streams to disk in 8 KiB chunks (the string `httpGet` seam is kept for tests/custom transports).
+- `SharedMemoryManager` discarded the `shmop_open` handle in `attachModel()` and never freed
+  segments in `detachModel()` (leak). Handles are now stored, read via a new `read()`, and
+  `shmop_delete`d on detach; the IPC key is forced positive.
+- Symfony `FerryAIExtension` merged config into a private field nothing read, and `AIBundle::boot()`
+  used its own hardcoded defaults -> user config silently dropped. `AIBundle` now routes through the
+  extension (single env-aware, deep-merged config source); `boot($configs)` applies them.
+
+Medium:
+- `OnnxModel::run()` rejected `string` inputs though the `Model` contract allows Tensor|array|string
+  (broke `AI::moderate()`/`classify()` with text). Strings are now passed through.
+- `ModelPool` eviction was FIFO: `acquire()` did not refresh recency, so a hot model could be
+  evicted before an idle one. `acquire()` now moves the entry to most-recently-used (true LRU).
+- `AI::classify()`/`moderate()` and `ClassifyStage` never unwrapped `Tensor` outputs (real ONNX
+  returns `OnnxTensor`) so they always returned `unknown`/empty; `allScores`/`categories` were never
+  populated. All three now unwrap Tensor + batch dim and fill the score map.
+- Sampling penalties (`repetitionPenalty`/`frequencyPenalty`/`presencePenalty`) were validated but
+  never consumed. New `SamplerMath::applyPenalties()` (llama.cpp semantics) is applied in
+  `LlamaModel::decodeLoop` over a 64-token window, honouring the documented behaviour.
+- `ChatFormatter` rendered invalid role tags for `tool` messages in Gemma/Phi; now mapped to `user`.
+- `FormatDetector` checked the ONNX heuristic before safetensors, misreading safetensors whose
+  header-length byte is `0x08`. Safetensors is now detected first, gated on the `{` at offset 8.
+- `Collection` used the vec0 extension for the `dot` metric (which vec0 can't do -> silently
+  cosine); it now falls back to brute force for `dot`.
+- `Profiler::end()` without a matching `start()` recorded a bogus 0.0 sample, pinning `min_ms` to 0;
+  unmatched `end()` is now ignored.
+- `ExportImport::toCsv()` produced malformed CSV (unescaped id/metadata); now uses `fputcsv`.
+  `fromJson()` now skips rows whose `vector` is not an array.
+
+Low:
+- `Logger` treated an unknown/upper-case level as `debug` (logging everything); now case-insensitive
+  and falls back to `warning`.
+- `AiArchive::validate()` computed an unused `$hasConfig`; dead code removed.
+- `Downloader` ignored the `fwrite` return; a partial/failed write now throws.
+- `CacheManager` treated `filesize`/`fileatime` `false` as 0 in LRU accounting; now guarded.
+- `ArrayTensor`/`OnnxTensor`/`CpuNativeTensor` allowed `[]=`/`unset()` which desynced shape and
+  data; both now throw `\BadMethodCallException` (fixed shape).
+- `FiberPipeline::setTimeout()` wrote a dead field; the timeout is now enforced as a wall-clock
+  deadline checked around each produced item.
+
+Verification (fresh): `composer check` fully green - cs 0 - PHPStan L8 No errors - Psalm L3 No
+errors - **686 unit tests** (was 659; +27). `composer verify` -> **16/16** runtime regression
+guards (`AuditFindingsTest` 10 + `AuditRound2Test` 6).

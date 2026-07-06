@@ -91,6 +91,23 @@ final class ModelPoolTest extends TestCase
         self::assertLessThanOrEqual(1500, $pool->memoryUsage());
     }
 
+    public function testAcquireRefreshesRecencySoRecentlyUsedModelSurvivesEviction(): void
+    {
+        $pool = new ModelPool(maxMemoryBytes: 2500);
+
+        $pool->put('a', new CpuNativeModel('a', []), 1000);
+        $pool->put('b', new CpuNativeModel('b', []), 1000);
+
+        // Touch 'a' so it becomes most-recently-used; 'b' is now the LRU victim.
+        self::assertNotNull($pool->acquire('a'));
+
+        // Adding 'c' forces eviction; the LRU policy must drop 'b', not the just-used 'a'.
+        $pool->put('c', new CpuNativeModel('c', []), 1000);
+
+        self::assertNotNull($pool->acquire('a'), 'recently-used model must not be evicted');
+        self::assertNull($pool->acquire('b'), 'least-recently-used model should be evicted');
+    }
+
     public function testReleaseDoesNotError(): void
     {
         $pool = new ModelPool();

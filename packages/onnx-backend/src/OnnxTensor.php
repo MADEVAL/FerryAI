@@ -143,9 +143,7 @@ final class OnnxTensor implements Tensor
     public function offsetSet(mixed $offset, mixed $value): void
     {
         if ($offset === null) {
-            $this->data[] = $value;
-
-            return;
+            throw new \BadMethodCallException('A tensor has a fixed shape; appending via [] is not supported.');
         }
 
         $this->data[$offset] = $value;
@@ -154,7 +152,7 @@ final class OnnxTensor implements Tensor
     #[\Override]
     public function offsetUnset(mixed $offset): void
     {
-        unset($this->data[$offset]);
+        throw new \BadMethodCallException('A tensor has a fixed shape; unsetting elements is not supported.');
     }
 
     #[\Override]

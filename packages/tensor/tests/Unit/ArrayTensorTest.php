@@ -44,6 +44,40 @@ final class ArrayTensorTest extends TestCase
         self::assertSame(4, $tensor[3]);
     }
 
+    public function testTransposeRejectsDuplicateAxes(): void
+    {
+        $this->expectException(\FerryAI\Core\Exception\ValidationException::class);
+        ArrayTensor::fromNested([[1, 2], [3, 4]])->transpose([0, 0]);
+    }
+
+    public function testTransposeRejectsOutOfRangeAxis(): void
+    {
+        $this->expectException(\FerryAI\Core\Exception\ValidationException::class);
+        ArrayTensor::fromNested([[1, 2], [3, 4]])->transpose([0, 2]);
+    }
+
+    public function testTransposeRejectsWrongAxisCount(): void
+    {
+        $this->expectException(\FerryAI\Core\Exception\ValidationException::class);
+        ArrayTensor::fromNested([[1, 2], [3, 4]])->transpose([0]);
+    }
+
+    public function testAppendViaArrayAccessIsRejected(): void
+    {
+        $tensor = ArrayTensor::fromNested([[1, 2], [3, 4]]);
+
+        $this->expectException(\BadMethodCallException::class);
+        $tensor[] = 9;
+    }
+
+    public function testOffsetUnsetIsRejected(): void
+    {
+        $tensor = ArrayTensor::fromNested([[1, 2], [3, 4]]);
+
+        $this->expectException(\BadMethodCallException::class);
+        unset($tensor[0]);
+    }
+
     public function testAdd(): void
     {
         $a = ArrayTensor::fromNested([[1, 2], [3, 4]]);

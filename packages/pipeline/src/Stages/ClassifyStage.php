@@ -27,23 +27,33 @@ final class ClassifyStage implements Stage
         $outputs = $this->model->run(['input' => $input]);
         $scores = $outputs['output'] ?? \reset($outputs);
 
-        if (\is_array($scores) && isset($scores[0]) && \is_numeric($scores[0])) {
-            $scores = $scores;
-        } else {
+        if ($scores instanceof \FerryAI\Core\Contracts\Tensor) {
+            $scores = $scores->toArray();
+        }
+
+        // Unwrap a leading batch dimension: [[s0, s1, ...]] -> [s0, s1, ...].
+        if (\is_array($scores) && isset($scores[0]) && \is_array($scores[0])) {
+            $scores = $scores[0];
+        }
+
+        if (!\is_array($scores) || $scores === [] || !\is_numeric($scores[0] ?? null)) {
             return new ClassificationResult('unknown', 0.0);
         }
 
         $maxIndex = 0;
         $maxScore = $scores[0];
+        $allScores = [];
 
         foreach ($scores as $i => $score) {
+            $allScores[(string) $i] = (float) $score;
+
             if ($score > $maxScore) {
                 $maxScore = $score;
                 $maxIndex = $i;
             }
         }
 
-        return new ClassificationResult((string) $maxIndex, (float) $maxScore);
+        return new ClassificationResult((string) $maxIndex, (float) $maxScore, $allScores);
     }
 
     #[\Override]

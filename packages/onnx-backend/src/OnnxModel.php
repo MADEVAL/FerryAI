@@ -53,11 +53,11 @@ final class OnnxModel implements Model
         foreach ($inputs as $name => $value) {
             if ($value instanceof Tensor) {
                 $feed[$name] = $value->toArray();
-            } elseif (\is_array($value)) {
+            } elseif (\is_array($value) || \is_string($value)) {
                 $feed[$name] = $value;
             } else {
                 throw new InferenceException(\sprintf(
-                    "Input '%s' must be a Tensor or a PHP array; got %s.",
+                    "Input '%s' must be a Tensor, a PHP array or a string; got %s.",
                     $name,
                     get_debug_type($value),
                 ));

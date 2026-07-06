@@ -21,9 +21,10 @@ final class MockLlamaRuntime implements LlamaRuntimeInterface
     public array $createdSessions = [];
 
     /**
-     * @param list<int>          $scripted     token ids to emit in order, then EOS
-     * @param array<int, string> $pieces       token id => detokenised piece
-     * @param list<int>          $promptTokens tokens returned by tokenize()
+     * @param list<int>              $scripted     token ids to emit in order, then EOS
+     * @param array<int, string>     $pieces       token id => detokenised piece
+     * @param list<int>              $promptTokens tokens returned by tokenize()
+     * @param array<int, float>|null $fixedTopK    when set, evaluateTopK returns this map every call
      */
     public function __construct(
         private readonly bool $available = true,
@@ -36,6 +37,7 @@ final class MockLlamaRuntime implements LlamaRuntimeInterface
         private readonly array $scripted = [],
         private readonly array $pieces = [],
         private readonly array $promptTokens = [1, 5, 6],
+        private readonly ?array $fixedTopK = null,
     ) {}
 
     public function isAvailable(): bool
@@ -120,6 +122,10 @@ final class MockLlamaRuntime implements LlamaRuntimeInterface
      */
     public function evaluateTopK(LlamaSession $session, array $tokens, int $nPast, int $k): array
     {
+        if ($this->fixedTopK !== null) {
+            return $this->fixedTopK;
+        }
+
         $mock = $this->session($session);
         $target = $mock->cursor < \count($this->scripted) ? $this->scripted[$mock->cursor] : $this->eos;
         ++$mock->cursor;

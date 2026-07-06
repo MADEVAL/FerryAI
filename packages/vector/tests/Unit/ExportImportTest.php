@@ -60,6 +60,41 @@ final class ExportImportTest extends TestCase
         self::assertStringContainsString('2', $content);
     }
 
+    public function testToCsvEscapesSpecialCharacters(): void
+    {
+        $store = new SQLiteStore(':memory:');
+        $store->createCollection('test', 2);
+        $collection = new Collection('test', 2, $store);
+        $collection->add('id,with"quote', [1.0, 2.0], ['title' => 'a,b "q"']);
+
+        $path = $this->tempDir . '/special.csv';
+        ExportImport::toCsv($collection, $path);
+
+        $lines = array_values(array_filter(explode("\n", (string) \file_get_contents($path))));
+        $fields = \str_getcsv($lines[1], ',', '"', '\\');
+
+        // A well-formed 3-column CSV row parses back to exactly 3 fields.
+        self::assertCount(3, $fields);
+        self::assertSame('id,with"quote', $fields[0]);
+        self::assertSame('a,b "q"', json_decode($fields[2], true)['title']);
+    }
+
+    public function testFromJsonSkipsRowsWithNonArrayVector(): void
+    {
+        $store = new SQLiteStore(':memory:');
+        $path = $this->tempDir . '/bad.jsonl';
+        \file_put_contents(
+            $path,
+            \json_encode(['id' => 'ok', 'vector' => [1.0, 2.0]]) . "\n"
+            . \json_encode(['id' => 'bad', 'vector' => 'not-an-array']) . "\n",
+        );
+
+        $imported = ExportImport::fromJson($path, 'imp', 2, $store);
+
+        // The malformed row is skipped, not fatal.
+        self::assertSame(1, $imported->count());
+    }
+
     public function testToJsonRoundTrip(): void
     {
         $store = new SQLiteStore(':memory:');

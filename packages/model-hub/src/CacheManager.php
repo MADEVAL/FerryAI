@@ -70,10 +70,12 @@ final class CacheManager
 
         foreach ($filePaths as $file) {
             if (\is_file($file)) {
+                $size = \filesize($file);
+                $atime = \fileatime($file);
                 $files[] = [
                     'path' => $file,
-                    'atime' => \fileatime($file),
-                    'size' => \filesize($file),
+                    'atime' => $atime === false ? 0 : $atime,
+                    'size' => $size === false ? 0 : $size,
                 ];
             }
         }

@@ -124,6 +124,31 @@ final class LlamaModelTest extends TestCase
         self::assertSame('Hello world', $result->text);
     }
 
+    public function testRepetitionPenaltyChangesGreedySelection(): void
+    {
+        // Two candidate tokens every step; token 10 dominates. Without a penalty greedy repeats 10.
+        $runtime = new MockLlamaRuntime(
+            eos: 2,
+            pieces: [10 => 'A', 11 => 'B'],
+            promptTokens: [1, 5],
+            fixedTopK: [10 => 10.0, 11 => 9.0],
+        );
+        $session = $runtime->createSession('m.gguf', new \FerryAI\LlamaBackend\LlamaModelParams(), new \FerryAI\LlamaBackend\LlamaContextParams());
+        $model = new LlamaModel($session, $runtime, new ChatFormatter('chatml'), new GreedySampler());
+
+        $noPenalty = $model->runComplete(
+            [ChatMessage::user('Hi')],
+            new \FerryAI\Core\ValueObjects\SamplingParams(temperature: 0.0, maxTokens: 2),
+        );
+        self::assertSame('AA', $noPenalty->text, 'without penalty greedy repeats the top token');
+
+        $withPenalty = $model->runComplete(
+            [ChatMessage::user('Hi')],
+            new \FerryAI\Core\ValueObjects\SamplingParams(temperature: 0.0, maxTokens: 2, repetitionPenalty: 5.0),
+        );
+        self::assertSame('AB', $withPenalty->text, 'repetition penalty must steer away from the repeated token');
+    }
+
     private function modelWithoutSampler(): LlamaModel
     {
         $runtime = new MockLlamaRuntime(

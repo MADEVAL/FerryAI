@@ -220,22 +220,31 @@ final class AI
             }
 
             $model = self::loadPooled($backend, $modelPath);
-            $outputs = $model->run(['input' => $input]);
-            $scores = $outputs['output'] ?? \reset($outputs);
+            $scores = self::numericScores($model->run(['input' => $input]));
 
-            if (\is_array($scores) && isset($scores[0]) && \is_numeric($scores[0])) {
-                $maxScore = (float) \max($scores);
-                $label = (string) \array_search($maxScore, $scores, true);
-
-                return new ClassificationResult($label, $maxScore);
+            if ($scores === null) {
+                return new ClassificationResult('unknown', 0.0);
             }
 
-            return new ClassificationResult('unknown', 0.0);
+            $maxIndex = 0;
+            $maxScore = $scores[0];
+            $allScores = [];
+
+            foreach ($scores as $i => $score) {
+                $allScores[(string) $i] = (float) $score;
+
+                if ($score > $maxScore) {
+                    $maxScore = $score;
+                    $maxIndex = $i;
+                }
+            }
+
+            return new ClassificationResult((string) $maxIndex, (float) $maxScore, $allScores);
         });
     }
 
     /**
-     * @return array{categories: array<string, float>, flagged: bool}
+     * @return array{categories: array<array-key, float>, flagged: bool}
      */
     public static function moderate(string $text): array
     {
@@ -251,20 +260,55 @@ final class AI
             }
 
             $model = self::loadPooled($backend, $modelPath);
-            $outputs = $model->run(['input' => $text]);
-            $scores = $outputs['output'] ?? \reset($outputs);
+            $scores = self::numericScores($model->run(['input' => $text]));
 
-            if (!\is_array($scores)) {
+            if ($scores === null) {
                 return ['categories' => [], 'flagged' => false];
             }
 
-            $maxScore = $scores !== [] ? (float) \max($scores) : 0.0;
+            $categories = [];
+
+            foreach ($scores as $i => $score) {
+                $categories[(string) $i] = (float) $score;
+            }
+
+            $maxScore = (float) \max($scores);
 
             return [
-                'categories' => $scores,
+                'categories' => $categories,
                 'flagged' => $maxScore > 0.5,
             ];
         });
+    }
+
+    /**
+     * Extracts a flat numeric score list from a model's output, unwrapping a Tensor and a
+     * leading batch dimension. Returns null when the output is not a numeric score vector.
+     *
+     * @param array<string, mixed> $outputs
+     *
+     * @return non-empty-list<float|int>|null
+     */
+    private static function numericScores(array $outputs): ?array
+    {
+        $scores = $outputs['output'] ?? \reset($outputs);
+
+        if ($scores instanceof \FerryAI\Core\Contracts\Tensor) {
+            $scores = $scores->toArray();
+        }
+
+        if (\is_array($scores) && isset($scores[0]) && \is_array($scores[0])) {
+            $scores = $scores[0];
+        }
+
+        if (!\is_array($scores) || $scores === [] || !\is_numeric($scores[0] ?? null)) {
+            return null;
+        }
+
+        /** @var non-empty-list<float|int> $values */
+        $values = \array_values($scores);
+
+        return $values;
     }
 
     /**

@@ -115,38 +115,100 @@ final class HuggingFaceClient
             $filename,
         );
 
-        $attempt = 0;
-
-        $data = $this->retry->retry(
-            function () use ($url, $modelId, $filename, &$attempt): string {
-                $attempt++;
-                $raw = $this->httpGet !== null
-                    ? ($this->httpGet)($url)
-                    : @\file_get_contents($url, false, $this->createContext());
-
-                if ($raw === false) {
-                    $this->logger?->error('hf.download.failed', [
-                        'model' => $modelId,
-                        'file' => $filename,
-                        'attempt' => $attempt,
-                    ]);
-
-                    throw new IoException(\sprintf('Failed to download: %s/%s', $modelId, $filename));
-                }
-
-                return $raw;
-            },
-            $this->maxAttempts,
-            $this->retryDelayMs,
-        );
-
         $dir = \dirname($destination);
 
         if (!\is_dir($dir)) {
             \mkdir($dir, 0755, true);
         }
 
-        \file_put_contents($destination, $data);
+        // Custom transport / tests use the buffered seam; the real network path streams to disk
+        // so multi-GB model files never have to be held in memory.
+        if ($this->httpGet !== null) {
+            $httpGet = $this->httpGet;
+            $attempt = 0;
+            $data = $this->retry->retry(
+                function () use ($httpGet, $url, $modelId, $filename, &$attempt): string {
+                    $attempt++;
+                    $raw = $httpGet($url);
+
+                    if ($raw === false) {
+                        $this->logger?->error('hf.download.failed', ['model' => $modelId, 'file' => $filename, 'attempt' => $attempt]);
+
+                        throw new IoException(\sprintf('Failed to download: %s/%s', $modelId, $filename));
+                    }
+
+                    return $raw;
+                },
+                $this->maxAttempts,
+                $this->retryDelayMs,
+            );
+
+            if (\file_put_contents($destination, $data) === false) {
+                throw new IoException(\sprintf('Cannot write to: %s', $destination));
+            }
+
+            return;
+        }
+
+        $attempt = 0;
+        $this->retry->retry(
+            function () use ($url, $destination, $modelId, $filename, &$attempt): bool {
+                $attempt++;
+
+                return $this->streamToFile($url, $destination, $modelId, $filename, $attempt);
+            },
+            $this->maxAttempts,
+            $this->retryDelayMs,
+        );
+    }
+
+    /**
+     * Streams an HTTP resource to disk in fixed-size chunks. Throws on any failure so the
+     * retry handler can re-attempt.
+     */
+    private function streamToFile(string $url, string $destination, string $modelId, string $filename, int $attempt): bool
+    {
+        $in = @\fopen($url, 'rb', false, $this->createContext());
+
+        if ($in === false) {
+            $this->logger?->error('hf.download.failed', ['model' => $modelId, 'file' => $filename, 'attempt' => $attempt]);
+
+            throw new IoException(\sprintf('Failed to download: %s/%s', $modelId, $filename));
+        }
+
+        $out = @\fopen($destination, 'wb');
+
+        if ($out === false) {
+            \fclose($in);
+
+            throw new IoException(\sprintf('Cannot write to: %s', $destination));
+        }
+
+        while (!\feof($in)) {
+            $chunk = \fread($in, 8192);
+
+            if ($chunk === false) {
+                break;
+            }
+
+            if ($chunk === '') {
+                continue;
+            }
+
+            $written = \fwrite($out, $chunk);
+
+            if ($written === false || $written !== \strlen($chunk)) {
+                \fclose($in);
+                \fclose($out);
+
+                throw new IoException(\sprintf('Failed to write downloaded data to: %s', $destination));
+            }
+        }
+
+        \fclose($in);
+        \fclose($out);
+
+        return true;
     }
 
     /**

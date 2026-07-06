@@ -139,7 +139,11 @@ final class ChatFormatter
         $prompt = '';
 
         foreach ($messages as $message) {
-            $role = $message['role'] === 'assistant' ? 'model' : $message['role'];
+            $role = match ($message['role']) {
+                'assistant' => 'model',
+                'tool' => 'user',
+                default => $message['role'],
+            };
             $prompt .= '<start_of_turn>' . $role . "\n" . $message['content'] . "<end_of_turn>\n";
         }
 
@@ -154,7 +158,9 @@ final class ChatFormatter
         $prompt = '';
 
         foreach ($messages as $message) {
-            $prompt .= '<|' . $message['role'] . '|>' . "\n" . $message['content'] . "<|end|>\n";
+            // Phi supports system/user/assistant only; map tool results to a user turn.
+            $role = $message['role'] === 'tool' ? 'user' : $message['role'];
+            $prompt .= '<|' . $role . '|>' . "\n" . $message['content'] . "<|end|>\n";
         }
 
         return $prompt . "<|assistant|>\n";

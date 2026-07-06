@@ -40,16 +40,19 @@ final class FormatDetector
         $b0 = \ord($header[0]);
         $b1 = \ord($header[1]);
 
-        if ($b0 === 0x08 && $b1 < 0x20) {
-            return 'onnx';
-        }
-
-        if (\strlen($header) >= 8) {
+        // Safetensors: 8-byte little-endian header length, immediately followed by a JSON
+        // object ('{'). Checked before the ONNX heuristic because a small header length can
+        // start with 0x08 and collide with the ONNX protobuf guard below.
+        if (\strlen($header) >= 9 && $header[8] === '{') {
             $headerLen = \unpack('P', \substr($header, 0, 8));
 
             if (\is_array($headerLen) && isset($headerLen[1]) && $headerLen[1] > 0 && $headerLen[1] < 100_000_000) {
                 return 'safetensors';
             }
+        }
+
+        if ($b0 === 0x08 && $b1 < 0x20) {
+            return 'onnx';
         }
 
         return 'unknown';

@@ -80,7 +80,19 @@ final class OnnxModelTest extends TestCase
 
         $this->expectException(InferenceException::class);
 
-        $model->run(['x' => 'not-a-tensor']);
+        $model->run(['x' => 123]);
+    }
+
+    public function testRunAcceptsStringInput(): void
+    {
+        $session = $this->session();
+        $runtime = new MockOnnxRuntime(session: $session);
+        $model = $this->model($runtime, $session);
+
+        // The Model contract allows string inputs (Tensor | array | string).
+        $model->run(['x' => 'some text']);
+
+        self::assertSame('some text', $runtime->runInputs[0]['x']);
     }
 
     public function testRunAfterUnloadThrows(): void

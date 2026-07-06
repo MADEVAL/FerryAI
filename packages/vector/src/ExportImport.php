@@ -44,11 +44,15 @@ final class ExportImport
 
             $data = \json_decode($line, true);
 
-            if (!\is_array($data) || !isset($data['id'], $data['vector'])) {
+            if (!\is_array($data) || !isset($data['id'], $data['vector']) || !\is_array($data['vector'])) {
                 continue;
             }
 
-            $collection->add((string) $data['id'], $data['vector'], $data['metadata'] ?? null);
+            /** @var array<int, float> $vector */
+            $vector = $data['vector'];
+            $metadataRaw = $data['metadata'] ?? null;
+            $metadata = \is_array($metadataRaw) ? $metadataRaw : null;
+            $collection->add((string) $data['id'], $vector, $metadata);
         }
 
         \fclose($handle);
@@ -70,7 +74,10 @@ final class ExportImport
             $vectorStr = \implode(' ', $item['vector']);
             $metadataStr = \json_encode($item['metadata'] ?? [], JSON_UNESCAPED_UNICODE);
             $metadataStr = \is_string($metadataStr) ? $metadataStr : '{}';
-            \fwrite($handle, \sprintf("%s,\"%s\",\"%s\"\n", $item['id'], $vectorStr, $metadataStr));
+
+            if (\fputcsv($handle, [$item['id'], $vectorStr, $metadataStr], ',', '"', '\\') === false) {
+                throw new IoException(\sprintf('Failed to write CSV row for id "%s"', $item['id']));
+            }
         }
 
         \fclose($handle);
