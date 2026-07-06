@@ -122,9 +122,75 @@ final class Downloader
     /**
      * @return \Generator<int, array{progress: float, downloaded: int, total: int}>
      */
-    public function downloadWithProgress(string $modelId, string $filename, string $destination): \Generator
+    public function downloadWithProgress(string $url, string $destination): \Generator
     {
-        yield ['progress' => 0.0, 'downloaded' => 0, 'total' => 0];
+        $this->cancelled = false;
+
+        yield ['progress' => 0.0, 'downloaded' => 0, 'total' => -1];
+
+        $context = \stream_context_create([
+            'http' => [
+                'method' => 'GET',
+                'timeout' => 300,
+                'follow_location' => 1,
+            ],
+        ]);
+
+        $handle = @\fopen($url, 'rb', false, $context);
+
+        if ($handle === false) {
+            throw new IoException(\sprintf('Cannot open URL: %s', $url));
+        }
+
+        $dir = \dirname($destination);
+
+        if (!\is_dir($dir)) {
+            \mkdir($dir, 0755, true);
+        }
+
+        $outHandle = \fopen($destination, 'wb');
+
+        if ($outHandle === false) {
+            \fclose($handle);
+
+            throw new IoException(\sprintf('Cannot write to: %s', $destination));
+        }
+
+        $downloaded = 0;
+
+        while (!\feof($handle)) {
+            if ($this->cancelled) {
+                break;
+            }
+
+            $chunk = \fread($handle, 8192);
+
+            if ($chunk === false || $chunk === '') {
+                break;
+            }
+
+            $written = \fwrite($outHandle, $chunk);
+
+            if ($written === false || $written !== \strlen($chunk)) {
+                \fclose($outHandle);
+                \fclose($handle);
+
+                throw new IoException(\sprintf('Failed to write downloaded data to: %s', $destination));
+            }
+
+            $downloaded += \strlen($chunk);
+
+            yield ['progress' => 0.0, 'downloaded' => $downloaded, 'total' => -1];
+        }
+
+        \fclose($outHandle);
+        \fclose($handle);
+
+        if ($this->cancelled && \file_exists($destination)) {
+            \unlink($destination);
+        }
+
+        yield ['progress' => 1.0, 'downloaded' => $downloaded, 'total' => $downloaded];
     }
 
     public function cancel(): void

@@ -128,12 +128,17 @@ final class HubTest extends TestCase
         $hub->warmup(['uncached/model']);
     }
 
-    public function testDownloadWithProgressReturnsGenerator(): void
+    public function testDownloadWithProgressIsNotAStub(): void
     {
         $hub = new Hub($this->cacheDir);
         $generator = $hub->downloadWithProgress('nonexistent/model');
 
         self::assertInstanceOf(\Generator::class, $generator);
+
+        $generator->current();
+
+        $this->expectException(\Throwable::class);
+        $generator->next();
     }
 
     public function testVerifySignatureIsSilentlySkippedWithoutPublicKey(): void

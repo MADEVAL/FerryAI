@@ -11,7 +11,6 @@ final class Hub implements ModelHubContract
 {
     private HuggingFaceClient $hfClient;
     private CacheManager $cache;
-    /** @phpstan-ignore property.onlyWritten */
     private Downloader $downloader;
 
     public function __construct(
@@ -85,7 +84,40 @@ final class Hub implements ModelHubContract
     #[\Override]
     public function downloadWithProgress(string $modelId, ?string $version = null): \Generator
     {
+        $cached = $this->cached($modelId, $version);
+
+        if ($cached !== null) {
+            yield ['progress' => 1, 'downloaded' => 0, 'total' => 0];
+
+            return $cached;
+        }
+
         yield ['progress' => 0, 'downloaded' => 0, 'total' => 0];
+
+        $files = $this->hfClient->listFiles($modelId);
+
+        if ($files === []) {
+            throw new \FerryAI\Core\Exception\ModelNotFoundException($modelId);
+        }
+
+        $modelFile = null;
+
+        foreach ($files as $file) {
+            if (\str_ends_with($file, '.onnx') || \str_ends_with($file, '.gguf')) {
+                $modelFile = $file;
+
+                break;
+            }
+        }
+
+        $modelFile ??= $files[0];
+        $cacheKey = $this->cacheKey($modelId, $version);
+        $destPath = \sys_get_temp_dir() . '/' . $cacheKey . '.model';
+        $url = \sprintf('https://huggingface.co/%s/resolve/main/%s', $modelId, $modelFile);
+
+        yield from $this->downloader->downloadWithProgress($url, $destPath);
+
+        $this->cache->put($cacheKey, $destPath);
     }
 
     #[\Override]

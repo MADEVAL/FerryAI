@@ -18,23 +18,6 @@
 
 ---
 
-### 3. `Hub::downloadWithProgress()` — stub (broken contract)
-
-**File:** `packages/model-hub/src/Hub.php:96-99`
-
-```php
-public function downloadWithProgress(string $modelId, ?string $version = null): \Generator
-{
-    yield ['progress' => 0, 'downloaded' => 0, 'total' => 0];
-}
-```
-
-Returns a single yield and exits. Never invokes the actual download. Contract `ModelHub::downloadWithProgress()` promises «Downloads a model while yielding progress».
-
-**Fix:** Delegate to `Downloader::downloadWithProgress()` with a real progress callback, or implement progress reporting in `HuggingFaceClient::downloadFile()`.
-
----
-
 ### 4. `Hub::checkUpdates()` — always returns empty (broken contract)
 
 **File:** `packages/model-hub/src/Hub.php:111-114`
