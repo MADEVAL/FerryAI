@@ -1,19 +1,3 @@
-### 9. `AI::resetBackend()` — misleading name
-
-**File:** `packages/ai/src/AI.php:67-69`
-
-```php
-public static function resetBackend(string $name): void
-{
-    self::ensureConfigured();
-    self::resolveBackendType($name);  // validates name, discards result
-}
-```
-
-The method name suggests it resets/reloads a backend, but it only validates the backend name and returns `void`. It doesn't reset anything. The name `resetBackend` is misleading.
-
----
-
 ### 10. `Embedder` constructor eagerly loads model
 
 **File:** `packages/embedding/src/Embedder.php:38`

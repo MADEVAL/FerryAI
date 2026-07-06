@@ -92,7 +92,8 @@ final class AI
     public static function resetBackend(string $name): void
     {
         self::ensureConfigured();
-        self::resolveBackendType($name);
+        $type = self::resolveBackendType($name);
+        self::registry()->register($type, self::factory()->createBackend($type));
     }
 
     public static function backend(string $name): void

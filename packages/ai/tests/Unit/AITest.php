@@ -65,6 +65,17 @@ final class AITest extends TestCase
         $this->expectNotToPerformAssertions();
     }
 
+    public function testResetBackendRecreatesAndKeepsBackendUsable(): void
+    {
+        AI::config(['backend' => 'onnx']);
+
+        AI::resetBackend('onnx');
+
+        AI::backend('onnx');
+
+        self::assertSame(BackendType::Onnx, AI::activeBackend());
+    }
+
     public function testSwitchToUnregisteredBackendThrows(): void
     {
         AI::config(['backend' => 'onnx']);
