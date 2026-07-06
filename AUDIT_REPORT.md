@@ -1,20 +1,3 @@
-### 8. `Laravel\AIServiceProvider` — does not extend Laravel's base `ServiceProvider`
-
-**File:** `packages/laravel/src/AIServiceProvider.php`
-
-```php
-final class AIServiceProvider
-{
-    private mixed $app;
-    public function __construct(mixed $app = null) { ... }
-```
-
-Does not extend `Illuminate\Support\ServiceProvider`. Cannot be registered in `config/app.php` as a standard Laravel service provider. The `register()` and `boot()` methods are called manually (by what?), and the `$app` property is typed `mixed` with no interface contract.
-
-**Similarly:** `Symfony\AI` does not extend Symfony's `Bundle` base class (`Symfony\Component\HttpKernel\Bundle\Bundle`). Cannot be used as a standard Symfony bundle.
-
----
-
 ### 9. `AI::resetBackend()` — misleading name
 
 **File:** `packages/ai/src/AI.php:67-69`

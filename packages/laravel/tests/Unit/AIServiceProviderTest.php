@@ -98,16 +98,20 @@ final class AIServiceProviderTest extends TestCase
         }
     }
 
-    public function testGetConfigSetsLogLevel(): void
+    public function testAppReturnsObjectWhenGivenOne(): void
     {
-        \putenv('FERRY_AI_LOG_LEVEL=debug');
+        $app = new \stdClass();
+        $provider = new AIServiceProvider($app);
 
-        try {
-            $config = (new AIServiceProvider())->getConfig();
+        $returned = $provider->app();
 
-            self::assertSame('debug', $config['log_level']);
-        } finally {
-            \putenv('FERRY_AI_LOG_LEVEL');
-        }
+        self::assertSame($app, $returned);
+    }
+
+    public function testAppReturnsNullWhenNotGiven(): void
+    {
+        $provider = new AIServiceProvider();
+
+        self::assertNull($provider->app());
     }
 }

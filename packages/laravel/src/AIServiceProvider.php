@@ -8,14 +8,14 @@ use FerryAI\AI;
 
 final class AIServiceProvider
 {
-    private mixed $app;
+    private ?object $app;
 
-    public function __construct(mixed $app = null)
+    public function __construct(?object $app = null)
     {
         $this->app = $app;
     }
 
-    public function app(): mixed
+    public function app(): ?object
     {
         return $this->app;
     }
