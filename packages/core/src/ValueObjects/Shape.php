@@ -54,12 +54,12 @@ readonly class Shape implements \JsonSerializable, \Stringable
     /**
      * Size along the given axis.
      *
-     * @throws \OutOfBoundsException when the axis does not exist
+     * @throws ValidationException when the axis does not exist
      */
     public function dimension(int $axis): int
     {
         if (!\array_key_exists($axis, $this->dimensions)) {
-            throw new \OutOfBoundsException(\sprintf('Axis %d does not exist in shape of rank %d.', $axis, $this->rank()));
+            throw new ValidationException(\sprintf('Axis %d does not exist in shape of rank %d.', $axis, $this->rank()));
         }
 
         return $this->dimensions[$axis];

@@ -209,12 +209,12 @@ final class AIConfig implements \ArrayAccess
     #[\Override]
     public function offsetSet(mixed $offset, mixed $value): void
     {
-        throw new \LogicException('AIConfig is immutable; use set() which returns a new instance.');
+        throw new \BadMethodCallException('AIConfig is immutable; use set() which returns a new instance.');
     }
 
     #[\Override]
     public function offsetUnset(mixed $offset): void
     {
-        throw new \LogicException('AIConfig is immutable; use set() which returns a new instance.');
+        throw new \BadMethodCallException('AIConfig is immutable; use set() which returns a new instance.');
     }
 }

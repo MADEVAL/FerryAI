@@ -86,7 +86,7 @@ final class AIConfigTest extends TestCase
     {
         $config = AIConfig::fromArray([]);
 
-        $this->expectException(\LogicException::class);
+        $this->expectException(\BadMethodCallException::class);
         $config['temperature'] = 0.9;
     }
 

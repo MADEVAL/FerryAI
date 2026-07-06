@@ -1593,3 +1593,38 @@ Low:
 Verification (fresh): `composer check` fully green - cs 0 - PHPStan L8 No errors - Psalm L3 No
 errors - **686 unit tests** (was 659; +27). `composer verify` -> **16/16** runtime regression
 guards (`AuditFindingsTest` 10 + `AuditRound2Test` 6).
+
+---
+
+## 2026-07-06 — Cross-package consistency pass (no behaviour regressions)
+
+Deep consistency audit of all 13 packages (contract-signature drift, `#[\Override]` usage,
+exception conventions, dead code). Two agents cross-checked every contract implementer and every
+package convention. Verified with the full gate after each change.
+
+Fixed:
+- **Removed the dead duplicate llama FFI layer** — `FFI/LlamaCpp.php`, `FFI/LlamaContext.php`,
+  `FFI/LlamaBatch.php` (superseded by `FFI/FerryLlama.php`; zero references, PHPStan/Psalm-excluded,
+  DEBT §1 marked them deletable). Removed their entries from `phpstan.neon` and `psalm.xml`.
+- **`CpuNativeTensor`** — `add/sub/mul/matmul/transpose/reshape/slice` now return `: self` (matching
+  `ArrayTensor`/`OnnxTensor`; the interface declares `: self`). Was the lone `: Tensor` outlier.
+- **`CpuNativeModel`** — added the `@return array<string, array{name: string, shape: int[],
+  dtype: string}>` PHPDoc on `inputs()`/`outputs()` (matching `OnnxModel`/`LlamaModel`).
+- **`HuggingFaceTokenizer`** — added `#[\Override]` on its 9 `Tokenizer` methods (the other two
+  tokenizers already had it).
+- **`Shape::dimension()`** — throws `ValidationException` instead of `\OutOfBoundsException`, matching
+  the constructor and AGENTS rule 5 (all exceptions extend `FerryAIException`). Test updated (TDD).
+- **`AIConfig::offsetSet/offsetUnset`** — throw `\BadMethodCallException` (was `\LogicException`) to
+  match the tensors'' "unsupported operation" category. Test updated.
+
+Left as-is (documented boundaries / by-design, not inconsistencies):
+- `RubixMLAdapter` and `HuggingFaceTokenizer` generic `\RuntimeException` — external-library / FFI
+  boundaries, PHPStan/Psalm-excluded (prior decision).
+- Tensors'' `\BadMethodCallException` for unsupported ops — accepted SPL pattern (now uniform,
+  incl. AIConfig).
+- Factory method naming (`create()` vs `create*()`), `\`-prefix on globals — within the configured
+  PER-CS 2.0 style (cs-check clean); not changed.
+- `CpuNativeBackend::isAvailable()` returning `true` — the CPU backend is always usable.
+
+Verification (fresh): `composer check` fully green — cs 0 — PHPStan L8 No errors — Psalm L3 No
+errors — **686 unit tests** (unchanged; no regressions). `composer verify` → 16/16.

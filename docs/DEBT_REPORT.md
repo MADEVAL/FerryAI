@@ -44,8 +44,8 @@ PHPStan/Psalm and tested via hand-rolled stubs in unit tests. Real path: integra
 | `llama-backend/src/Runtime/NativeLlamaRuntime.php` | Unit tests use `MockLlamaRuntime` | ✅ CPU+GPU verified (Windows + Linux). |
 | `tokenizer/src/HuggingFaceTokenizer.php` | Unit tests use pure-PHP fallback | Pure-PHP BPE/WordPiece covers all needed types. Native binding optional. |
 
-> `LlamaCpp`/`LlamaContext`/`LlamaBatch` are unused (replaced by `FerryLlama` wrapper) and
-> can be deleted.
+> The unused direct-binding classes `LlamaCpp`/`LlamaContext`/`LlamaBatch` (superseded by the
+> `FerryLlama` wrapper) have been **deleted**; the only llama FFI class is now `FFI/FerryLlama.php`.
 
 ---
 
@@ -122,6 +122,7 @@ inside real Laravel/Symfony applications.
 |-----|------|
 | `docs/specs/` | Empty — populated by the brainstorming workflow. |
 | `SOURCES.md` sqlite-vec version | Lists v0.1.9; verified binary on Windows is v0.1.10-alpha. |
+| `FILE_TREE.md` llama-backend section | Stale: still lists the deleted `FFI/LlamaCpp/LlamaContext/LlamaBatch` and omits `FFI/FerryLlama.php` + `Runtime/*`. Needs a reconciliation pass. |
 | Root `composer.json` | Only lists `ext-ffi/json/hash/fileinfo`; sub-package extensions declared per-package; optional exts `suggest`-only. Intentional but not centralised. |
 
 > Every engine package now has a guide (added `docs/backends/cpu.md`, `docs/tensor.md`,

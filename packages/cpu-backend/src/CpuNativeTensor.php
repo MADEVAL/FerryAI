@@ -77,25 +77,25 @@ final class CpuNativeTensor implements Tensor
     }
 
     #[\Override]
-    public function add(Tensor $other): Tensor
+    public function add(Tensor $other): self
     {
         return $this->elementwise($other, 'add');
     }
 
     #[\Override]
-    public function sub(Tensor $other): Tensor
+    public function sub(Tensor $other): self
     {
         return $this->elementwise($other, 'sub');
     }
 
     #[\Override]
-    public function mul(Tensor $other): Tensor
+    public function mul(Tensor $other): self
     {
         return $this->elementwise($other, 'mul');
     }
 
     #[\Override]
-    public function matmul(Tensor $other): Tensor
+    public function matmul(Tensor $other): self
     {
         $a = $this->dimensions;
         $b = $other->shape()->toArray();
@@ -125,7 +125,7 @@ final class CpuNativeTensor implements Tensor
     }
 
     #[\Override]
-    public function transpose(?array $axes = null): Tensor
+    public function transpose(?array $axes = null): self
     {
         $dims = $this->dimensions;
         $rank = \count($dims);
@@ -161,7 +161,7 @@ final class CpuNativeTensor implements Tensor
     }
 
     #[\Override]
-    public function reshape(Shape $newShape): Tensor
+    public function reshape(Shape $newShape): self
     {
         $dims = $newShape->toArray();
 
@@ -173,7 +173,7 @@ final class CpuNativeTensor implements Tensor
     }
 
     #[\Override]
-    public function slice(array $slices): Tensor
+    public function slice(array $slices): self
     {
         $sliced = self::applySlice($this->toArray(), $slices, 0);
 

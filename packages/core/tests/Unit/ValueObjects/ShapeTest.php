@@ -40,7 +40,7 @@ final class ShapeTest extends TestCase
 
     public function testDimensionThrowsForMissingAxis(): void
     {
-        $this->expectException(\OutOfBoundsException::class);
+        $this->expectException(ValidationException::class);
 
         (new Shape([1, 3]))->dimension(5);
     }

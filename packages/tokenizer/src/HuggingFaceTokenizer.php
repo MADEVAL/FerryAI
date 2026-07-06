@@ -46,6 +46,7 @@ final class HuggingFaceTokenizer implements Tokenizer
     /**
      * @return int[]
      */
+    #[\Override]
     public function encode(string $text, bool $addSpecialTokens = true): array
     {
         throw new \RuntimeException(self::UNAVAILABLE);
@@ -54,6 +55,7 @@ final class HuggingFaceTokenizer implements Tokenizer
     /**
      * @param int[] $ids
      */
+    #[\Override]
     public function decode(array $ids): string
     {
         throw new \RuntimeException(self::UNAVAILABLE);
@@ -64,21 +66,25 @@ final class HuggingFaceTokenizer implements Tokenizer
      *
      * @return array{input_ids: int[][], attention_mask: int[][]}
      */
+    #[\Override]
     public function encodeBatch(array $texts, bool $padToMaxLength = true): array
     {
         throw new \RuntimeException(self::UNAVAILABLE);
     }
 
+    #[\Override]
     public function vocabSize(): int
     {
         throw new \RuntimeException(self::UNAVAILABLE);
     }
 
+    #[\Override]
     public function type(): TokenizerType
     {
         return $this->tokenizerType;
     }
 
+    #[\Override]
     public function specialTokenId(string $tokenName): ?int
     {
         throw new \RuntimeException(self::UNAVAILABLE);
@@ -87,11 +93,13 @@ final class HuggingFaceTokenizer implements Tokenizer
     /**
      * @return array<string, int>
      */
+    #[\Override]
     public function specialTokens(): array
     {
         throw new \RuntimeException(self::UNAVAILABLE);
     }
 
+    #[\Override]
     public function countTokens(string $text): int
     {
         throw new \RuntimeException(self::UNAVAILABLE);
@@ -100,6 +108,7 @@ final class HuggingFaceTokenizer implements Tokenizer
     /**
      * @return string[]
      */
+    #[\Override]
     public function chunk(string $text, int $maxTokens = 512, int $overlap = 64): array
     {
         throw new \RuntimeException(self::UNAVAILABLE);

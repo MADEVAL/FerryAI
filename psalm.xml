@@ -29,9 +29,6 @@
             <file name="packages/onnx-backend/src/Runtime/NativeOnnxRuntime.php"/>
             <file name="packages/onnx-backend/src/Runtime/NativeOnnxSession.php"/>
             <file name="packages/tokenizer/src/HuggingFaceTokenizer.php"/>
-            <file name="packages/llama-backend/src/FFI/LlamaCpp.php"/>
-            <file name="packages/llama-backend/src/FFI/LlamaContext.php"/>
-            <file name="packages/llama-backend/src/FFI/LlamaBatch.php"/>
             <file name="packages/llama-backend/src/FFI/FerryLlama.php"/>
             <file name="packages/llama-backend/src/Runtime/NativeLlamaRuntime.php"/>
             <file name="packages/llama-backend/src/Runtime/NativeLlamaSession.php"/>

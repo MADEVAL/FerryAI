@@ -27,9 +27,6 @@ parameters:
             # Native tokenizers-cpp FFI boundary
             - packages/tokenizer/src/HuggingFaceTokenizer.php
             # Native llama.cpp FFI boundary
-            - packages/llama-backend/src/FFI/LlamaCpp.php
-            - packages/llama-backend/src/FFI/LlamaContext.php
-            - packages/llama-backend/src/FFI/LlamaBatch.php
             - packages/llama-backend/src/FFI/FerryLlama.php
             - packages/llama-backend/src/Runtime/NativeLlamaRuntime.php
             - packages/llama-backend/src/Runtime/NativeLlamaSession.php

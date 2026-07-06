@@ -74,6 +74,9 @@ final class CpuNativeModel implements Model
         return [$row];
     }
 
+    /**
+     * @return array<string, array{name: string, shape: int[], dtype: string}>
+     */
     #[\Override]
     public function inputs(): array
     {
@@ -88,6 +91,9 @@ final class CpuNativeModel implements Model
         ];
     }
 
+    /**
+     * @return array<string, array{name: string, shape: int[], dtype: string}>
+     */
     #[\Override]
     public function outputs(): array
     {
