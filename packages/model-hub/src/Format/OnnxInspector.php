@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace FerryAI\ModelHub\Format;
 
+use FerryAI\Core\Exception\InvalidStateException;
 use FerryAI\Core\ValueObjects\ModelMetadata;
 
 final class OnnxInspector
@@ -27,11 +28,10 @@ final class OnnxInspector
      */
     public static function inputs(string $path): array
     {
-        if (!\file_exists($path)) {
-            return [];
-        }
-
-        return [];
+        throw new InvalidStateException(
+            'OnnxInspector::inputs() is not yet implemented. '
+            . 'Use a backend (OnnxBackend) to load the model and inspect its inputs at runtime.',
+        );
     }
 
     /**
@@ -39,10 +39,9 @@ final class OnnxInspector
      */
     public static function outputs(string $path): array
     {
-        if (!\file_exists($path)) {
-            return [];
-        }
-
-        return [];
+        throw new InvalidStateException(
+            'OnnxInspector::outputs() is not yet implemented. '
+            . 'Use a backend (OnnxBackend) to load the model and inspect its outputs at runtime.',
+        );
     }
 }

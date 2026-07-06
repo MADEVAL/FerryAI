@@ -1,20 +1,3 @@
-### 6. `OnnxInspector::inputs()` and `outputs()` — always return empty (stubs)
-
-**File:** `packages/model-hub/src/Format/OnnxInspector.php:28-45`
-
-```php
-public static function inputs(string $path): array { ... return []; }
-public static function outputs(string $path): array { ... return []; }
-```
-
-Both methods accept a file path, check it exists, then unconditionally return `[]`. The ONNX model protobuf is never parsed. `ModelIntrospector` falls back to `basicInfo()`, which produces metadata with `'unknown'` for author, version, etc.
-
-**Related:** `GgufInspector::metadata()` (`packages/model-hub/src/Format/GgufInspector.php:28-42`) also always returns `[]` — reads GGUF magic, confirms format, then returns empty.
-
----
-
-## HIGH Issues
-
 ### 7. `ModelPool::release()` — no-op (empty method body)
 
 **File:** `packages/ai/src/ModelPool.php:83`

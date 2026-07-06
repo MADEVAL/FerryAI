@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace FerryAI\ModelHub\Tests\Unit;
 
+use FerryAI\Core\Exception\InvalidStateException;
 use FerryAI\ModelHub\Format\OnnxInspector;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
@@ -19,17 +20,33 @@ final class OnnxInspectorTest extends TestCase
         self::assertSame('unknown', $metadata->version);
     }
 
-    public function testInputsForNonExistentFile(): void
+    public function testInputsThrowsForValidFile(): void
     {
-        $inputs = OnnxInspector::inputs('/nonexistent/file.onnx');
+        $path = \sys_get_temp_dir() . '/ferry-onnx-' . \uniqid();
+        \file_put_contents($path, "\x08\x08\x12\x08" . \str_repeat('x', 100));
 
-        self::assertSame([], $inputs);
+        try {
+            $this->expectException(InvalidStateException::class);
+            $this->expectExceptionMessageMatches('/not yet implemented/');
+
+            OnnxInspector::inputs($path);
+        } finally {
+            @\unlink($path);
+        }
     }
 
-    public function testOutputsForNonExistentFile(): void
+    public function testOutputsThrowsForValidFile(): void
     {
-        $outputs = OnnxInspector::outputs('/nonexistent/file.onnx');
+        $path = \sys_get_temp_dir() . '/ferry-onnx-' . \uniqid();
+        \file_put_contents($path, "\x08\x08\x12\x08" . \str_repeat('x', 100));
 
-        self::assertSame([], $outputs);
+        try {
+            $this->expectException(InvalidStateException::class);
+            $this->expectExceptionMessageMatches('/not yet implemented/');
+
+            OnnxInspector::outputs($path);
+        } finally {
+            @\unlink($path);
+        }
     }
 }
