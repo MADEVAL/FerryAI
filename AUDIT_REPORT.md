@@ -18,21 +18,6 @@
 
 ---
 
-### 4. `Hub::checkUpdates()` — always returns empty (broken contract)
-
-**File:** `packages/model-hub/src/Hub.php:111-114`
-
-```php
-public function checkUpdates(): array
-{
-    return [];
-}
-```
-
-Always returns `[]` with no version-checking logic. While this isn't part of the `ModelHub` contract interface, it's a public method that suggests functionality it doesn't deliver.
-
----
-
 ### 5. `AI::classify()`, `AI::moderate()`, `AI::predict()` — missing default config keys, always fail
 
 **Files:**

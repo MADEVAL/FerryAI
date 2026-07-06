@@ -163,11 +163,18 @@ final class Hub implements ModelHubContract
     }
 
     /**
-     * @return array<string, mixed>
+     * @return array<string, array<string, mixed>>
      */
     public function checkUpdates(): array
     {
-        return [];
+        $updates = [];
+
+        foreach ($this->list() as $cacheKey) {
+            $modelId = \str_replace('_', '/', $cacheKey);
+            $updates[$cacheKey] = $this->hfClient->getModelInfo($modelId);
+        }
+
+        return $updates;
     }
 
     private function cacheKey(string $modelId, ?string $version): string

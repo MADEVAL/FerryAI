@@ -95,6 +95,22 @@ final class HubTest extends TestCase
         self::assertNotEmpty($list);
     }
 
+    public function testCheckUpdatesIsNotAStub(): void
+    {
+        $hub = new Hub($this->cacheDir);
+        $path = $this->cacheDir . '/model.onnx';
+        \file_put_contents($path, "\x08\x08\x12\x08" . 'data');
+        $hub->register('my-model', $path);
+
+        $updates = $hub->checkUpdates();
+
+        self::assertArrayHasKey(
+            'my-model',
+            $updates,
+            'checkUpdates() must return entries for registered models, not an empty array.',
+        );
+    }
+
     public function testRemove(): void
     {
         $hub = new Hub($this->cacheDir);
