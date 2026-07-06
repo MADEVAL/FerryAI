@@ -140,6 +140,7 @@ omitted — always take the latest compatible build from the linked source.
 | Vector store — PostgreSQL | `ext-pdo_pgsql` | PostgreSQL server **+** the **pgvector** extension — production ANN (`<=>`, HNSW/IVFFlat) | `FERRY_AI_VECTOR_DRIVER=pgsql` + `FERRY_AI_PG_DSN/USER/PASSWORD` (or `vector.*` config) | postgresql.org/download · github.com/pgvector/pgvector |
 | CPU tabular ML (RubixML) | `rubix/ml` via `composer require` — **isolated** (its amphp/parallel ^1 conflicts with psalm's amphp) | `.rbm` serialized estimator | `FERRY_AI_RUBIXML_AUTOLOAD` = path to the isolated `vendor/autoload.php` | github.com/RubixML/ML · github.com/RubixML/Tensor |
 | Model Hub / HuggingFace download | `ext-curl`, `ext-zip`, `ext-sodium` (Ed25519 verify) | models pulled from the Hub on demand | `FERRY_AI_MODEL_CACHE` = cache dir | huggingface.co |
+| Safetensors models (conversion) | Python 3.10+, `torch`, `safetensors` (`pip install --user`) | `convert_hf_to_gguf.py` from llama.cpp — converts HuggingFace safetensors to GGUF | Run once; then point `backends.llama.model_path` at the `.gguf` output | [docs/safetensors-conversion.md](docs/safetensors-conversion.md) |
 | Shared model weights across workers | `ext-shmop` | — | `model_pool.shared_memory=true` | PHP bundled |
 
 > CUDA note: GPU support means shipping a **CUDA-enabled native build** alongside the
@@ -223,6 +224,7 @@ Verified on this machine (Windows x64, RTX 4060 8 GB, driver 591.86, llama.cpp b
 | **`AI::chat()` / `AI::stream()`** (CPU, Linux/WSL) | ✅ real chat via `LlamaBackend` + wrapper, ~100 tok/s |
 | **`AI::chat()` / `AI::stream()`** (GPU, Linux/WSL) | ✅ CUDA (source-built, `GGML_CUDA=ON`, `sm_89`), RTX 4060, ~176 tok/s |
 | **`AI::chat()` / `AI::stream()`** (GPU, Windows) | ✅ 25/25 layers offloaded on RTX 4060, ~250 tok/s |
+| **`AI::chat()`** (Qwen3-0.6B f16, CPU) | ✅ qwen3-0.6b-f16.gguf (1.4 GB, safetensors→GGUF conversion), ~244 ms/5 tok |
 | **ONNX embeddings** (GPU, WSL) | ✅ CUDA (`availableDevices = cuda,cpu`), all-MiniLM-L6-v2, identical output |
 
 `LlamaBackend` uses `NativeLlamaRuntime`, which drives llama.cpp through the flat
@@ -340,6 +342,7 @@ Guides: [getting-started](docs/getting-started.md) ·
 [ONNX](docs/backends/onnx.md) / [llama.cpp](docs/backends/llama.md) ·
 [embedding](docs/embedding.md) · [vector store](docs/vector-store.md) ·
 [pipeline](docs/pipeline.md) · [model hub](docs/model-hub.md) ·
+[safetensors → GGUF](docs/safetensors-conversion.md) ·
 [tokenizer](docs/tokenizer.md) · [streaming](docs/streaming.md) ·
 [security](docs/security.md) · [deployment](docs/deployment.md) ·
 [Laravel](docs/laravel.md) / [Symfony](docs/symfony.md) ·

@@ -1693,3 +1693,58 @@ Documentation:
   no-sudo extraction method, verified working).
 
 No test regressions. `composer check` green: 687 unit tests.
+
+---
+
+## 2026-07-06 — HuggingFace native tokenizer built from source (tokenizers-cpp via FFI)
+
+Compiled `tokenizers-cpp` (Rust + cmake) on WSL without sudo: installed Rust via rustup,
+cloned `mlc-ai/tokenizers-cpp`, patched `CMakeLists.txt` to produce a shared library
+(`STATIC` → `SHARED`), built `libtokenizers_cpp.so` (14.7 MB). Placed at
+`/home/master/ferry-libs/libtokenizers_cpp.so`.
+
+Implemented the full FFI binding in `HuggingFaceTokenizer`:
+- CDEF matches the C API (`tokenizers_c.h`): `tokenizers_new_from_str`, `tokenizers_encode`,
+  `tokenizers_decode`, `tokenizers_get_decode_str`, `tokenizers_get_vocab_size`,
+  `tokenizers_token_to_id`, `tokenizers_free_encode_results`, `tokenizers_free`.
+- Instance-based handle (no static cache): each tokenizer loads its own model.
+- Encode: reads `TokenizerEncodeResult`, trims trailing zeros (the C library writes a fixed
+  128-element buffer regardless of actual token count).
+- Decode: reads `uint32_t[]` → calls `tokenizers_decode` → `tokenizers_get_decode_str` → `FFI::string`.
+- EncodeBatch: loops over texts, encodes individually, applies padding/attention-mask post-hoc.
+- vocabSize, specialTokenId, specialTokens, countTokens, chunk — all implemented.
+- `TokenizerFactory::createFromFile` auto-selects `HuggingFaceTokenizer` when `isAvailable()` is
+  true; falls back to pure-PHP otherwise (unchanged).
+
+Verified on WSL with all-MiniLM-L6-v2 tokenizer.json:
+- encode: [7592,2088] → decode: "hello world" ✅
+- encode+special: [101,7592,2088,102] → "[CLS] hello world [SEP]" ✅
+- vocabSize: 30522, countTokens: 1, chunks: working
+- Example 02 runs end-to-end with the native tokenizer.
+
+No test regressions: `composer test` → 676/676 on Windows (native lib absent → factory falls back).
+DEBT §0/§1 updated: tokenizer marked "Built"; the old "optional accelerator" note removed.
+
+---
+
+## 2026-07-06 — Safetensors : inspector (PHP) + conversion guide
+
+Implemented `SafetensorsInspector` (pure PHP, `packages/model-hub/src/Format/SafetensorsInspector.php`):
+reads the 8-byte safetensors header + JSON metadata and returns structured tensor info
+(names, shapes, dtypes, byte sizes) without loading weight data. 5 unit tests.
+
+Wrote comprehensive `docs/safetensors-conversion.md`:
+- What safetensors is (weight-only) and why conversion is needed
+- Prerequisites (Python 3.10+, `pip install --user torch safetensors transformers`)
+- Step-by-step: locate model → run `convert_hf_to_gguf.py` → verify GGUF → use with FerryAI
+  (including sharded model support)
+- ONNX export alternative (via `optimum.exporters.onnx`)
+- PHP `SafetensorsInspector` usage section
+- Troubleshooting table
+
+Added to `README.md`:
+- Dependencies table: new "Safetensors models (conversion)" row
+- Documents section: link to `safetensors-conversion.md`
+- DEBT_REPORT.md §12 rewritten: toolchain documented, inspector noted, status clear
+
+No test regressions: `composer test` → 681/681.

@@ -23,7 +23,7 @@ The authoritative list of specified-but-unbuilt features (details in the numbere
 | `BackedTensor` arithmetic (tensor over a native backend tensor) | Phase 1+ | **Deleted.** Was a stub with zero references. `ArrayTensor`/`OnnxTensor`/`CpuNativeTensor` cover all tensor needs; `BackedTensor` was never used by any code path. |
 | ONNX GPU execution providers (TensorRT / DirectML / OpenVINO / ROCm) | Phase 1/4 | **Deleted** — the FerryAI wrapper classes were stub-only, unreferenced by the backend. GPU inference works via `OnnxTypeMapper`. Additional providers can be added to that mapper when their native runtimes are available. See §2. |
 | Safetensors **loader** | — | **Not supported** — detection only; conversion via Python required. See §12. |
-| HuggingFace native tokenizer (`tokenizers-cpp` binding) | Phase 2 | **Optional accelerator**, not built; pure-PHP BPE/WordPiece covers all needed types. See §1. |
+| HuggingFace native tokenizer (`tokenizers-cpp` binding) | Phase 2 | **Built.** Compiled from source (Rust + cmake, `libtokenizers_cpp.so` → `/opt/tokenizers-cpp`). Loaded via `FERRY_AI_TOKENIZERS_LIB`. The factory auto-selects it; falls back to pure-PHP when the lib is absent. See §1. |
 | Dev tooling (Infection, Pest, CaptainHook, Monorepo-builder, Composer-normalize) | Phase 4 | **Referenced in scripts, not installed.** See §9. |
 
 Everything else described in the specification is implemented and verified (see the guides and
@@ -164,11 +164,22 @@ Listed in `composer.json` scripts: Infection, Pest, CaptainHook, Monorepo-builde
 
 ---
 
-## 12. Safetensors — Not Supported
+## 12. Safetensors — Conversion Required (Not a Loader)
 
-`.safetensors` is a HuggingFace/PyTorch weight format, not a compute graph. ONNX loads `.onnx`,
-llama.cpp loads `.gguf`. Conversion is required via Python tooling. `FormatDetector` correctly
-returns `'safetensors'` (detection ≠ loading).
+`.safetensors` is a HuggingFace/PyTorch weight format, not a compute graph. It contains only
+the numeric weight matrices — no architecture, no tokenizer, no graph. ONNX loads `.onnx`,
+llama.cpp loads `.gguf`.
+
+**To use a safetensors model** with FerryAI, convert it to GGUF via llama.cpp's
+`convert_hf_to_gguf.py` (82 architectures supported, including Qwen, Llama, Mistral, Phi, Gemma).
+Full step-by-step guide: [`docs/safetensors-conversion.md`](safetensors-conversion.md).
+
+FerryAI provides `SafetensorsInspector` (pure PHP) which reads the safetensors header and
+reports tensor names, shapes, dtypes and sizes without loading weights — useful for Model Hub
+"what's inside" checks.
+
+**Status:** Format detected by `FormatDetector`; metadata readable via `SafetensorsInspector`;
+conversion to GGUF via external Python tool (one-time); GGUF inference through `LlamaBackend` (works).
 
 ---
 
