@@ -18,25 +18,6 @@
 
 ---
 
-### 2. `Hub::warmup()` — does not download models (broken contract)
-
-**File:** `packages/model-hub/src/Hub.php:103-108`
-
-```php
-public function warmup(array $modelIds): void
-{
-    foreach ($modelIds as $modelId) {
-        $this->cached($modelId);  // result discarded, never downloads!
-    }
-}
-```
-
-Contract `ModelHub::warmup()` promises «Pre-downloads a list of models (cache warmup)». The implementation only checks whether a model is already cached, but **never initiates a download** for uncached models (result of `cached()` is discarded). Models not already in cache remain uncached.
-
-**Fix:** Call `$this->download($modelId)` when `cached()` returns null.
-
----
-
 ### 3. `Hub::downloadWithProgress()` — stub (broken contract)
 
 **File:** `packages/model-hub/src/Hub.php:96-99`
