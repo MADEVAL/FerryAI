@@ -16,11 +16,13 @@ use FerryAI\Embedding\Pooling\PoolingStrategy;
 
 final class Embedder implements EmbedderContract
 {
-    private Model $model;
+    private ?Model $model = null;
 
     private PoolingStrategy $poolingStrategy;
 
-    private int $modelDimension;
+    private int $modelDimension = 0;
+
+    private bool $modelLoaded = false;
 
     public function __construct(
         private string $modelName,
@@ -36,17 +38,27 @@ final class Embedder implements EmbedderContract
             'max' => new MaxPooling(),
             default => new MeanPooling(),
         };
+    }
 
-        $this->model = $this->backend->load($modelName);
+    private function ensureModelLoaded(): void
+    {
+        if ($this->modelLoaded) {
+            return;
+        }
+
+        $this->model = $this->backend->load($this->modelName);
         $outputs = $this->model->outputs();
         $firstOutput = \reset($outputs);
         $outputShape = $firstOutput['shape'] ?? [0];
         $this->modelDimension = $outputShape[\count($outputShape) - 1];
+        $this->modelLoaded = true;
     }
 
     #[\Override]
     public function embed(string $text): array
     {
+        $this->ensureModelLoaded();
+
         $encoded = $this->tokenizer->encode($text);
         $seqLen = \count($encoded);
         $attentionMask = \array_fill(0, $seqLen, 1);
@@ -105,6 +117,8 @@ final class Embedder implements EmbedderContract
     #[\Override]
     public function dimension(): int
     {
+        $this->ensureModelLoaded();
+
         return $this->modelDimension;
     }
 

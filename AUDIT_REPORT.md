@@ -1,15 +1,3 @@
-### 10. `Embedder` constructor eagerly loads model
-
-**File:** `packages/embedding/src/Embedder.php:38`
-
-```php
-$this->model = $this->backend->load($modelName);
-```
-
-The model is loaded in the constructor. If the backend fails (e.g., ONNX Runtime not installed), the `Embedder` object cannot be constructed even for inspection of metadata or dimension queries.
-
----
-
 ### 11. `AI::classify()` — uses `$scores[0]` before checking index exists
 
 **File:** `packages/ai/src/AI.php:182`

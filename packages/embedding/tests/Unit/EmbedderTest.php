@@ -143,6 +143,18 @@ final class EmbedderTest extends TestCase
 
         self::assertCount(3, $result);
     }
+
+    public function testConstructorDoesNotEagerlyLoadModel(): void
+    {
+        $backend = $this->createStub(\FerryAI\Core\Contracts\Backend::class);
+        $backend->method('load')->willThrowException(new \RuntimeException('Backend unavailable'));
+
+        $tokenizer = new StubTokenizerForEmbedder();
+
+        $embedder = new Embedder('test-model', $backend, $tokenizer);
+
+        self::assertSame('test-model', $embedder->modelName());
+    }
 }
 
 final class StubBackendForEmbedder implements Backend
