@@ -1,31 +1,3 @@
-### 18. `NativeBinaryManager` — hardcoded GitHub release URL with guessed format
-
-**File:** `packages/ai/src/NativeBinaryManager.php:42-48`
-
-```php
-$url = sprintf(
-    'https://github.com/MADEVAL/ferry-ai-native-binaries/releases/download/v%s/%s-%s.%s',
-    $version, $library, $platform, $ext,
-);
-```
-
-The URL is constructed by convention — if the real release uses a different naming pattern, it fails. No `FERRY_AI_NATIVE_BINARIES_URL` environment override or configuration option.
-
----
-
-### 19. `DataFrame` contract static methods vs implementation
-
-**File:** `packages/core/src/Contracts/DataFrame.php:57-63`
-
-```php
-public static function fromCsv(string $path, bool $hasHeader = true): self;
-public static function fromArray(array $data, ?array $columns = null): self;
-```
-
-The contract defines `fromCsv` and `fromArray` as **static** methods. The implementation in `packages/dataframe/src/DataFrame.php:254,281` correctly implements them as `public static`. This is valid PHP 8.x. No issue here — retracted.
-
----
-
 ### 20. `OnnxTensor::__unserialize` uses `DType::from()` and `Device::from()` without try-catch
 
 **File:** `packages/onnx-backend/src/OnnxTensor.php:182-183`

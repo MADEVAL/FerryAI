@@ -40,13 +40,19 @@ final class NativeBinaryManager implements LibraryResolver
     {
         $platform = PlatformDetector::platformKey();
         $ext = PlatformDetector::libExtension();
-        $url = \sprintf(
-            'https://github.com/MADEVAL/ferry-ai-native-binaries/releases/download/v%s/%s-%s.%s',
-            $version,
-            $library,
-            $platform,
-            $ext,
-        );
+        $urlPattern = \getenv('FERRY_AI_NATIVE_BINARIES_URL');
+
+        if (\is_string($urlPattern) && $urlPattern !== '') {
+            $url = \sprintf($urlPattern, $version, $library, $platform, $ext);
+        } else {
+            $url = \sprintf(
+                'https://github.com/MADEVAL/ferry-ai-native-binaries/releases/download/v%s/%s-%s.%s',
+                $version,
+                $library,
+                $platform,
+                $ext,
+            );
+        }
 
         if (!\is_dir($this->cacheDir)) {
             \mkdir($this->cacheDir, 0755, true);

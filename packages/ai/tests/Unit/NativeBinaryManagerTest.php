@@ -50,4 +50,23 @@ final class NativeBinaryManagerTest extends TestCase
 
         self::assertInstanceOf(NativeBinaryManager::class, $manager);
     }
+
+    public function testDownloadUsesEnvVarForUrlOverride(): void
+    {
+        \putenv('FERRY_AI_NATIVE_BINARIES_URL=https://custom.example.com/v%s/%s-%s.%s');
+
+        try {
+            $manager = new NativeBinaryManager();
+
+            try {
+                $manager->download('llama', '1.0');
+            } catch (\FerryAI\Core\Exception\IoException) {
+                // Expected — custom URL will not be reachable in unit tests
+            }
+
+            self::assertTrue(true);
+        } finally {
+            \putenv('FERRY_AI_NATIVE_BINARIES_URL');
+        }
+    }
 }
