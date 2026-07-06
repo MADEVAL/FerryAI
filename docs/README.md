@@ -123,7 +123,7 @@ composer psalm               # Psalm static analysis
 
 | Component | Status |
 |-----------|--------|
-| ONNX Runtime inference | ✅ Production — CPU verified (Windows + Linux, ONNX 1.27.0); GPU needs cuDNN (DEBT §13) |
+| ONNX Runtime inference | ✅ Production — CPU + GPU verified (Windows + Linux/WSL, ONNX 1.27.0, CUDA 13, cuDNN 9) (DEBT §13) |
 | llama.cpp chat/stream | ✅ Real inference on CPU + GPU via the `ferry_llama` wrapper (Windows + Linux) |
 | Pure-PHP tokenizer | ✅ BPE + WordPiece, round-tripping, chunking |
 | Vector store | ✅ SQLite brute-force + sqlite-vec + PostgreSQL/pgvector + metadata filter |

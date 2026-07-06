@@ -22,12 +22,16 @@
         "psr/http-message": "^1.1 || ^2.0"
     },
     "require-dev": {
+        "captainhook/captainhook": "5.29",
+        "ergebnis/composer-normalize": "^2.52",
+        "infection/infection": "0.34",
         "nyholm/psr7": "^1.8",
         "php-cs-fixer/shim": "^3.0",
         "phpstan/phpstan": "^2.0",
         "phpstan/phpstan-deprecation-rules": "^2.0",
         "phpstan/phpstan-strict-rules": "^2.0",
-        "phpunit/phpunit": "^12.0 || ^13.0",
+        "phpunit/phpunit": "13.0",
+        "symplify/monorepo-builder": "*",
         "vimeo/psalm": "^6.0"
     },
     "autoload": {
@@ -42,6 +46,7 @@
             "FerryAI\\ModelHub\\": "packages/model-hub/src/",
             "FerryAI\\Pipeline\\": "packages/pipeline/src/",
             "FerryAI\\CpuBackend\\": "packages/cpu-backend/src/",
+            "FerryAI\\DataFrame\\": "packages/dataframe/src/",
             "FerryAI\\Laravel\\": "packages/laravel/src/",
             "FerryAI\\Symfony\\": "packages/symfony/src/",
             "FerryAI\\": "packages/ai/src/"
@@ -59,6 +64,7 @@
             "FerryAI\\ModelHub\\Tests\\": "packages/model-hub/tests/",
             "FerryAI\\Pipeline\\Tests\\": "packages/pipeline/tests/",
             "FerryAI\\CpuBackend\\Tests\\": "packages/cpu-backend/tests/",
+            "FerryAI\\DataFrame\\Tests\\": "packages/dataframe/tests/",
             "FerryAI\\Laravel\\Tests\\": "packages/laravel/tests/",
             "FerryAI\\Symfony\\Tests\\": "packages/symfony/tests/",
             "FerryAI\\Tests\\": ["tests/", "packages/ai/tests/"]
@@ -115,7 +121,8 @@
     "config": {
         "sort-packages": true,
         "allow-plugins": {
-            "phpstan/extension-installer": true
+            "phpstan/extension-installer": true,
+            "infection/extension-installer": true
         }
     },
     "minimum-stability": "stable",

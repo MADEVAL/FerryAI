@@ -130,7 +130,7 @@ omitted — always take the latest compatible build from the linked source.
 |-----------|---------------------------|-----------------------------------|-------------------------------|--------|
 | Embeddings / classification (ONNX) | `ankane/onnxruntime` (auto) + `ext-ffi` | ONNX Runtime shared lib — CPU by default. On Linux run `php -r 'OnnxRuntime\\Vendor::check();'` to auto-download. | Extract into `vendor/ankane/onnxruntime/lib/…/lib/` | github.com/microsoft/onnxruntime/releases · onnxruntime.ai |
 | ONNX model file | — | `model.onnx` + `tokenizer.json` — the actual network + vocab | Any dir; point config / `FERRY_AI_MODEL_DIR` at it | huggingface.co (e.g. `sentence-transformers/all-MiniLM-L6-v2`) |
-| GPU for ONNX (CUDA / TensorRT) | — | ONNX Runtime **GPU** build **+** CUDA Toolkit **+** cuDNN (**+** TensorRT for the TRT provider). **cuDNN** requires manual download from developer.nvidia.com | Replace the CPU libs with the GPU package; `backends.onnx.providers` | onnxruntime releases (gpu zip) · developer.nvidia.com/cuda-downloads · developer.nvidia.com/cudnn · developer.nvidia.com/tensorrt |
+| GPU for ONNX (CUDA / TensorRT) | — | ONNX Runtime **GPU** build **+** CUDA Toolkit **+** cuDNN (**+** TensorRT for the TRT provider). **cuDNN** requires manual download from https://developer.nvidia.com/cudnn | Replace the CPU libs with the GPU package; see ONNX GPU on Windows / WSL sections | onnxruntime releases (gpu zip) · developer.nvidia.com/cuda-downloads · developer.nvidia.com/cudnn · developer.nvidia.com/tensorrt |
 | LLM chat / streaming (llama.cpp) | `ext-ffi` | llama.cpp shared libs `llama.*` + `ggml*.*` (+ deps) — the inference engine | Extract to a dir; set `FERRY_AI_LLAMA_LIB` and add the dir to `PATH` | github.com/ggml-org/llama.cpp/releases |
 | GGUF model file | — | `*.gguf` quantized weights + tokenizer | Any dir; `backends.llama.model_path` | huggingface.co (e.g. `bartowski/*-GGUF`) |
 | GPU for llama.cpp | — | CUDA-enabled llama.cpp build (`*-bin-win-cuda-*`) **+** NVIDIA CUDA Toolkit | Same as llama.cpp above; set `backends.llama.n_gpu_layers` | github.com/ggml-org/llama.cpp/releases · developer.nvidia.com/cuda-downloads |
@@ -145,7 +145,7 @@ omitted — always take the latest compatible build from the linked source.
 
 > CUDA note: GPU support means shipping a **CUDA-enabled native build** alongside the
 > **NVIDIA CUDA Toolkit**. llama.cpp GPU is verified on both OSes (Windows ~250 tok/s, WSL ~176 tok/s).
-> ONNX GPU additionally needs **cuDNN + curand + cufft** (see the WSL section below and `docs/DEBT_REPORT.md` §13).
+> ONNX GPU additionally needs **cuDNN + curand + cufft** (see the ONNX GPU on Windows / WSL sections and `docs/DEBT_REPORT.md` §13).
 
 ### ONNX GPU on WSL (without sudo / passwordless root)
 
@@ -168,7 +168,8 @@ for pkg in libcurand-13-2 libcufft-13-2; do
   apt-get download "$pkg"
   ar x ${pkg}_*.deb && tar xf data.tar.xz -C /tmp/ && find /tmp -name "*.so*" -exec cp {} . \; && rm -f *.deb control.tar.xz data.tar.xz debian-binary
 done
-# cuDNN — use the local-repo installer from NVIDIA CDN
+# cuDNN — latest version at https://developer.nvidia.com/cudnn
+# Below: direct CDN link for cuDNN 9.5.1 on Ubuntu 22.04/24.04
 wget "https://developer.download.nvidia.com/compute/cudnn/9.5.1/local_installers/cudnn-local-repo-ubuntu2204-9.5.1_1.0-1_amd64.deb" -O /tmp/cudnn.deb
 dpkg-deb -x /tmp/cudnn.deb /tmp/cudnn_extract
 find /tmp/cudnn_extract -name "libcudnn*.so*" -exec cp {} "$D" \;
@@ -187,6 +188,45 @@ php -r "require 'vendor/autoload.php'; echo (new FerryAI\OnnxBackend\OnnxBackend
 > provides `cublas`/`cudart`; `apt-get download` + `ar x` + `tar xf` extracts the math
 > libraries from their `.deb` packages without ever calling `sudo`. All `.so` files land
 > in the vendor lib dir and `LD_LIBRARY_PATH` points the dynamic linker at them.
+
+### ONNX GPU on Windows
+
+The ORT Windows GPU zip ships `onnxruntime.dll` + provider DLLs but does **not**
+bundle `curand`, `cufft`, or `cudnn`. Those must be obtained separately.
+
+**Required dependencies:**
+
+| DLL | Source | How to get |
+|-----|--------|-----------|
+| `onnxruntime.dll` + provider DLLs | ORT GPU zip (`onnxruntime-win-x64-gpu_cuda13-*.zip`) | github.com/microsoft/onnxruntime/releases |
+| `cublas64_13.dll`, `cublasLt64_13.dll`, `cudart64_13.dll` | Shipped by `ankane/onnxruntime` | Already in `vendor/ankane/onnxruntime/lib/…/lib/` |
+| `cudnn64_9.dll` + aux DLLs | **cuDNN** → https://developer.nvidia.com/cudnn | Download Windows x64 zip (CUDA 13.x), extract `bin/13.3/x64/*.dll` |
+| `curand64_10.dll` | pip `nvidia-curand-cu12` wheel | `pip download nvidia-curand-cu12 --no-deps` → unzip → `nvidia/curand/bin/curand64_10.dll` |
+| `cufft64_11.dll`, `cufftw64_11.dll` | pip `nvidia-cufft-cu12` wheel | `pip download nvidia-cufft-cu12 --no-deps` → unzip → `nvidia/cufft/bin/cufft64_11.dll` |
+
+**Setup steps:**
+
+```powershell
+# 1 — Replace the CPU ONNX Runtime with the GPU build
+$vendorLib = "vendor\ankane\onnxruntime\lib\onnxruntime-win-x64-*\lib"
+Copy-Item "path\to\onnxruntime-gpu\lib\onnxruntime.dll" -Destination $vendorLib -Force
+Copy-Item "path\to\onnxruntime-gpu\lib\onnxruntime_providers_cuda.dll" -Destination $vendorLib -Force
+Copy-Item "path\to\onnxruntime-gpu\lib\onnxruntime_providers_shared.dll" -Destination $vendorLib -Force
+
+# 2 — Copy cuDNN DLLs from NVIDIA cuDNN zip
+Copy-Item "D:\CUDNN\bin\13.3\x64\cudnn*.dll" -Destination $vendorLib
+
+# 3 — Download and extract curand + cufft via pip
+pip download nvidia-curand-cu12 nvidia-cufft-cu12 --no-deps -d %TEMP%\cuda_dlls
+# Rename .whl → .zip and extract; copy curand64_10.dll, cufft64_11.dll, cufftw64_11.dll
+Copy-Item "%TEMP%\cuda_dlls\curand_extract\nvidia\curand\bin\curand64_10.dll" -Destination $vendorLib
+Copy-Item "%TEMP%\cuda_dlls\cufft_extract\nvidia\cufft\bin\cufft64_11.dll" -Destination $vendorLib
+Copy-Item "%TEMP%\cuda_dlls\cufft_extract\nvidia\cufft\bin\cufftw64_11.dll" -Destination $vendorLib
+
+# 4 — Verify
+php -r "require 'vendor/autoload.php'; var_dump((new FerryAI\OnnxBackend\OnnxRuntimeFactory())->availableProviders());"
+# Expected: TensorrtExecutionProvider, CUDAExecutionProvider, CPUExecutionProvider
+```
 
 ### Quick checks
 
@@ -278,7 +318,7 @@ keeps sampling fast. See `docs/DEBT_REPORT.md` §12.
 | llama.cpp FFI load (build 9873) | ✅ DLL loads, `llama_backend_init()` OK, `supports_mmap()`=YES |
 | llama.cpp inference via PHP FFI | ✅ CPU + GPU through the `ferry_llama` wrapper (Qwen2.5-0.5B, greedy) |
 | GPU (CUDA) — llama.cpp | ✅ RTX 4060, 25/25 layers offloaded, ~250 tok/s (native `llama-bench` ~384 tok/s) |
-| GPU (CUDA) — ONNX | 🔵 GPU build installed; CUDA provider detected on Windows + Linux/WSL; **verified working on WSL** after extracting CUDA runtime libs from `.deb` packages (see ONNX GPU on WSL section). Still needs cuDNN manual download on Windows. |
+| GPU (CUDA) — ONNX | ✅ CUDA provider detected; **verified on Windows** (RTX 4060, CUDA 13.1, cuDNN 9, 2026-07-06) **+ WSL** after extracting CUDA runtime libs from `.deb` packages (see ONNX GPU sections below). |
 | HuggingFace API | ✅ Qwen3-0.6B found, search works |
 | Vector store | ✅ SQLite CRUD, brute-force + sqlite-vec (vec0) native KNN, metadata filter |
 | Vector store (Postgres) | ✅ pgvector 0.8.4 native `<=>` search, HNSW index, metadata filter |

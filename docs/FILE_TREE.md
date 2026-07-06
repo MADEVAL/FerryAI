@@ -97,9 +97,7 @@ php-inference/
 │   │       ├── LlamaBackend.php
 │   │       ├── LlamaModel.php
 │   │       ├── FFI/
-│   │       │   ├── LlamaCpp.php
-│   │       │   ├── LlamaContext.php
-│   │       │   └── LlamaBatch.php
+│   │       │   └── FerryLlama.php        # Единая FFI-обёртка llama.cpp C API
 │   │       ├── Runtime/
 │   │       │   ├── LlamaRuntimeInterface.php  # Mockable seam
 │   │       │   ├── LlamaSession.php           # Session handle marker
@@ -115,6 +113,8 @@ php-inference/
 │   │       │   └── SamplerFactory.php
 │   │       ├── Grammar/
 │   │       │   ├── GbnfGrammar.php
+│   │       │   ├── GbnfMatcher.php
+│   │       │   ├── GbnfNode.php
 │   │       │   └── JsonSchemaConverter.php
 │   │       ├── LlamaContextParams.php     # Value Object для llama_context_params
 │   │       ├── LlamaModelParams.php       # Value Object для llama_model_params
@@ -326,28 +326,33 @@ php-inference/
 
 ---
 
-### Пакет `llama-backend` (16 файлов)
+### Пакет `llama-backend` (21 файл)
 
 | # | Путь | Содержит | Зависит от |
 |---|---|---|---|
-| 1 | `LlamaBackend.php` | class `LlamaBackend` implements Backend | core Contracts\Backend, FFI\LlamaCpp |
-| 2 | `LlamaModel.php` | class `LlamaModel` implements Model | core Contracts\Model, FFI\LlamaContext |
-| 3 | `FFI/LlamaCpp.php` | class `LlamaCpp` — FFI-определения C API llama.cpp | PHP FFI |
-| 4 | `FFI/LlamaContext.php` | class `LlamaContext` — обёртка llama_context | FFI\LlamaCpp |
-| 5 | `FFI/LlamaBatch.php` | class `LlamaBatch` — обёртка llama_batch | FFI\LlamaCpp |
-| 6 | `Sampling/Sampler.php` | interface `Sampler` | core ValueObjects\SamplingParams |
-| 7 | `Sampling/GreedySampler.php` | class `GreedySampler` implements Sampler | Sampling\Sampler |
-| 8 | `Sampling/TopPSampler.php` | class `TopPSampler` implements Sampler | Sampling\Sampler |
-| 9 | `Sampling/TopKSampler.php` | class `TopKSampler` implements Sampler | Sampling\Sampler |
-| 10 | `Sampling/GrammarSampler.php` | class `GrammarSampler` implements Sampler | Sampling\Sampler, Grammar\GbnfGrammar |
-| 11 | `Sampling/SamplerFactory.php` | class `SamplerFactory` | Sampling\Sampler |
-| 12 | `Grammar/GbnfGrammar.php` | final readonly class `GbnfGrammar` | (нет) |
-| 13 | `Grammar/JsonSchemaConverter.php` | class `JsonSchemaConverter` | Grammar\GbnfGrammar |
-| 14 | `LlamaContextParams.php` | readonly class `LlamaContextParams` — value object | (нет) |
-| 15 | `LlamaModelParams.php` | readonly class `LlamaModelParams` — value object | (нет) |
-| 16 | `ChatFormatter.php` | class `ChatFormatter` — ChatML → llama формат | core ValueObjects\ChatMessage |
+| 1 | `LlamaBackend.php` | class `LlamaBackend` implements Backend | core Contracts\Backend, FFI\FerryLlama |
+| 2 | `LlamaModel.php` | class `LlamaModel` implements Model | core Contracts\Model, Runtime\LlamaSession |
+| 3 | `FFI/FerryLlama.php` | class `FerryLlama` — единая FFI-обёртка llama.cpp C API | PHP FFI |
+| 4 | `Runtime/LlamaRuntimeInterface.php` | interface `LlamaRuntimeInterface` — mockable seam | core Enums\GraphOptimizationLevel |
+| 5 | `Runtime/LlamaSession.php` | class `LlamaSession` — session handle marker | (нет) |
+| 6 | `Runtime/NativeLlamaRuntime.php` | class `NativeLlamaRuntime` implements LlamaRuntimeInterface — production FFI impl | FFI\FerryLlama, Runtime\LlamaSession, Runtime\LlamaRuntimeInterface |
+| 7 | `Runtime/NativeLlamaSession.php` | class `NativeLlamaSession` extends LlamaSession — production session wrapper | Runtime\LlamaSession, FFI\FerryLlama |
+| 8 | `Sampling/Sampler.php` | interface `Sampler` | core ValueObjects\SamplingParams |
+| 9 | `Sampling/GreedySampler.php` | class `GreedySampler` implements Sampler | Sampling\Sampler |
+| 10 | `Sampling/TopPSampler.php` | class `TopPSampler` implements Sampler | Sampling\Sampler |
+| 11 | `Sampling/TopKSampler.php` | class `TopKSampler` implements Sampler | Sampling\Sampler |
+| 12 | `Sampling/GrammarSampler.php` | class `GrammarSampler` implements Sampler | Sampling\Sampler, Grammar\GbnfGrammar |
+| 13 | `Sampling/SamplerMath.php` | class `SamplerMath` — softmax/argmax/weighted pick | (нет) |
+| 14 | `Sampling/SamplerFactory.php` | class `SamplerFactory` | Sampling\Sampler |
+| 15 | `Grammar/GbnfGrammar.php` | final readonly class `GbnfGrammar` | (нет) |
+| 16 | `Grammar/GbnfMatcher.php` | class `GbnfMatcher` — incremental GBNF character-level matcher | Grammar\GbnfNode |
+| 17 | `Grammar/GbnfNode.php` | class `GbnfNode` — GBNF grammar AST node | (нет) |
+| 18 | `Grammar/JsonSchemaConverter.php` | class `JsonSchemaConverter` | Grammar\GbnfGrammar |
+| 19 | `LlamaContextParams.php` | readonly class `LlamaContextParams` — value object | (нет) |
+| 20 | `LlamaModelParams.php` | readonly class `LlamaModelParams` — value object | (нет) |
+| 21 | `ChatFormatter.php` | class `ChatFormatter` — ChatML → llama формат | core ValueObjects\ChatMessage |
 
-**Всего: 16 файлов**
+**Всего: 21 файл**
 
 ---
 
@@ -525,7 +530,7 @@ php-inference/
 | `tensor` | 3 | **Фаза 1** | `ferry-ai/inference-tensor` |
 | `onnx-backend` | 12 | **Фаза 1** (+2 провайдера Фаза 4) | `ferry-ai/inference-onnx-backend` |
 | `ai` | 11 | **Фаза 1** | `ferry-ai/inference-ai` |
-| `llama-backend` | 16 | **Фаза 2** | `ferry-ai/inference-llama-backend` |
+| `llama-backend` | 21 | **Фаза 2** | `ferry-ai/inference-llama-backend` |
 | `tokenizer` | 5 | **Фаза 2** | `ferry-ai/inference-tokenizer` |
 | `embedding` | 7 | **Фаза 3** | `ferry-ai/inference-embedding` |
 | `vector` | 7 | **Фаза 3** | `ferry-ai/inference-vector` |
@@ -535,7 +540,7 @@ php-inference/
 | `dataframe` | 6 | **Фаза 4** | `ferry-ai/inference-dataframe` |
 | `laravel` | 2 | **Фаза 4** | `ferry-ai/inference-laravel` |
 | `symfony` | 3 | **Фаза 4** | `ferry-ai/inference-symfony` |
-| **ИТОГО** | **137** | | `ferry-ai/php-inference` (root) |
+| **ИТОГО** | **142** | | `ferry-ai/php-inference` (root) |
 
 > **Примечание о фазах отдельных файлов.** Столбец «Статус» указывает основную фазу пакета.
 > Часть файлов внутри пакетов ранних фаз реализуется в **Фазе 4** (production-доработки):

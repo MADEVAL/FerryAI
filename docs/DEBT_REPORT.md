@@ -9,7 +9,7 @@
 > implemented content removed — the implemented surface now lives in the code
 > (`packages/*/src`), `docs/api-reference.md` and the per-capability guides.
 >
-> Last pass: 2026-07-06. Baseline: 676 unit tests, PHPStan L8 + Psalm L3 clean.
+> Last pass: 2026-07-06. Baseline: 754 unit tests, PHPStan L8 + Psalm L3 clean.
 
 ---
 
@@ -19,12 +19,12 @@ The authoritative list of specified-but-unbuilt features (details in the numbere
 
 | Item | Spec phase | Status |
 |------|-----------|--------|
-| `dataframe` package (`DataFrame`, `Column`, CSV/JSON/Parquet IO) | Phase 4 | **Not created.** `Contracts\DataFrame` exists; no implementation. See §7. |
+| `dataframe` package (`DataFrame`, `Column`, CSV/JSON/Parquet IO) | Phase 4 | **Created 2026-07-06.** 6 files, 72 unit tests. DataFrame (16 methods), Column, CsvReader/Writer, JsonReader. **ParquetReader is a stub** (Thrift CompactProtocol decoder not yet implemented — see §7). |
 | `BackedTensor` arithmetic (tensor over a native backend tensor) | Phase 1+ | **Deleted.** Was a stub with zero references. `ArrayTensor`/`OnnxTensor`/`CpuNativeTensor` cover all tensor needs; `BackedTensor` was never used by any code path. |
 | ONNX GPU execution providers (TensorRT / DirectML / OpenVINO / ROCm) | Phase 1/4 | **Deleted** — the FerryAI wrapper classes were stub-only, unreferenced by the backend. GPU inference works via `OnnxTypeMapper`. Additional providers can be added to that mapper when their native runtimes are available. See §2. |
 | Safetensors **loader** | — | **Not supported** — detection only; conversion via Python required. See §12. |
 | HuggingFace native tokenizer (`tokenizers-cpp` binding) | Phase 2 | **Built.** Compiled from source (Rust + cmake, `libtokenizers_cpp.so` → `/opt/tokenizers-cpp`). Loaded via `FERRY_AI_TOKENIZERS_LIB`. The factory auto-selects it; falls back to pure-PHP when the lib is absent. See §1. |
-| Dev tooling (Infection, Pest, CaptainHook, Monorepo-builder, Composer-normalize) | Phase 4 | **Referenced in scripts, not installed.** See §9. |
+| Dev tooling (Infection, Pest, CaptainHook, Monorepo-builder, Composer-normalize) | Phase 4 | **Installed.** `infection/infection` 0.34.0, `captainhook/captainhook` 5.29.0, `ergebnis/composer-normalize` 2.52.0, `symplify/monorepo-builder` 12.7.1. **Pest excluded** — requires PHPUnit ^12, we use ^13. See §9. |
 
 Everything else described in the specification is implemented and verified (see the guides and
 `docs/api-reference.md`).
@@ -90,15 +90,17 @@ These work when the config points at a real file; wiring is correct, errors are 
 
 ---
 
-## 5. Integration Tests — Missing
+## 5. Integration Tests — ✅ Written (2026-07-06)
 
-| Missing | Notes |
-|---------|-------|
-| Tokenizer end-to-end with real `tokenizer.json` (no ONNX model). |
-| Vector store with 10k+ vectors (performance threshold). |
-| Model Hub download → cache → verify cycle. |
-| HuggingFace API with auth token. |
-| ONNX GPU availability (requires cuDNN / CUDA runtime — §13). |
+| Test | File | Tests | Status |
+|------|------|-------|--------|
+| Tokenizer end-to-end with real `tokenizer.json` | `tests/Integration/Tokenizer/TokenizerIntegrationTest.php` | 13 | ✅ |
+| Vector store with 10k+ vectors (performance threshold) | `tests/Integration/Vector/VectorStorePerformanceTest.php` | 12 | ✅ |
+| Model Hub download → cache → verify cycle | `tests/Integration/ModelHub/ModelHubIntegrationTest.php` | 20 | ✅ |
+| HuggingFace API with auth token | `tests/Integration/ModelHub/HuggingFaceAuthIntegrationTest.php` | 3 | ✅ (skips without token) |
+| ONNX GPU availability | `tests/Integration/Onnx/OnnxGpuIntegrationTest.php` | 3 | ✅ (skips without CUDA) |
+
+Total: 83 integration tests (was 32, +51 new).
 
 ---
 
@@ -110,9 +112,23 @@ inside real Laravel/Symfony applications.
 
 ---
 
-## 7. DataFrame Package — Not Created
+## 7. DataFrame Package — Created (Parquet stub)
 
-`packages/dataframe/` (6 files) — Phase 4 spec: "only when demand exists".
+`packages/dataframe/` (6 files, 72 unit tests) — implemented 2026-07-06.
+
+| Component | Files | Tests |
+|-----------|-------|-------|
+| `Column` | value object: name, type, data, inferType, count | 13 |
+| `DataFrame` | 16 contract methods + Iterator + Countable | 36 |
+| `CsvReader` | CSV → DataFrame, auto-delimiter, header detection | 9 |
+| `CsvWriter` | DataFrame → CSV, round-trip | 5 |
+| `JsonReader` | Array-of-objects + NDJSON → DataFrame | 9 |
+| `ParquetReader` | Stub — throws `IoException('not yet implemented')` | 4 |
+
+**ParquetReader limitation:** The Parquet format requires a Thrift CompactProtocol decoder
+for metadata parsing. A full implementation needs the `apache/thrift` library or a
+hand-rolled CompactProtocol parser (~500 lines). CSV and JSON cover typical tabular data
+needs; Parquet support will be added in a future release.
 
 ---
 
@@ -121,8 +137,8 @@ inside real Laravel/Symfony applications.
 | Gap | Note |
 |-----|------|
 | `docs/specs/` | Empty — populated by the brainstorming workflow. |
-| `SOURCES.md` sqlite-vec version | Lists v0.1.9; verified binary on Windows is v0.1.10-alpha. |
-| `FILE_TREE.md` llama-backend section | Stale: still lists the deleted `FFI/LlamaCpp/LlamaContext/LlamaBatch` and omits `FFI/FerryLlama.php` + `Runtime/*`. Needs a reconciliation pass. |
+| `SOURCES.md` sqlite-vec version | Lists v0.1.9; verified binary on Windows is v0.1.10-alpha. | ✅ **Fixed 2026-07-06.** Updated to v0.1.10-alpha (Windows) + v0.1.9 (Linux). |
+| `FILE_TREE.md` llama-backend section | Stale: still lists the deleted `FFI/LlamaCpp/LlamaContext/LlamaBatch` and omits `FFI/FerryLlama.php` + `Runtime/*`. Needs a reconciliation pass. | ✅ **Fixed 2026-07-06.** Replaced with `FerryLlama.php`, added `Runtime/*` index entries, added missing `Grammar/GbnfNode.php` + `Grammar/GbnfMatcher.php`. Count updated 16 → 21. |
 | Root `composer.json` | Only lists `ext-ffi/json/hash/fileinfo`; sub-package extensions declared per-package; optional exts `suggest`-only. Intentional but not centralised. |
 
 > Every engine package now has a guide (added `docs/backends/cpu.md`, `docs/tensor.md`,
@@ -132,16 +148,24 @@ inside real Laravel/Symfony applications.
 
 ---
 
-## 9. Dev Tooling — Not Installed
+## 9. Dev Tooling — Installed (Pest excluded)
 
-Listed in `composer.json` scripts: Infection, Pest, CaptainHook, Monorepo-builder, Composer-normalize.
+| Tool | Version | Status |
+|------|---------|--------|
+| `infection/infection` | 0.34.0 | ✅ Installed |
+| `captainhook/captainhook` | 5.29.0 | ✅ Installed |
+| `ergebnis/composer-normalize` | 2.52.0 | ✅ Installed |
+| `symplify/monorepo-builder` | 12.7.1 | ✅ Installed (resolved with Symfony 8 deps) |
+| `pestphp/pest` | — | 🔴 Excluded — requires PHPUnit ^12, project uses ^13 |
+
+Installed 2026-07-06 via `composer require --dev` with `-W` flag.
 
 ---
 
 ## 10. Test Coverage Gaps — FFI Boundary
 
 8 FFI-boundary files excluded from unit tests **by design**. All pure-PHP classes are tested
-(676 unit tests).
+(754 unit tests).
 
 ---
 
@@ -151,11 +175,11 @@ Listed in `composer.json` scripts: Infection, Pest, CaptainHook, Monorepo-builde
 |----------|--------|
 | llama.cpp CPU + GPU | ✅ Windows (RTX 4060 ~250 t/s) + Linux (~176 t/s). |
 | ONNX Runtime CPU | ✅ Windows + Linux (embeddings 7/7 integration). |
-| ONNX Runtime GPU | 🟢 WSL (CUDA 13, verified); 🔴 Windows (needs cuDNN manual download). See §13. |
+| ONNX Runtime GPU | ✅ Windows (RTX 4060, CUDA 13.1, cuDNN 9) + WSL (verified). |
 | sqlite-vec | ✅ Windows + Linux (native KNN). |
 | PostgreSQL vector store | ✅ Windows (pgvector 0.8.4). WSL → PG blocked by `pg_hba.conf` (environment). |
 | RubixML | ✅ Windows + Linux (isolated, subprocess harness). |
-| Pure-PHP suite | ✅ 676 unit + PHPStan L8 + Psalm L3, Windows + Linux. |
+| Pure-PHP suite | ✅ 754 unit + PHPStan L8 + Psalm L3, Windows + Linux. |
 | Safetensors | 🔴 Format detected, conversion to GGUF required (external Python tool). See §12. |
 | `ferry_llama.dll/.so` | Machine-built, not committed. Build via `native/llama-wrapper/build.{ps1,sh}`. |
 | llama under PHPUnit | Standalone-process only (ggml global ctor conflict); integration via subprocess harness. |
@@ -181,10 +205,32 @@ conversion to GGUF via external Python tool (one-time); GGUF inference through `
 
 ---
 
-## 13. ONNX GPU — Resolved on WSL (manual cuDNN + CUDA runtime)
+## 13. ONNX GPU — Verified on Windows + WSL (manual cuDNN + CUDA runtime)
 
-GPU builds (ORT 1.27.0 CUDA 13) installed on Windows + Linux/WSL. The Linux GPU download
+GPU builds (ORT 1.27.0 CUDA 13) installed on Windows + Linux/WSL. The ORT GPU download
 does **not** bundle the CUDA runtime math libraries; they must be provided separately.
+
+**cuDNN** → https://developer.nvidia.com/cudnn (manual download, requires NVIDIA account).
+
+### Windows (verified 2026-07-06, RTX 4060, CUDA 13.1)
+
+| DLL | Source | Status |
+|-----|--------|--------|
+| `cublas64_13.dll` / `cublasLt64_13.dll` / `cudart64_13.dll` | Shipped by `ankane/onnxruntime` | Present |
+| `cudnn64_9.dll` + 9 aux DLLs | https://developer.nvidia.com/cudnn → Windows x64 zip | Extracted from CUDA 13.3 cuDNN package |
+| `curand64_10.dll` | pip `nvidia-curand-cu12` wheel | Extracted from wheel |
+| `cufft64_11.dll` / `cufftw64_11.dll` | pip `nvidia-cufft-cu12` wheel | Extracted from wheel |
+
+**Verified working** on Windows (RTX 4060) — `availableDevices() = CUDA, CPU`,
+`availableProviders() = TensorrtExecutionProvider, CUDAExecutionProvider, CPUExecutionProvider`.
+
+Steps:
+1. Replace vendor `onnxruntime.dll` (CPU) with GPU `onnxruntime.dll` from the ORT GPU zip
+2. Place `onnxruntime_providers_cuda.dll` + `onnxruntime_providers_shared.dll` alongside
+3. Copy cuDNN `.dll` files from NVIDIA cuDNN zip (`bin/13.3/x64/*.dll`) into the vendor lib dir
+4. Extract `curand64_10.dll`, `cufft64_11.dll`, `cufftw64_11.dll` from pip wheels and copy in
+
+### Linux / WSL (verified, RTX 4060)
 
 | SONAME | Default CUDA 13.3 dev toolkit? | Status on WSL |
 |--------|-----------------------------|---------------|

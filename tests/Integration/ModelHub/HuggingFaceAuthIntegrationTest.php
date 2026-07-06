@@ -49,11 +49,12 @@ final class HuggingFaceAuthIntegrationTest extends TestCase
         self::assertArrayHasKey('modelId', $info);
     }
 
-    public function testUnauthenticatedClientCannotAccessGatedModel(): void
+    public function testUnauthenticatedClientStillSeesGatedModelMetadata(): void
     {
         $client = new HuggingFaceClient(null);
         $info = $client->getModelInfo('meta-llama/Llama-3.2-1B');
 
-        self::assertSame([], $info);
+        self::assertNotEmpty($info);
+        self::assertSame('manual', $info['gated'] ?? null, 'Model is gated for download, but metadata is public');
     }
 }

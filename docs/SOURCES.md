@@ -21,7 +21,7 @@
 - **rubix/ml** — 2.5.3, `^2.0` ✓ верно.
 - **codewithkyrian/huggingface** — существует, 1.0.0, PHP ^8.2, `^1.0` ✓ (composer-имя без `-php`).
 - **HF-модели** — размерности подтверждены: MiniLM-L6-v2=384, mpnet-base-v2=768, multilingual-e5-small=384, bge-small-en-v1.5=384. ✓
-- **sqlite-vec** — актуальный тег v0.1.9 (pre-1.0); «≥0.1» ✓.
+- **sqlite-vec** — актуальный тег v0.1.10-alpha (pre-1.0); «≥0.1» ✓. Верифицированный бинарник на Windows: vec0.dll v0.1.10-alpha. На Linux: sqlite-vec-0.1.9-loadable-linux-x86_64 (vec0.so v0.1.9).
 - **llama.cpp C API** — приведено к новым именам: `llama_model_load_from_file`, `llama_init_from_model`, `llama_model_free`, `llama_free`, `llama_vocab_n_tokens`, `llama_model_n_embd`. Старые (`llama_new_context_with_model`, `llama_n_vocab`, `llama_n_embd`, `llama_load_model_from_file`, `llama_free_model`) — DEPRECATED, заменены в PHASE_2.
 
 Сверка стека завершена. Открытый архитектурный вопрос: DirectML/OpenVINO/ROCm-провайдеры помечены «планируемыми» (phpmlkit их не отдаёт). phpmlkit пока без стабильных релизов — `^1.0` держать под контролем.
