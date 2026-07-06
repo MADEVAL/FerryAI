@@ -1,24 +1,3 @@
-### 20. `OnnxTensor::__unserialize` uses `DType::from()` and `Device::from()` without try-catch
-
-**File:** `packages/onnx-backend/src/OnnxTensor.php:182-183`
-
-```php
-$this->dtype = DType::from((string) $data['dtype']);
-$this->deviceType = Device::from((string) $data['device']);
-```
-
-If corrupted serialized data is passed, `ValueError` from the enum `::from()` propagates as an uncaught exception during `unserialize()`, which may produce confusing error messages.
-
----
-
-### 21. `PostgresCollection` stores `$dimension` but never validates vector dimensions on `add()`
-
-**File:** `packages/vector/src/PostgresCollection.php`
-
-The contract `VectorStore::add()` says «throws ShapeMismatchException when the dimension does not match the collection». `Collection` (SQLite) validates dimensions; `PostgresCollection` delegates to PostgreSQL and lets it fail at the database level (which produces a PDOException, not a `ShapeMismatchException`).
-
----
-
 ### 22. `ChatFormatter::detectFormat()` regex for "phi" uses fragile pattern
 
 **File:** `packages/llama-backend/src/ChatFormatter.php:44`

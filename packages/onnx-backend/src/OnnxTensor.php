@@ -196,7 +196,17 @@ final class OnnxTensor implements Tensor
         $dims = $data['dims'];
         $this->data = $values;
         $this->shape = new Shape($dims);
-        $this->dtype = DType::from((string) $data['dtype']);
-        $this->deviceType = Device::from((string) $data['device']);
+
+        $dtypeValue = (string) ($data['dtype'] ?? '');
+        $this->dtype = DType::tryFrom($dtypeValue)
+            ?? throw new \FerryAI\Core\Exception\InvalidStateException(
+                \sprintf("Cannot unserialize OnnxTensor: unknown dtype '%s'.", $dtypeValue),
+            );
+
+        $deviceValue = (string) ($data['device'] ?? '');
+        $this->deviceType = Device::tryFrom($deviceValue)
+            ?? throw new \FerryAI\Core\Exception\InvalidStateException(
+                \sprintf("Cannot unserialize OnnxTensor: unknown device '%s'.", $deviceValue),
+            );
     }
 }

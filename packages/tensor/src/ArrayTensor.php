@@ -271,7 +271,12 @@ final class ArrayTensor implements Tensor
         $dims = $data['dims'];
         $this->data = $flat;
         $this->shape = new Shape($dims);
-        $this->dtype = DType::from((string) $data['dtype']);
+
+        $dtypeValue = (string) ($data['dtype'] ?? '');
+        $this->dtype = DType::tryFrom($dtypeValue)
+            ?? throw new \FerryAI\Core\Exception\InvalidStateException(
+                \sprintf("Cannot unserialize ArrayTensor: unknown dtype '%s'.", $dtypeValue),
+            );
     }
 
     /**

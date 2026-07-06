@@ -86,4 +86,19 @@ final class OnnxTensorTest extends TestCase
         self::assertSame(DType::Float32, $restored->dtype());
         self::assertSame(Device::CPU, $restored->device());
     }
+
+    public function testUnserializeCorruptDtypeThrowsDescriptiveError(): void
+    {
+        $tensor = $this->tensor();
+
+        $this->expectException(\FerryAI\Core\Exception\InvalidStateException::class);
+        $this->expectExceptionMessageMatches('/Cannot unserialize|unknown dtype/');
+
+        $tensor->__unserialize([
+            'data' => [1.0],
+            'dims' => [1],
+            'dtype' => 'invalid_dtype',
+            'device' => 'cpu',
+        ]);
+    }
 }
