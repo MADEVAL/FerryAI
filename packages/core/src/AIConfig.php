@@ -28,7 +28,11 @@ final class AIConfig implements \ArrayAccess
             'stream_timeout' => 30,
             'verify_signatures' => true,
             'log_level' => 'warning',
-            'backends' => [],
+            'backends' => [
+                'classify' => ['model_path' => ''],
+                'moderate' => ['model_path' => ''],
+                'predict' => ['model_path' => ''],
+            ],
         ];
     }
 

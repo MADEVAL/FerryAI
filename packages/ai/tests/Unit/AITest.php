@@ -157,4 +157,34 @@ final class AITest extends TestCase
 
         AI::classify('text');
     }
+
+    public function testClassifyThrowsWhenModelPathNotConfigured(): void
+    {
+        AI::config(['backend' => 'onnx']);
+
+        $this->expectException(ConfigurationException::class);
+        $this->expectExceptionMessageMatches('/classify/');
+
+        AI::classify('text');
+    }
+
+    public function testModerateThrowsWhenModelPathNotConfigured(): void
+    {
+        AI::config(['backend' => 'onnx']);
+
+        $this->expectException(ConfigurationException::class);
+        $this->expectExceptionMessageMatches('/moderate/');
+
+        AI::moderate('text');
+    }
+
+    public function testPredictThrowsWhenModelPathNotConfigured(): void
+    {
+        AI::config(['backend' => 'cpu']);
+
+        $this->expectException(ConfigurationException::class);
+        $this->expectExceptionMessageMatches('/predict/');
+
+        AI::predict(['feature' => 1]);
+    }
 }

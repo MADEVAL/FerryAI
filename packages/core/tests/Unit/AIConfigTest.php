@@ -26,7 +26,30 @@ final class AIConfigTest extends TestCase
         self::assertSame(30, $config->streamTimeout());
         self::assertTrue($config->verifySignatures());
         self::assertSame('warning', $config->logLevel());
-        self::assertSame([], $config->backendsConfig());
+        self::assertArrayHasKey('classify', $config->backendsConfig());
+        self::assertArrayHasKey('moderate', $config->backendsConfig());
+        self::assertArrayHasKey('predict', $config->backendsConfig());
+    }
+
+    public function testDefaultConfigContainsClassifyModelPath(): void
+    {
+        $config = AIConfig::fromArray([]);
+
+        self::assertTrue($config->has('backends.classify.model_path'));
+    }
+
+    public function testDefaultConfigContainsModerateModelPath(): void
+    {
+        $config = AIConfig::fromArray([]);
+
+        self::assertTrue($config->has('backends.moderate.model_path'));
+    }
+
+    public function testDefaultConfigContainsPredictModelPath(): void
+    {
+        $config = AIConfig::fromArray([]);
+
+        self::assertTrue($config->has('backends.predict.model_path'));
     }
 
     public function testBackendParsing(): void
