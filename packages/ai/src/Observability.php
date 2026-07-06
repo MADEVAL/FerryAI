@@ -78,6 +78,7 @@ final class Observability
         $tags = ['op' => $operation];
 
         if ($this->profiling) {
+            \assert($this->profiler !== null);
             $this->profiler->start($operation);
         }
 
@@ -89,6 +90,7 @@ final class Observability
             $elapsedMs = (\microtime(true) - $start) * 1000.0;
 
             if ($this->profiling) {
+                \assert($this->profiler !== null);
                 $this->profiler->end($operation);
             }
 
@@ -102,6 +104,7 @@ final class Observability
             return $result;
         } catch (\Throwable $e) {
             if ($this->profiling) {
+                \assert($this->profiler !== null);
                 $this->profiler->end($operation);
             }
 
