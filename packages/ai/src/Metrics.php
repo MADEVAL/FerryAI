@@ -9,6 +9,9 @@ final class Metrics
     /** @var array<string, array<string, float>> */
     private static array $counters = [];
 
+    /** @var array<string, array<string, float>> */
+    private static array $gauges = [];
+
     /** @var array<string, array<int, float>> */
     private static array $timings = [];
 
@@ -27,7 +30,7 @@ final class Metrics
     public static function record(string $metric, float $value, array $tags = []): void
     {
         $key = self::buildKey($metric, $tags);
-        self::$counters[$key]['value'] = $value;
+        self::$gauges[$key]['value'] = $value;
     }
 
     /**
@@ -46,6 +49,7 @@ final class Metrics
     {
         return [
             'counters' => self::$counters,
+            'gauges' => self::$gauges,
             'timings' => self::$timings,
         ];
     }
@@ -53,6 +57,7 @@ final class Metrics
     public static function reset(): void
     {
         self::$counters = [];
+        self::$gauges = [];
         self::$timings = [];
     }
 

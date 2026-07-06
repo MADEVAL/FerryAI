@@ -1,25 +1,3 @@
-### 16. `Metrics::increment()` and `Metrics::record()` share `$counters` with conflicting semantics
-
-**File:** `packages/ai/src/Metrics.php:20-28`
-
-```php
-public static function increment(string $metric, array $tags = []): void
-{
-    $key = self::buildKey($metric, $tags);
-    self::$counters[$key]['value'] = (float) (self::$counters[$key]['value'] ?? 0.0) + 1.0;
-}
-
-public static function record(string $metric, float $value, array $tags = []): void
-{
-    $key = self::buildKey($metric, $tags);
-    self::$counters[$key]['value'] = $value;  // OVERWRITE, not accumulate!
-}
-```
-
-`increment()` accumulates (+1 each call), but `record()` **overwrites** the value. If both methods are called for the same metric key, the counter is silently overwritten. Two different metric types (counter vs gauge) share one storage array.
-
----
-
 ### 17. `Observability` creates a `Profiler` dependency but `Profiler` is never instantiated
 
 **File:** `packages/ai/src/Observability.php`

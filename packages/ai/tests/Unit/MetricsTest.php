@@ -30,7 +30,7 @@ final class MetricsTest extends TestCase
         Metrics::record('memory_bytes', 1024.0);
 
         $report = Metrics::report();
-        self::assertSame(1024.0, $report['counters']['memory_bytes']['value']);
+        self::assertSame(1024.0, $report['gauges']['memory_bytes']['value']);
     }
 
     public function testTiming(): void
@@ -62,5 +62,25 @@ final class MetricsTest extends TestCase
         $report = Metrics::report();
         self::assertSame([], $report['counters']);
         self::assertSame([], $report['timings']);
+    }
+
+    public function testIncrementAndRecordDoNotOverwriteEachOther(): void
+    {
+        Metrics::increment('requests');
+        Metrics::increment('requests');
+        Metrics::record('memory', 512.0);
+
+        $report = Metrics::report();
+
+        self::assertSame(
+            2.0,
+            $report['counters']['requests']['value'],
+            'increment() counter must not be overwritten by record().',
+        );
+        self::assertSame(
+            512.0,
+            $report['gauges']['memory']['value'],
+            'record() gauge must not be overwritten by increment().',
+        );
     }
 }
