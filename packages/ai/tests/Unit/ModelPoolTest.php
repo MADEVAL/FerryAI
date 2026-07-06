@@ -108,13 +108,31 @@ final class ModelPoolTest extends TestCase
         self::assertNull($pool->acquire('b'), 'least-recently-used model should be evicted');
     }
 
-    public function testReleaseDoesNotError(): void
+    public function testReleaseRemovesModelFromPool(): void
+    {
+        $pool = new ModelPool();
+        $model = new CpuNativeModel('test', []);
+        $pool->put('test', $model);
+
+        self::assertSame(1, $pool->size());
+
+        $pool->release('test');
+
+        self::assertSame(
+            0,
+            $pool->size(),
+            'release() must remove the model from the pool and free its memory.',
+        );
+        self::assertNull($pool->acquire('test'));
+    }
+
+    public function testReleaseIsIdempotent(): void
     {
         $pool = new ModelPool();
 
-        $pool->release('any');
+        $pool->release('nonexistent');
 
-        self::assertTrue(true);
+        self::assertSame(0, $pool->size());
     }
 
     public function testShareModelReturnsFalseWithoutSharedMemory(): void

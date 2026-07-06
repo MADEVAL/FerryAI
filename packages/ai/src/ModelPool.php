@@ -62,7 +62,10 @@ final class ModelPool
         return $model;
     }
 
-    public function release(string $modelId): void {}
+    public function release(string $modelId): void
+    {
+        $this->evict($modelId);
+    }
 
     public function put(string $modelId, Model $model, int $memoryBytes = 0): void
     {

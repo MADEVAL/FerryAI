@@ -1,15 +1,3 @@
-### 7. `ModelPool::release()` — no-op (empty method body)
-
-**File:** `packages/ai/src/ModelPool.php:83`
-
-```php
-public function release(string $modelId): void {}
-```
-
-Empty method. An `acquire()`-d model is never truly released (stays in the pool indefinitely — only `evict()` or `__destruct()` removes it). Memory budget enforcement only fires on `put()`, not on explicit `release()`.
-
----
-
 ### 8. `Laravel\AIServiceProvider` — does not extend Laravel's base `ServiceProvider`
 
 **File:** `packages/laravel/src/AIServiceProvider.php`
