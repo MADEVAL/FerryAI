@@ -60,9 +60,20 @@ final class SamplerFactoryTest extends TestCase
 
     public function testForParamsTopPWhenTemperaturePositive(): void
     {
-        $sampler = $this->factory->forParams(new SamplingParams(temperature: 0.7));
+        $sampler = $this->factory->forParams(new SamplingParams(temperature: 0.7, topP: 0.9));
 
         self::assertInstanceOf(TopPSampler::class, $sampler);
+    }
+
+    public function testForParamsTopKWhenTopPIsDefault(): void
+    {
+        $sampler = $this->factory->forParams(new SamplingParams(temperature: 0.7));
+
+        self::assertInstanceOf(
+            TopKSampler::class,
+            $sampler,
+            'forParams() must return TopKSampler when topP >= 1.0 — topK should not be ignored.',
+        );
     }
 
     public function testForParamsGrammarWhenProvided(): void

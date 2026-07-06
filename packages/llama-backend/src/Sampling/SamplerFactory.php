@@ -31,7 +31,7 @@ final class SamplerFactory
     /**
      * Selects a sampler from the request parameters:
      * a grammar (if given) constrains output; temperature 0 is deterministic (greedy);
-     * otherwise nucleus (top-p) sampling, which also honours temperature/top-p.
+     * topP < 1.0 selects nucleus (top-p) sampling; otherwise top-K sampling.
      */
     public function forParams(SamplingParams $params, ?GbnfGrammar $grammar = null): Sampler
     {
@@ -43,6 +43,10 @@ final class SamplerFactory
             return new GreedySampler();
         }
 
-        return new TopPSampler();
+        if ($params->topP < 1.0) {
+            return new TopPSampler();
+        }
+
+        return new TopKSampler();
     }
 }

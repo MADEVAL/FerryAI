@@ -1,25 +1,3 @@
-### 11. `AI::classify()` — uses `$scores[0]` before checking index exists
-
-**File:** `packages/ai/src/AI.php:182`
-
-```php
-$maxScore = $scores[0];
-```
-
-If `$scores = $model->run(['input' => $input])` returns a non-empty numeric array, `$scores[0]` is accessed directly after the null check on line 180 passes. However, if `$scores` is an associative array or has non-numeric keys, `$scores[0]` may be undefined. The `numericScores()` method should prevent this by returning `null` for non-numeric arrays… but the `$scores[0]` access happens **outside** `numericScores()` — in the `classify()` method itself.
-
-Actually, re-reading: `$scores` is assigned the return of `self::numericScores(...)` on line 178. If that returns non-null (`!== null` checked on line 180), then `$scores` is guaranteed to be `non-empty-list<float|int>`. So this is fine. **Retracting** this finding.
-
----
-
-### 12. `SamplingParams` allows `topK=40` but `SamplerFactory::forParams()` ignores topK
-
-**File:** `packages/llama-backend/src/Sampling/SamplerFactory.php:31-44`
-
-When `temperature > 0` and no grammar is given, `forParams()` always returns `TopPSampler`, ignoring the `topK` parameter entirely. To use top-K sampling, the user must explicitly request `'top_k'` via the `sampler` option, which is non-obvious.
-
----
-
 ### 13. Redundant FFI boundary in `OnnxModel::run()` — defeats zero-copy
 
 **File:** `packages/onnx-backend/src/OnnxModel.php:59-62`
