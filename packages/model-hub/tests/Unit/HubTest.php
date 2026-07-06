@@ -107,7 +107,7 @@ final class HubTest extends TestCase
         self::assertNull($hub->cached('tmp'));
     }
 
-    public function testWarmup(): void
+    public function testWarmupSkipsAlreadyCachedModels(): void
     {
         $hub = new Hub($this->cacheDir);
         $path = $this->cacheDir . '/warm.onnx';
@@ -117,6 +117,15 @@ final class HubTest extends TestCase
         $hub->warmup(['warm-model']);
 
         self::assertNotNull($hub->cached('warm-model'));
+    }
+
+    public function testWarmupAttemptsToDownloadUncachedModels(): void
+    {
+        $hub = new Hub($this->cacheDir);
+
+        $this->expectException(\FerryAI\Core\Exception\ModelNotFoundException::class);
+
+        $hub->warmup(['uncached/model']);
     }
 
     public function testDownloadWithProgressReturnsGenerator(): void

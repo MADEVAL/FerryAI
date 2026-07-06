@@ -18,30 +18,6 @@
 
 ---
 
-## CRITICAL Issues
-
-### 1. `Hub::verify()` — signature verification always skipped (silently)
-
-**File:** `packages/model-hub/src/Hub.php:89-92`
-
-```php
-public function verify(string $path, ?string $sha256 = null, ?string $signature = null): bool
-{
-    return ModelVerifier::verify($path, $sha256, $signature);
-}
-```
-
-`ModelVerifier::verify()` requires `$publicKey` to perform Ed25519 signature verification:
-```php
-// packages/model-hub/src/ModelVerifier.php:20
-if ($signature !== null && $publicKey !== null) { ... }
-```
-`Hub::verify()` **never passes `$publicKey`**, so `$publicKey` is always `null`, and signature verification **never executes**. SHA-256 verification still works (due to the first `if` guard). Violates contract `ModelHub::verify()`, which promises «SHA-256 + Ed25519 signature».
-
-**Fix:** Add `$publicKey` parameter to `Hub::verify()` (or derive it from a registry) and forward it to `ModelVerifier::verify()`.
-
----
-
 ### 2. `Hub::warmup()` — does not download models (broken contract)
 
 **File:** `packages/model-hub/src/Hub.php:103-108`

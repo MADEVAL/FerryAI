@@ -111,7 +111,9 @@ final class Hub implements ModelHubContract
     public function warmup(array $modelIds): void
     {
         foreach ($modelIds as $modelId) {
-            $this->cached($modelId);
+            if ($this->cached($modelId) === null) {
+                $this->download($modelId);
+            }
         }
     }
 
