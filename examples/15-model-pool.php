@@ -34,7 +34,11 @@ printf("after release: size=%d\n\n", $pool->size());
 $pool->evict('classifier');
 printf("after evict:   size=%d\n", $pool->size());
 
-$pool->warmup(['classifier', 'regressor', 'unknown']);
+$pool->warmup(
+    ['classifier', 'regressor', 'unknown'],
+    static fn(string $id): CpuNativeModel => new CpuNativeModel($id, []),
+);
+printf("after warmup:  size=%d\n", $pool->size());
 
 echo "\n--- SharedMemoryManager ---\n\n";
 

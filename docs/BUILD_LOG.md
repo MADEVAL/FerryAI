@@ -1628,3 +1628,68 @@ Left as-is (documented boundaries / by-design, not inconsistencies):
 
 Verification (fresh): `composer check` fully green — cs 0 — PHPStan L8 No errors — Psalm L3 No
 errors — **686 unit tests** (unchanged; no regressions). `composer verify` → 16/16.
+
+---
+
+## 2026-07-06 — All 26 examples verified on Windows + WSL (real models)
+
+Ran every `examples/*.php` in both real environments against the provided models
+(`D:\FerryAI\all-MiniLM-L6-v2-onnx`, `D:\FerryAI\qwen-0.5b.Q4_K_M.gguf`, `vec0`, RubixML at /opt).
+
+Results — **26/26 pass on Windows and 26/26 on WSL**:
+- ONNX embeddings: real inference (384-d; cat/kitten 0.79 > cat/dog 0.66 > cat/airplane 0.34).
+- llama chat/stream: real, **CPU and CUDA GPU** (RTX 4060, 25/25 layers offloaded) on both OSes.
+- sqlite-vec: native vec0 KNN loaded on both. RubixML: isolated, `output:["a","b"]`.
+- PostgreSQL/pgvector: real ANN on Windows; graceful SKIP on WSL (no PG — DEBT §14).
+- classify/moderate/predict (08): graceful SKIP — only embedding + LLM models were provided.
+
+Fixes made (TDD / no regressions):
+- **`OnnxBackend::load()`** — falls back to the CPU execution provider when the resolved GPU
+  provider fails to create a session (GPU build present but CUDA runtime incomplete). Found on WSL
+  where the ORT CUDA provider needs `libcurand.so.10`. New unit test
+  `testLoadFallsBackToCpuWhenGpuProviderFailsToLoad` (+ `MockOnnxRuntime::$failNonCpuProviders`).
+- **`examples/03-chat.php`, `04-streaming.php`** — made the ferry_llama wrapper path OS-aware
+  (`ferry_llama.{dll,so,dylib}` via `PlatformDetector::libExtension()` + `DIRECTORY_SEPARATOR`),
+  so LLM examples run on Linux/macOS, not just Windows. Default dir `/opt/llama` off-Windows.
+- **`examples/15-model-pool.php`** — fixed the out-of-date `ModelPool::warmup()` call (now passes
+  the required loader callable). Exercises the SharedMemoryManager allocate/detach lifecycle.
+
+Env vars used: `FERRY_AI_MODEL_DIR`, `FERRY_AI_LLAMA_DIR` (`/opt/llama` or `/opt/llama-cuda`),
+`FERRY_AI_LLAMA_MODEL`, `FERRY_AI_LLAMA_DEVICE=cpu|cuda`, `FERRY_AI_VEC_EXTENSION_LIB`.
+Note: `Qwen3-0.6B` is safetensors (no loader — DEBT §12); chat uses the `.gguf`.
+
+Verification (fresh): `composer check` green — cs 0 — PHPStan L8 No errors — Psalm L3 No errors —
+**687 unit tests** (+1). `composer verify` → 16/16.
+
+---
+
+## 2026-07-06 — ONNX GPU on WSL: full resolution (no-sudo CUDA runtime extraction + README)
+
+Discovered the ONNX GPU build at `/opt/onnxruntime-gpu/` (downloaded yesterday; the CPU build
+in `vendor/` was from `OnnxRuntime\Vendor::check()`). The GPU `.so` files were copied into the
+vendor ORT lib dir.
+
+The ORT CUDA provider links against `libcurand.so.10`, `libcufft.so.12` and `libcudnn.so.9`.
+The CUDA 13.3 dev toolkit (for llama.cpp) provides only `cublas`/`cudart` — the math runtime
+libraries are separate NVIDIA `.deb` packages. They were extracted **without sudo** using
+`apt-get download` + `ar x` + `tar xf` (curand, cufft) and `dpkg-deb -x` (cuDNN from the
+NVIDIA CDN local-repo `.deb`). All `.so` files were placed in the vendor lib dir and
+`LD_LIBRARY_PATH` pointed at them + `/usr/local/cuda/lib64`.
+
+Result: `availableDevices() = cuda,cpu`, ONNX embeddings on GPU produce identical output to CPU
+(all-MiniLM-L6-v2, 384-d, cat/kitten 0.7882). Example 01 verified on WSL GPU.
+
+Code change (earlier): `OnnxBackend::load()` CPU-fallback when GPU provider fails to load
+(`MockOnnxRuntime::$failNonCpuProviders`, new unit test). This fallback is no longer needed
+for *this* WSL environment but remains as a robustness guard for setups with an incomplete
+CUDA runtime.
+
+Documentation:
+- `README.md` — new "ONNX GPU on WSL (without sudo)" section (exact commands + explanation),
+  quick-checks now include GPU devices verification, LLM table adds ONNX GPU row.
+- `examples/README.md` — complete rewrite of the Prerequisites and Running sections:
+  env-var table, Windows/WSL launch commands, ONNX GPU on WSL sub-section.
+- `docs/DEBT_REPORT.md` §13 — rewritten to reflect the resolved state (CUDA 13.3,
+  no-sudo extraction method, verified working).
+
+No test regressions. `composer check` green: 687 unit tests.

@@ -27,6 +27,7 @@ final class MockOnnxRuntime implements OnnxRuntimeInterface
         private readonly string $engineVersion = 'mock-1.0.0',
         private readonly array $providers = ['CPUExecutionProvider'],
         private readonly ?MockOnnxSession $session = null,
+        private readonly bool $failNonCpuProviders = false,
     ) {}
 
     public function isAvailable(): bool
@@ -55,6 +56,11 @@ final class MockOnnxRuntime implements OnnxRuntimeInterface
         array $providerNames,
         GraphOptimizationLevel $optimization = GraphOptimizationLevel::ALL,
     ): OnnxSession {
+        if ($this->failNonCpuProviders && $providerNames !== ['CPUExecutionProvider']) {
+            // Simulates a GPU build whose provider library cannot be loaded (missing CUDA runtime).
+            throw new \RuntimeException('Failed to load execution provider shared library');
+        }
+
         $this->createdSessions[] = [
             'path' => $path,
             'providers' => $providerNames,

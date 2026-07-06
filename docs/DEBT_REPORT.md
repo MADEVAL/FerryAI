@@ -172,12 +172,30 @@ returns `'safetensors'` (detection ≠ loading).
 
 ---
 
-## 13. ONNX GPU — Diagnosed (cuDNN)
+## 13. ONNX GPU — Resolved on WSL (manual cuDNN + CUDA runtime)
 
-GPU builds (ORT 1.27.0 CUDA 13) installed on Windows + Linux. `CUDAExecutionProvider` detected
-at the FFI level. Session creation fails — `onnxruntime_providers_cuda.{dll,so}` depends on
-**cuDNN** (manual download from developer.nvidia.com; not in package repos). Download cuDNN
-and place it next to the ORT libraries to enable GPU inference.
+GPU builds (ORT 1.27.0 CUDA 13) installed on Windows + Linux/WSL. The Linux GPU download
+does **not** bundle the CUDA runtime math libraries; they must be provided separately.
+
+| SONAME | Default CUDA 13.3 dev toolkit? | Status on WSL |
+|--------|-----------------------------|---------------|
+| `libcurand.so.10` | No (separate `libcurand-13-2` pkg) | Extracted from `.deb` without sudo |
+| `libcufft.so.12` | No (separate `libcufft-13-2` pkg) | Extracted from `.deb` without sudo |
+| `libcudnn.so.9` | No (separate cuDNN download) | Extracted from `.deb` without sudo |
+| `libcublas.so.13` / `libcudart.so.13` | Yes | Present |
+
+**Verified working** on WSL (RTX 4060) — `availableDevices() = cuda,cpu`,
+all-MiniLM-L6-v2 embeddings produce identical output to CPU (cat/kitten 0.7882).
+The libraries were extracted without sudo:
+`apt-get download libcurand-13-2` → `ar x` → `tar xf` (same for libcufft).
+cuDNN was extracted from the NVIDIA local-repo `.deb`. All `.so` files were placed
+in the vendor ORT lib dir + `LD_LIBRARY_PATH`.
+
+Full setup guide is in `README.md` (ONNX GPU on WSL section).
+
+Mitigated: `OnnxBackend::load()` **falls back to the CPU execution provider** when the
+resolved GPU provider fails to create a session, so embeddings keep working on an
+incomplete GPU runtime without crashing.
 
 ---
 

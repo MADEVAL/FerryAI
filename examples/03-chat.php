@@ -7,22 +7,24 @@ require __DIR__ . '/../vendor/autoload.php';
 
 use FerryAI\AI;
 use FerryAI\LlamaBackend\ChatFormatter;
+use FerryAI\Core\PlatformDetector;
 
 echo "=== 03 — LLM Chat ===\n\n";
 
-$llamaDir = getenv('FERRY_AI_LLAMA_DIR') ?: 'D:\FerryAI';
-$wrapper = $llamaDir . '\ferry_llama.dll';
-$llamaPath = getenv('FERRY_AI_LLAMA_MODEL') ?: $llamaDir . '\qwen-0.5b.Q4_K_M.gguf';
+$llamaDir = getenv('FERRY_AI_LLAMA_DIR') ?: (PHP_OS_FAMILY === 'Windows' ? 'D:\FerryAI' : '/opt/llama');
+$wrapExt  = PlatformDetector::libExtension();
+$wrapper  = $llamaDir . DIRECTORY_SEPARATOR . 'ferry_llama.' . $wrapExt;
+$llamaPath = getenv('FERRY_AI_LLAMA_MODEL') ?: $llamaDir . DIRECTORY_SEPARATOR . 'qwen-0.5b.Q4_K_M.gguf';
 
 if (!file_exists($wrapper) || !file_exists($llamaPath)) {
-    echo "SKIP: need ferry_llama.dll + a .gguf model in {$llamaDir}.\n";
-    echo "  Build the wrapper: native/llama-wrapper/build.ps1 (see README 'LLM on CPU & GPU').\n";
+    echo "SKIP: need ferry_llama.{$wrapExt} + a .gguf model in {$llamaDir}.\n";
+    echo "  Build the wrapper: native/llama-wrapper/build.ps1 (Windows) / build.sh (Linux/macOS).\n";
     echo "  Override paths with FERRY_AI_LLAMA_DIR / FERRY_AI_LLAMA_MODEL.\n";
     exit(0);
 }
 
 putenv('FERRY_AI_LLAMA_WRAPPER=' . $wrapper);
-putenv('PATH=' . $llamaDir . PATH_SEPARATOR . (getenv('PATH') ?: ''));
+// FerryLlama sets the correct lib path per OS (PATH / LD_LIBRARY_PATH / DYLD_LIBRARY_PATH).
 
 AI::config([
     'backend' => 'llama',

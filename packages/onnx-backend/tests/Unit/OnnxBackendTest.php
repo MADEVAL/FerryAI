@@ -78,6 +78,24 @@ final class OnnxBackendTest extends TestCase
         self::assertSame(Device::CPU, $model->device());
     }
 
+    public function testLoadFallsBackToCpuWhenGpuProviderFailsToLoad(): void
+    {
+        // GPU build: CUDA is advertised as available, but creating a CUDA session throws
+        // (e.g. missing CUDA runtime / cuDNN). load() must fall back to CPU, not crash.
+        $runtime = new MockOnnxRuntime(
+            providers: ['CUDAExecutionProvider', 'CPUExecutionProvider'],
+            session: new MockOnnxSession(),
+            failNonCpuProviders: true,
+        );
+        $backend = new OnnxBackend($runtime);
+
+        $model = $backend->load($this->modelFile);
+
+        self::assertInstanceOf(OnnxModel::class, $model);
+        self::assertSame(Device::CPU, $model->device());
+        self::assertSame(['CPUExecutionProvider'], $runtime->createdSessions[array_key_last($runtime->createdSessions)]['providers']);
+    }
+
     public function testLoadRemoteSourceThrows(): void
     {
         $backend = new OnnxBackend(new MockOnnxRuntime());
