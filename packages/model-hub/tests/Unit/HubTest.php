@@ -126,4 +126,44 @@ final class HubTest extends TestCase
 
         self::assertInstanceOf(\Generator::class, $generator);
     }
+
+    public function testVerifySignatureIsSilentlySkippedWithoutPublicKey(): void
+    {
+        if (!\extension_loaded('sodium')) {
+            self::markTestSkipped('ext-sodium is required for Ed25519 verification.');
+        }
+
+        $path = $this->cacheDir . '/data.bin';
+        \file_put_contents($path, "\x08\x08\x12\x08" . \str_repeat('x', 100));
+
+        $keypair = \sodium_crypto_sign_keypair();
+        $secretKey = \sodium_crypto_sign_secretkey($keypair);
+        $publicKeyRaw = \sodium_crypto_sign_publickey($keypair);
+
+        $signature = \sodium_crypto_sign_detached(
+            \file_get_contents($path),
+            $secretKey,
+        );
+
+        $sigPath = $this->cacheDir . '/data.sig';
+        $pubPath = $this->cacheDir . '/data.pub';
+        \file_put_contents($sigPath, $signature);
+        \file_put_contents($pubPath, $publicKeyRaw);
+
+        $hubWithoutKey = new Hub($this->cacheDir);
+        $result = $hubWithoutKey->verify($path, signature: $sigPath);
+
+        self::assertFalse(
+            $result,
+            'Hub::verify() must return false when signature is provided but public key is absent.',
+        );
+
+        $hubWithKey = new Hub($this->cacheDir, publicKey: $pubPath);
+        $resultWithKey = $hubWithKey->verify($path, signature: $sigPath);
+
+        self::assertTrue(
+            $resultWithKey,
+            'Hub::verify() must return true when the signature is valid and the public key is provided.',
+        );
+    }
 }

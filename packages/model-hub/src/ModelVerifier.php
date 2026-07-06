@@ -22,7 +22,11 @@ final class ModelVerifier
             }
         }
 
-        if ($signature !== null && $publicKey !== null) {
+        if ($signature !== null) {
+            if ($publicKey === null) {
+                return false;
+            }
+
             if (!SignatureVerifier::verify($path, $signature, $publicKey)) {
                 return false;
             }

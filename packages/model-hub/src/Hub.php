@@ -17,6 +17,7 @@ final class Hub implements ModelHubContract
     public function __construct(
         string $cacheDir,
         ?string $hfToken = null,
+        private readonly ?string $publicKey = null,
     ) {
         $this->hfClient = new HuggingFaceClient($hfToken);
         $this->cache = new CacheManager($cacheDir);
@@ -72,7 +73,7 @@ final class Hub implements ModelHubContract
     #[\Override]
     public function verify(string $path, ?string $sha256 = null, ?string $signature = null): bool
     {
-        return ModelVerifier::verify($path, $sha256, $signature);
+        return ModelVerifier::verify($path, $sha256, $signature, $this->publicKey);
     }
 
     #[\Override]
