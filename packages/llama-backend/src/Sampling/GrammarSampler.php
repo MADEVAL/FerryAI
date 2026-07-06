@@ -106,7 +106,7 @@ final class GrammarSampler implements Sampler
 
     /**
      * @return array<string, true>|null set of first bytes that can continue the grammar,
-     *         or null when the accumulated prefix is empty (every char is viable).
+     *                                  or null when the accumulated prefix is empty (every char is viable).
      */
     private function computeValidFirstChars(): ?array
     {
