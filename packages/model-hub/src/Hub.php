@@ -143,8 +143,14 @@ final class Hub implements ModelHubContract
     public function warmup(array $modelIds): void
     {
         foreach ($modelIds as $modelId) {
-            if ($this->cached($modelId) === null) {
+            if ($this->cached($modelId) !== null) {
+                continue;
+            }
+
+            try {
                 $this->download($modelId);
+            } catch (\FerryAI\Core\Exception\FerryAIException) {
+                // warmup is best-effort: skip models that cannot be downloaded now
             }
         }
     }

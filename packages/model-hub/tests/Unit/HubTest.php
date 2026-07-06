@@ -139,9 +139,12 @@ final class HubTest extends TestCase
     {
         $hub = new Hub($this->cacheDir);
 
-        $this->expectException(\FerryAI\Core\Exception\ModelNotFoundException::class);
-
         $hub->warmup(['uncached/model']);
+
+        self::assertNull(
+            $hub->cached('uncached/model'),
+            'warmup() silently skips models that cannot be downloaded — it is best-effort.',
+        );
     }
 
     public function testDownloadWithProgressIsNotAStub(): void
