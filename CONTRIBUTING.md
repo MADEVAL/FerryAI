@@ -18,7 +18,7 @@ composer check    # cs-fix + PHPStan lvl8 + Psalm lvl3 + unit tests
 
 - **Unit tests**: `composer test` — pure PHP, no native libs needed
 - **Integration tests**: `composer test-integration` — requires ONNX Runtime / llama.cpp
-- **TDD**: write failing test → minimal code → `composer check` green
+- Write tests for new features, run `composer check` before committing
 
 ## Code Style
 

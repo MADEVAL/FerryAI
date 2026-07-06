@@ -1,7 +1,7 @@
 # FerryAI — Definitive Documentation
 
 > **PHP inference runtime. ONNX + llama.cpp + RubixML. One API. No Python.**
-> Version 1.0 · 14 packages · 568 tests · PHP 8.5+ · MIT
+> Version 1.0 · 14 packages · PHP 8.5+ · MIT
 
 ---
 
@@ -15,7 +15,7 @@ sidecars, no Docker microservices. You get the same C API that Python uses.
 |---------|--------|-------------|
 | ONNX | ONNX Runtime ≥1.18 | Embeddings (384d), classification, any `.onnx` model |
 | Llama | llama.cpp | Chat, streaming, grammar-constrained generation |
-| CPU Native | Pure PHP | `.rbm` models, always-available fallback |
+| CPU Native | RubixML / Pure PHP | `.rbm` models, always-available fallback |
 
 **Core principles:** inference-only (no training) · FFI is the only bridge to native code ·
 backends never know about each other · contracts define truth · zero-copy where possible.
@@ -45,15 +45,15 @@ composer require ferry-ai/php-inference
 ```powershell
 # Download from https://github.com/ggml-org/llama.cpp/releases
 # Extract to C:\llama
+# Build ferry_llama.dll via native\llama-wrapper\build.ps1
 
-$env:FERRY_AI_LLAMA_LIB = "C:\llama\llama.dll"
-$env:PATH = "C:\llama;" + $env:PATH     # required for ggml.dll, llama-common.dll
-```
+putenv('FERRY_AI_LLAMA_WRAPPER=C:\llama\ferry_llama.dll');
+putenv('PATH=C:\llama;' . getenv('PATH'));
 
-### Verify installation
-
-```bash
-php bin/ferry-ai check
+AI::config([
+    'backend'  => 'llama',
+    'backends' => ['llama' => ['model_path' => 'C:\llama\model.gguf']],
+]);
 ```
 
 ---
@@ -66,7 +66,7 @@ PHP Application
     AI Facade
     ├── Backend Registry ─── Task Router
     │   ├── OnnxBackend ──── FFI ──► onnxruntime.dll
-    │   ├── LlamaBackend ─── FFI ──► llama.dll
+    │   ├── LlamaBackend ─── FFI ──► ferry_llama.dll
     │   └── CpuNativeBackend ──── pure PHP
     │
     ├── Embedder ─── Tokenizer ─── Pipeline ─── VectorStore
@@ -78,15 +78,16 @@ PHP Application
 | Package | Namespace | Role |
 |---------|-----------|------|
 | `core` | `FerryAI\Core\` | Contracts, enums, value objects, exceptions, AIConfig |
-| `tensor` | `FerryAI\Tensor\` | ArrayTensor, BackedTensor, TensorFactory |
+| `tensor` | `FerryAI\Tensor\` | ArrayTensor, tensor factory |
 | `onnx-backend` | `FerryAI\OnnxBackend\` | ONNX Runtime via `ankane/onnxruntime` |
 | `llama-backend` | `FerryAI\LlamaBackend\` | llama.cpp samplers, grammar, ChatFormatter |
-| `tokenizer` | `FerryAI\Tokenizer\` | Pure PHP BPE + WordPiece |
+| `tokenizer` | `FerryAI\Tokenizer\` | Pure PHP BPE + WordPiece, native binding (optional) |
 | `embedding` | `FerryAI\Embedding\` | Mean/CLS/EOS/Max pooling, Embedder |
-| `vector` | `FerryAI\Vector\` | SQLite vector store, brute-force search |
-| `model-hub` | `FerryAI\ModelHub\` | HF download, cache, SHA-256+Ed25519 |
+| `vector` | `FerryAI\Vector\` | SQLite + PostgreSQL/pgvector vector store |
+| `model-hub` | `FerryAI\ModelHub\` | HF download, cache, SHA-256+Ed25519 verify |
 | `pipeline` | `FerryAI\Pipeline\` | 8 composable stages, Generator-based |
 | `cpu-backend` | `FerryAI\CpuBackend\` | Always-available CPU fallback |
+| `dataframe` | `FerryAI\DataFrame\` | Tabular data: Column-oriented, CSV/JSON I/O |
 | `ai` | `FerryAI\` | Facade, factory, registry, metrics, profiler |
 | `laravel` | `FerryAI\Laravel\` | Service provider + facade |
 | `symfony` | `FerryAI\Symfony\` | Bundle + DI extension |
@@ -171,11 +172,9 @@ FerryAI\Core\Enums\Device::CUDA    // 'cuda', priority 90
 FerryAI\Core\Enums\Device::METAL   // 'metal'
 FerryAI\Core\Enums\Device::VULKAN  // 'vulkan'
 FerryAI\Core\Enums\Device::AUTO    // 'auto', priority 0 — auto-detect
-// Device::resolve(Device $preferred, Device[] $available): Device
 
 FerryAI\Core\Enums\DType::Float32  // 4 bytes
 FerryAI\Core\Enums\DType::Int64    // 8 bytes
-// DType::sizeInBytes(): int
 
 FerryAI\Core\Enums\TokenizerType::BPE | WordPiece | SentencePiece | Unigram
 FerryAI\Core\Enums\DistanceMetric::COSINE | EUCLIDEAN | DOT
@@ -185,13 +184,9 @@ FerryAI\Core\Enums\IndexType::HNSW | IVF | FLAT
 ### Value Objects
 
 ```php
-new Shape([1, 3, 224, 224])
-    → rank()=4, size()=1×3×224×224, isStatic()=true
-    → dimension(2)=224, toArray()=[1,3,224,224]
-    → compatibleWith($other): bool (broadcasting)
+new Shape([1, 3, 224, 224]) — rank()=4, size()=1×3×224×224, isStatic()=true
 
 new ModelMetadata('MiniLM', '1.0', 'Sentence-Transformers', 'Apache-2.0', ['embedding'], 90_000_000)
-    → fromJson($json): self, toJson(): string
 
 new EmbeddingResult([0.1, -0.3, ...], 384, 'all-MiniLM-L6-v2')
 
@@ -243,8 +238,8 @@ interface Backend {
 
 ```php
 interface Model {
-    public function run(array $inputs): array;                   // array<string, mixed>
-    public function inputs(): array;      // array<string, {name, shape: int[], dtype: string}>
+    public function run(array $inputs): array;
+    public function inputs(): array;
     public function outputs(): array;
     public function metadata(): ModelMetadata;
     public function device(): Device;
@@ -260,8 +255,8 @@ interface Tensor extends \ArrayAccess, \Countable, \JsonSerializable {
     public function dtype(): DType;
     public function to(Device $device): self;
     public function device(): Device;
-    public function toArray(): array;        // EXPENSIVE — copies from native memory
-    public function data(): mixed;           // FFI pointer
+    public function toArray(): array;
+    public function data(): mixed;
     public function add(self $other): self;
     public function sub(self $other): self;
     public function mul(self $other): self;
@@ -276,13 +271,13 @@ interface Tensor extends \ArrayAccess, \Countable, \JsonSerializable {
 
 ```php
 interface Tokenizer {
-    public function encode(string $text, bool $addSpecialTokens = true): array;      // int[]
+    public function encode(string $text, bool $addSpecialTokens = true): array;
     public function decode(array $ids): string;
-    public function encodeBatch(array $texts, bool $padToMaxLength = true): array;   // {input_ids, attention_mask}
+    public function encodeBatch(array $texts, bool $padToMaxLength = true): array;
     public function vocabSize(): int;
     public function type(): TokenizerType;
-    public function specialTokenId(string $tokenName): ?int;     // bos|eos|pad|unk|sep|cls|mask
-    public function specialTokens(): array;                      // array<string, int>
+    public function specialTokenId(string $tokenName): ?int;
+    public function specialTokens(): array;
     public function countTokens(string $text): int;
     public function chunk(string $text, int $maxTokens = 512, int $overlap = 64): array;
 }
@@ -292,10 +287,10 @@ interface Tokenizer {
 
 ```php
 interface Embedder {
-    public function embed(string $text): array;            // float[]
-    public function embedBatch(array $texts): array;       // float[][]
+    public function embed(string $text): array;
+    public function embedBatch(array $texts): array;
     public function dimension(): int;
-    public function normalize(array $vector): array;       // L2 normalization
+    public function normalize(array $vector): array;
     public function cosineSimilarity(array $a, array $b): float;
     public function modelName(): string;
 }
@@ -306,7 +301,7 @@ interface Embedder {
 ```php
 interface VectorStore {
     public function add(string $id, array $vector, ?array $metadata = null): void;
-    public function addBatch(array $items): void;    // array<int, {id, vector, metadata?}>
+    public function addBatch(array $items): void;
     public function search(array $queryVector, int $k = 10, ?array $filter = null): array;
     public function delete(string $id): void;
     public function deleteByFilter(array $filter): int;
@@ -356,52 +351,41 @@ interface ModelHub {
 
 ## 7. Backends
 
-### ONNX (production-ready)
+### ONNX
 
 ```php
-$backend = new FerryAI\OnnxBackend\OnnxBackend();
-$backend->isAvailable();          // true if onnxruntime.dll found
-$backend->version();              // "1.27.0"
-$backend->availableDevices();     // [Device::CPU]
+$onnx = new FerryAI\OnnxBackend\OnnxBackend();
+$onnx->isAvailable();          // true if onnxruntime.dll found
+$onnx->version();              // "1.27.0"
+$onnx->availableDevices();     // [Device::CPU] or [Device::CUDA, Device::CPU]
 
-$model = $backend->load('/path/to/model.onnx');
-$output = $model->run([
-    'input_ids' => [[101, 2023, 102]],
-    'attention_mask' => [[1, 1, 1]],
-]);
+$model = $onnx->load('/path/to/model.onnx');
+$model->run(['input_ids' => [[101, 2023, 102]], 'attention_mask' => [[1, 1, 1]]]);
 ```
 
-**Execution Providers:** `CPUExecutionProvider` (always), `CUDAExecutionProvider` (planned),
-`TensorrtExecutionProvider`, `CoreMLExecutionProvider` (macOS only), `DmlExecutionProvider`,
-`OpenVINOExecutionProvider`, `ROCMExecutionProvider`.
+**Execution Providers:** `CPUExecutionProvider` (always) · `CUDAExecutionProvider` · `TensorrtExecutionProvider` · `CoreMLExecutionProvider` (macOS).
 
-**Provider status:** only CPU is tested. GPU providers report `isAvailable()=false` —
-they need the GPU-enabled ONNX Runtime build.
+For GPU, use a GPU build of ONNX Runtime + CUDA Toolkit + cuDNN. See [backends/onnx](docs/backends/onnx.md).
 
-### Llama (library probe ready, full inference needs C-wrapper DLL)
+### Llama
 
 ```php
 $backend = new FerryAI\LlamaBackend\LlamaBackend();
-$backend->isAvailable();          // true with valid llama.dll + PATH
-$backend->version();              // llama.cpp version
-$backend->availableDevices();     // [Device::CPU]
+$backend->isAvailable();
+$backend->version();
 
 // LLM with grammar:
 $grammar = GbnfGrammar::fromJsonSchema([
     'type' => 'object',
     'properties' => ['name' => ['type' => 'string'], 'age' => ['type' => 'integer']],
 ]);
-
 $sampler = (new SamplerFactory())->create('grammar', $grammar);
 ```
 
 **Samplers:** `GreedySampler` · `TopKSampler` · `TopPSampler` · `GrammarSampler`
-
 **Chat templates:** `llama3` · `chatml` · `mistral` · `gemma` · `phi`
 
-**Note:** `llama_backend_init()` works. Model metadata reads correctly. Full inference
-(tensor loading → decode) crashes at C++ hparams due to PHP FFI struct ABI mismatch
-with Clang 20.1.8. See `docs/DEBT_REPORT.md` §12 for details and fix options.
+See [backends/llama](docs/backends/llama.md).
 
 ### CPU Native (always available)
 
@@ -442,7 +426,6 @@ $norm = $embedder->normalize($vec);           // L2 = 1.0
 ```php
 use FerryAI\Vector\CollectionManager;
 use FerryAI\Vector\SQLiteStore;
-use FerryAI\Vector\MetadataFilter;
 
 $store = new SQLiteStore(':memory:');
 $manager = new CollectionManager($store);
@@ -452,18 +435,10 @@ $col->add('doc1', [0.1, 0.2, ...], ['topic' => 'AI', 'year' => 2026]);
 $col->addBatch([
     ['id' => 'doc2', 'vector' => [0.3, 0.4, ...], 'metadata' => ['topic' => 'PHP']],
 ]);
-
 $results = $col->search($queryVec, k: 5);
-$filtered = $col->search($queryVec, k: 10, filter: [
-    'and' => [['topic' => ['eq' => 'AI']], ['year' => ['gte' => 2025]]],
-]);
 ```
 
-**MetadataFilter operators:** `eq` · `neq` · `gt` · `gte` · `lt` · `lte` ·
-`in` · `nin` · `contains` · `exists` · `and` · `or` · `not`.
-
-**Export:** `ExportImport::toJson($col, 'export.jsonl')` ·
-`ExportImport::fromJson('export.jsonl', 'new-col', 384, $store)`.
+**PostgreSQL + pgvector:** native ANN search with HNSW/IVFFlat indexes. See [vector-store](docs/vector-store.md).
 
 ---
 
@@ -478,11 +453,8 @@ $pipeline = (new Pipeline())
     ->pipe(new FilterStage(fn(string $s): bool => strlen($s) > 3));
 
 foreach ($pipeline->run(['hi', 'hello', 'greetings']) as $result) {
-    echo $result;  // "HELLO", "GREETINGS"
+    echo $result;
 }
-
-// PHP 8.5 pipe operator:
-$results = $pipeline('hello');     // Generator via __invoke
 ```
 
 **8 stages:** `ChunkStage` · `TokenizeStage` · `EmbedStage` · `NormalizeStage` ·
@@ -495,7 +467,7 @@ $results = $pipeline('hello');     // Generator via __invoke
 ```php
 $hub = new FerryAI\ModelHub\Hub('/path/to/cache');
 
-// HuggingFace
+// HuggingFace API
 $client = new FerryAI\ModelHub\HuggingFaceClient('hf_token');
 $info = $client->getModelInfo('sentence-transformers/all-MiniLM-L6-v2');
 $files = $client->listFiles('Qwen/Qwen3-0.6B');
@@ -505,11 +477,7 @@ FerryAI\ModelHub\ModelVerifier::verify($path, $sha256);
 FerryAI\ModelHub\Signature\Sha256Verifier::compute($path);
 
 // Format detection
-FerryAI\ModelHub\Format\FormatDetector::detect($path);  // 'onnx'|'gguf'|'safetensors'|'ai'|'rbm'|'unknown'
-
-// Cache
-$hub->cached('model-id');
-$hub->prune(1_000_000_000);  // 1GB limit, LRU eviction
+FerryAI\ModelHub\Format\FormatDetector::detect($path);
 ```
 
 ---
@@ -523,31 +491,18 @@ $result = $handler->retry(fn() => riskyOperation(), maxAttempts: 3, backoff: 'ex
 
 // Profiling
 FerryAI\Profiler::start('inference');
-$vec = $embedder->embed('text');
-FerryAI\Profiler::end('inference');                           // → float ms
-$report = FerryAI\Profiler::report();                          // {count, total_ms, avg_ms, min_ms, max_ms}
+// ... work ...
+FerryAI\Profiler::end('inference');
 
 // Metrics
 FerryAI\Metrics::increment('requests', ['backend' => 'onnx']);
-FerryAI\Metrics::timing('inference_ms', 12.5, ['model' => 'MiniLM']);
 
 // Logging
 $logger = new FerryAI\Core\Logger('/var/log/ferry-ai.log');
-$logger->info('Model loaded', ['model' => 'MiniLM', 'device' => 'cpu']);
 
 // Platform detection
 FerryAI\Core\PlatformDetector::os();        // 'windows'|'macos'|'linux'
 FerryAI\Core\PlatformDetector::arch();      // 'x86_64'|'aarch64'
-FerryAI\Core\PlatformDetector::platformKey();  // 'windows-x86_64'
-
-// Shared memory (ext-shmop)
-$shm = new FerryAI\SharedMemoryManager();
-if ($shm->isAvailable()) $shm->allocateModel('m1', '/path/to/model');
-
-// Async (Fibers)
-$async = new FerryAI\AsyncInference();
-$fiber = $async->runAsync(fn() => $embedder->embed('text'));
-$result = $async->wait($fiber, timeoutMs: 5000);
 ```
 
 ---
@@ -557,12 +512,9 @@ $result = $async->wait($fiber, timeoutMs: 5000);
 ### Laravel
 
 ```php
-// config/ferry-ai.php — all FERRY_AI_* env vars
 $provider = new FerryAI\Laravel\AIServiceProvider($app);
-$provider->register();    // → AI::config()
-
-// Facade
-\FerryAI\Laravel\Facades\AI::embed('text');   // proxies to FerryAI\AI
+$provider->register();    // → AI::config() from env
+\FerryAI\Laravel\Facades\AI::embed('text');
 ```
 
 ### Symfony
@@ -570,8 +522,6 @@ $provider->register();    // → AI::config()
 ```php
 $bundle = new FerryAI\Symfony\AIBundle();
 $bundle->boot();          // → AI::config()
-
-// config/packages/ferry_ai.yaml
 $extension = new FerryAI\Symfony\DependencyInjection\FerryAIExtension();
 $extension->load([['backend' => 'llama', 'device' => 'cuda']]);
 ```
@@ -581,7 +531,7 @@ $extension->load([['backend' => 'llama', 'device' => 'cuda']]);
 ## 14. Testing
 
 ```bash
-composer test                 # 568 unit tests — pure PHP, no native libs
+composer test                 # Unit tests — pure PHP, no native libs
 composer test-integration     # Integration — ONNX Runtime + llama.cpp
 composer check                # Gate: cs-fix + PHPStan lvl8 + Psalm lvl3 + tests
 composer cs-fix               # Auto-fix style (PER-CS 2.0)
@@ -589,37 +539,32 @@ composer cs-fix               # Auto-fix style (PER-CS 2.0)
 
 ---
 
-## 15. Status
-
-| Component | Ready |
-|-----------|-------|
-| ONNX inference (embeddings, classification) | ✅ Production |
-| Pure-PHP tokenizer (BPE, WordPiece) | ✅ Production |
-| Vector store (SQLite, brute-force, filter) | ✅ Production |
-| Pipeline (8 stages, Generator) | ✅ Production |
-| Model Hub (HF API, cache, verify) | ✅ Production |
-| CPU fallback | ✅ Always available |
-| Shared memory, async, metrics, profiling | ✅ Code ready |
-| Framework integrations | ✅ Standalone adapters |
-| llama.cpp backend | ⚠️ Probe OK. Full inference needs C-wrapper DLL |
-| GPU (CUDA/Metal/etc.) | 🔴 Not tested — CPU-only builds |
-| PostgreSQL vector store | 🔴 Not implemented — SQLite only |
-| DataFrame package | 🔴 Deferred — not required for inference |
-
----
-
-## 16. Documents
+## 15. Documents
 
 | File | Purpose |
 |------|---------|
-| `docs/TECHNICAL_SPECIFICATION.md` | Full architecture (35 sections) |
+| `docs/TECHNICAL_SPECIFICATION.md` | Full architecture |
 | `docs/INTERFACE_CONTRACTS.md` | Every method signature |
-| `docs/FILE_TREE.md` | Complete file map (131 source files) |
-| `docs/RESEARCH_ARCHITECTURE.md` | Why decisions were made |
-| `docs/DEBT_REPORT.md` | Technical debt inventory |
-| `docs/BUILD_LOG.md` | Development journal (all 4 phases) |
+| `docs/FILE_TREE.md` | Complete file map |
 | `docs/REPOSITORY_INFRASTRUCTURE.md` | CI/CD, composer, publishing |
 | `docs/SOURCES.md` | External dependency audit |
-| `docs/SKILL.md` | AI agent coding conventions |
+| `docs/getting-started.md` | Installation & first run |
+| `docs/configuration.md` | All config keys |
+| `docs/api-reference.md` | Facade & contracts quick reference |
+| `docs/backends/onnx.md` | ONNX Runtime setup & GPU |
+| `docs/backends/llama.md` | llama.cpp setup & samplers |
+| `docs/backends/cpu.md` | CPU backend (RubixML) |
+| `docs/embedding.md` | Embeddings & pooling |
+| `docs/vector-store.md` | Vector storage & search |
+| `docs/pipeline.md` | Composable processing stages |
+| `docs/model-hub.md` | HuggingFace download & cache |
+| `docs/tokenizer.md` | Pure PHP BPE/WordPiece |
+| `docs/tensor.md` | Tensor operations |
+| `docs/core.md` | Enums, utilities, platform detection |
+| `docs/streaming.md` | LLM token streaming |
+| `docs/security.md` | Security model |
+| `docs/troubleshooting.md` | Diagnostic guide |
+| `docs/deployment.md` | Production deployment |
+| `docs/laravel.md` | Laravel integration |
+| `docs/symfony.md` | Symfony integration |
 | `examples/` | 20 runnable examples |
-| `benchmarks/` | Performance measurement scripts |

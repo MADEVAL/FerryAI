@@ -28,7 +28,7 @@ Set `FERRY_AI_LLAMA_WRAPPER` to `ferry_llama.dll` (or `FERRY_AI_LLAMA_LIB` to `l
 same directory) and add that directory to `PATH`. Build the wrapper with
 `native/llama-wrapper/build.ps1`. See [backends/llama](backends/llama.md).
 
-## llama: “no backends are loaded”
+## llama: "no backends are loaded"
 
 The ggml backend DLLs (`ggml-cpu-*.dll`, `ggml-cuda.dll`) must sit next to `llama.dll`; the wrapper
 loads them from that directory (`ferry_load_backends`). Ensure the whole llama.cpp build is in one
@@ -36,15 +36,15 @@ folder on `PATH`.
 
 ## llama under PHPUnit crashes (`GGML_ASSERT` / premature end)
 
-Loading the native library runs ggml’s global constructors, which conflict with PHPUnit’s
-output/exception handling. Run LLM code in a **standalone process** (the integration test uses a
-subprocess harness). See `docs/DEBT_REPORT.md` §12.
+Loading the native library runs ggml's global constructors, which conflict with PHPUnit's
+output/exception handling. Run LLM code in a standalone process (the integration test uses a
+subprocess harness).
 
 ## GPU not used
 
 - llama.cpp: needs a CUDA build (`ggml-cuda.dll` + CUDA runtime) and `device: cuda`. Check
   `llama-bench -ngl 99` shows `loaded CUDA backend`.
-- ONNX: the bundled runtime is CPU-only here; a GPU build + CUDA/cuDNN is required (untested — §14).
+- ONNX: the bundled runtime is CPU-only here; a GPU build requires CUDA/cuDNN.
 
 ## sqlite-vec not active
 
@@ -64,8 +64,5 @@ This is expected; keep grammars small.
 
 ## RubixML: `RubixML is not installed`
 
-`rubix/ml` conflicts with the dev toolchain’s amphp; install it in an **isolated** location and set
-`FERRY_AI_RUBIXML_AUTOLOAD`. See `docs/DEBT_REPORT.md` §15.
-
-Still stuck? The honest status of every feature and its limits is in
-[`DEBT_REPORT.md`](DEBT_REPORT.md).
+`rubix/ml` conflicts with the dev toolchain's amphp; install it in an isolated location and set
+`FERRY_AI_RUBIXML_AUTOLOAD`.

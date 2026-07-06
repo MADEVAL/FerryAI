@@ -14,38 +14,92 @@ $out = AI::pipeline()
     ->run(['hi', 'hello', 'hey']);        // Generator → ['HELLO']
 ```
 
-`run()` accepts a single value, an array, or a Generator and returns a `Generator`. A stage
-returning `null` filters the item out. `__invoke` supports the PHP 8.5 pipe operator.
+`run()` accepts a single value, an array, or a `Generator` and returns a `Generator`.
+A stage returning `null` filters the item out. Stages are PHP 8.5 pipe-operator compatible.
+
+## Contract
+
+```php
+interface Stage
+{
+    public function __invoke(mixed $item): mixed;   // return null to drop
+}
+
+interface Pipeline
+{
+    public function pipe(Stage $stage): static;
+    public function run(mixed $items): \Generator;
+}
+```
 
 ## Built-in stages
 
-| Stage | Purpose | Needs |
-|-------|---------|-------|
-| `TransformStage` | map each item via a callable | — |
-| `FilterStage` | drop items failing a predicate | — |
-| `NormalizeStage` | normalise input shape | — |
-| `ChunkStage` | split text into chunks | tokenizer |
-| `TokenizeStage` | tokenize text | tokenizer |
-| `EmbedStage` | text → embedding | embedding backend |
-| `ClassifyStage` | text → `ClassificationResult` | classifier model |
-| `StoreStage` | persist to a vector store | vector store |
+| Stage | Constructor | Purpose |
+|-------|------------|---------|
+| `TransformStage` | `(callable $fn)` | Map each item through a callable |
+| `FilterStage` | `(callable $predicate)` | Drop items failing the predicate |
+| `NormalizeStage` | `(?int $dimension)` | Normalize input shape / values |
+| `ChunkStage` | `(Tokenizer $tok, int $size, ?int $overlap)` | Split text into overlapping chunks |
+| `TokenizeStage` | `(Tokenizer $tok, ?int $maxLength)` | Encode text to token IDs |
+| `EmbedStage` | `(Embedder $embedder)` | Text → embedding vector |
+| `ClassifyStage` | `(Backend $backend, string $modelPath)` | Text → `ClassificationResult` |
+| `StoreStage` | `(VectorStore $store, ?string $idPrefix)` | Persist results to a vector store |
 
 ## RAG example
 
-Index documents, then query — embed → store → search:
+Index documents into a vector store, then query:
 
 ```php
+$tok = AI::tokenizer('/path/to/tokenizer.json');
+$store = AI::vector('knowledge');
+
+// Index phase: chunk → embed → store
 AI::pipeline()
-    ->pipe(new ChunkStage($tokenizer, size: 256))
+    ->pipe(new ChunkStage($tok, size: 256, overlap: 32))
     ->pipe(new EmbedStage($embedder))
     ->pipe(new StoreStage($store))
     ->run($documents);
+
+// Query phase: embed → search
+$query = 'What is PHP?';
+$hits = $store->search(AI::embed($query)->vector, k: 5);
 ```
 
 See [`examples/06-rag.php`](../examples/06-rag.php) and
 [`examples/07-pipeline.php`](../examples/07-pipeline.php).
 
-## Async
+## Custom stages
 
-`FiberPipeline::runAsync()` returns a `Fiber` for non-blocking execution; see
-[`examples/14-async.php`](../examples/14-async.php).
+Implement `Stage` and return `null` to drop an item:
+
+```php
+use FerryAI\Core\Contracts\Stage;
+
+class UppercaseStage implements Stage
+{
+    public function __invoke(mixed $item): mixed
+    {
+        return is_string($item) ? strtoupper($item) : null;
+    }
+}
+
+$out = AI::pipeline()->pipe(new UppercaseStage())->run(['hello', 'world']);
+```
+
+## Async (Fibers)
+
+`FiberPipeline` extends `Pipeline` with `runAsync()` which returns a `Fiber`:
+
+```php
+$fiber = (new FiberPipeline())
+    ->pipe(new EmbedStage($embedder))
+    ->pipe(new StoreStage($store))
+    ->runAsync($documents);
+
+// Do other work...
+while (!$fiber->isTerminated()) {
+    sleep(0.01);
+}
+```
+
+See [`examples/14-async.php`](../examples/14-async.php).

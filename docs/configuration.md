@@ -21,6 +21,9 @@ AI::config([
 | `max_tokens` | `2048` | Default generation length. |
 | `temperature` | `0.7` | Default sampling temperature (0 = greedy). |
 | `top_p` | `1.0` | Default nucleus threshold. |
+| `stream_timeout` | `30` | Max seconds for a streaming response. |
+| `verify_signatures` | `true` | Enforce SHA-256 / Ed25519 model verification. |
+| `log_level` | `warning` | PSR-style log level: `debug`, `info`, `warning`, `error`. |
 
 ## `backends.*`
 
@@ -30,7 +33,7 @@ AI::config([
 | `backends.embedding.tokenizer_path` | embedding | Override tokenizer.json location. |
 | `backends.classify.model_path` | `AI::classify()` | Classification ONNX model. |
 | `backends.moderate.model_path` | `AI::moderate()` | Moderation ONNX model. |
-| `backends.predict.model_path` | `AI::predict()` | RubixML `.rbm` model (see [security](security.md) / cpu backend). |
+| `backends.predict.model_path` | `AI::predict()` | RubixML `.rbm` model (see [cpu backend](backends/cpu.md)). |
 | `backends.llama.model_path` | `AI::chat()`, `AI::stream()` | GGUF model. |
 
 ## Embedding options
@@ -46,7 +49,8 @@ AI::config([
 | Key | Default | Meaning |
 |-----|---------|---------|
 | `vector.driver` | `sqlite` | `sqlite` or `pgsql` (`FERRY_AI_VECTOR_DRIVER`). |
-| `vector.db_path` | `:memory:` | SQLite path. |
+| `vector.dimension` | `0` | Expected vector dimension (0 = auto-detect from first insert). |
+| `vector.db_path` | `:memory:` | SQLite database path. |
 | `vector.dsn` | `pgsql:host=127.0.0.1;port=5432` | PostgreSQL DSN (`FERRY_AI_PG_DSN`). |
 | `vector.user` | `postgres` | PostgreSQL user (`FERRY_AI_PG_USER`). |
 | `vector.password` | `postgres` | PostgreSQL password (`FERRY_AI_PG_PASSWORD`). |
@@ -77,3 +81,15 @@ See [observability in the README](../README.md#observability--model-pool) and
 | `FERRY_AI_RUBIXML_AUTOLOAD` | Path to an isolated `rubix/ml` autoloader. |
 
 The directory holding native DLLs must be on `PATH` at runtime.
+
+## Dynamic configuration
+
+`AI::backend()` and `AI::device()` let you switch at runtime:
+
+```php
+AI::backend('llama');               // switch backend for next calls
+AI::device('cuda');                 // enable GPU offload
+```
+
+`AI::reset()` clears all facade state. `AI::warmup(['model1', 'model2'])` preloads models into
+the shared pool for instant first inference.

@@ -1,7 +1,6 @@
 # Changelog
 
 All notable changes to FerryAI. Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
-Detailed engineering notes live in [`docs/BUILD_LOG.md`](docs/BUILD_LOG.md).
 
 ## [Unreleased]
 
@@ -28,5 +27,3 @@ Detailed engineering notes live in [`docs/BUILD_LOG.md`](docs/BUILD_LOG.md).
 ### Fixed
 - `RubixMLAdapter::isAvailable()` used `class_exists` for the `Estimator` interface (now `interface_exists`).
 - All PHPStan level 8 findings resolved (gate fully green).
-
-See `docs/DEBT_REPORT.md` for the honest status of everything, including limitations.

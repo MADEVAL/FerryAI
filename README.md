@@ -145,7 +145,7 @@ omitted — always take the latest compatible build from the linked source.
 
 > CUDA note: GPU support means shipping a **CUDA-enabled native build** alongside the
 > **NVIDIA CUDA Toolkit**. llama.cpp GPU is verified on both OSes (Windows ~250 tok/s, WSL ~176 tok/s).
-> ONNX GPU additionally needs **cuDNN + curand + cufft** (see the ONNX GPU on Windows / WSL sections and `docs/DEBT_REPORT.md` §13).
+> ONNX GPU additionally needs **cuDNN + curand + cufft** (see the ONNX GPU on Windows / WSL sections).
 
 ### ONNX GPU on WSL (without sudo / passwordless root)
 
@@ -305,11 +305,11 @@ Details, flat API and limits: [`native/llama-wrapper/README.md`](native/llama-wr
 The wrapper is wired into `FerryAI\LlamaBackend` — `AI::chat()`/`AI::stream()` work on CPU and
 GPU. Sampling is per request: `temperature: 0` → greedy, `> 0` → nucleus; force one with
 `AI::chat($msgs, ['sampler' => 'top_k'])` or `['grammar' => '<gbnf>']`. A native top-k pre-filter
-keeps sampling fast. See `docs/DEBT_REPORT.md` §12.
+keeps sampling fast.
 
 ---
 
-## Verified (Windows x64, 2026-07-05)
+## Verified (Windows x64)
 
 | Component | Result |
 |-----------|--------|
@@ -318,14 +318,14 @@ keeps sampling fast. See `docs/DEBT_REPORT.md` §12.
 | llama.cpp FFI load (build 9873) | ✅ DLL loads, `llama_backend_init()` OK, `supports_mmap()`=YES |
 | llama.cpp inference via PHP FFI | ✅ CPU + GPU through the `ferry_llama` wrapper (Qwen2.5-0.5B, greedy) |
 | GPU (CUDA) — llama.cpp | ✅ RTX 4060, 25/25 layers offloaded, ~250 tok/s (native `llama-bench` ~384 tok/s) |
-| GPU (CUDA) — ONNX | ✅ CUDA provider detected; **verified on Windows** (RTX 4060, CUDA 13.1, cuDNN 9, 2026-07-06) **+ WSL** after extracting CUDA runtime libs from `.deb` packages (see ONNX GPU sections below). |
+| GPU (CUDA) — ONNX | ✅ CUDA provider detected; **verified on Windows** (RTX 4060, CUDA 13.1, cuDNN 9) **+ WSL** after extracting CUDA runtime libs from `.deb` packages (see ONNX GPU sections below). |
 | HuggingFace API | ✅ Qwen3-0.6B found, search works |
 | Vector store | ✅ SQLite CRUD, brute-force + sqlite-vec (vec0) native KNN, metadata filter |
 | Vector store (Postgres) | ✅ pgvector 0.8.4 native `<=>` search, HNSW index, metadata filter |
 | CPU backend | ✅ Tensor math (matmul/transpose/reshape/slice); RubixML `.rbm` predict/proba (isolated) |
 | Shared memory (shmop) | ✅ Allocate 2.5B key, attach, detach |
 | Async fibers | ✅ Suspend/resume, parallel tasks, timeout 10ms |
-| Linux / WSL | ✅ 687 unit + static analysis, all native backends verified on WSL2 Ubuntu 24.04 / PHP 8.5.8 (llama CPU+CUDA, ONNX CPU+GPU, sqlite-vec, RubixML; PostgreSQL: pg_hba.conf env blocker) |
+| Linux / WSL | ✅ 750+ unit + static analysis, all native backends verified on WSL2 Ubuntu 24.04 / PHP 8.5.8 (llama CPU+CUDA, ONNX CPU+GPU, sqlite-vec, RubixML; PostgreSQL: pg_hba.conf env blocker) |
 
 ---
 
@@ -354,7 +354,7 @@ packages/
 ## Testing
 
 ```bash
-composer test                # 687 unit tests — pure PHP
+composer test                # 750+ unit tests — pure PHP
 composer test-integration    # Integration — needs ONNX Runtime / llama.cpp / PostgreSQL
 composer check               # cs-fix + PHPStan lvl8 + Psalm lvl3 + tests — fully green
 ```
@@ -391,13 +391,9 @@ Guides: [getting-started](docs/getting-started.md) ·
 
 | Document | Purpose |
 |----------|---------|
-| [`docs/SKILL.md`](docs/SKILL.md) | AI coding conventions |
 | [`docs/TECHNICAL_SPECIFICATION.md`](docs/TECHNICAL_SPECIFICATION.md) | Architecture |
 | [`docs/FILE_TREE.md`](docs/FILE_TREE.md) | Complete file map |
 | [`docs/INTERFACE_CONTRACTS.md`](docs/INTERFACE_CONTRACTS.md) | Interface signatures |
-| [`docs/BUILD_LOG.md`](docs/BUILD_LOG.md) | Development journal |
-| [`docs/DEBT_REPORT.md`](docs/DEBT_REPORT.md) | Technical debt inventory |
-| [`docs/EXAMPLES_PLAN.md`](docs/EXAMPLES_PLAN.md) | Examples coverage matrix |
 | [`docs/SOURCES.md`](docs/SOURCES.md) | External stack reference |
 | [`docs/README.md`](docs/README.md) | Full navigator |
 

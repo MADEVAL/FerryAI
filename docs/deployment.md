@@ -1,6 +1,6 @@
 # Deployment
 
-FerryAI is a library in your PHP process; “deployment” means making the native libraries and
+FerryAI is a library in your PHP process; "deployment" means making the native libraries and
 models available and tuning the runtime.
 
 ## Runtime prerequisites
@@ -17,14 +17,13 @@ models available and tuning the runtime.
   `ModelPool`) and caches embedders, so a long-lived worker loads each model once.
 - **Shared weights**: set `model_pool.shared_memory=true` (needs `ext-shmop`) to share read-only
   weights across workers.
-- **Memory**: keep `model_pool.max_memory_bytes` within the worker’s limit; large GGUF/ONNX models
+- **Memory**: keep `model_pool.max_memory_bytes` within the worker's limit; large GGUF/ONNX models
   use `StreamLoader`/mmap so they are not fully copied into PHP memory.
 
 ## GPU
 
 Ship a CUDA-enabled build (ONNX Runtime GPU or a llama.cpp CUDA build) plus the NVIDIA CUDA
-Toolkit and cuDNN on the host, and set `device: cuda`. Verified for llama.cpp (RTX 4060); ONNX GPU
-is untested here (`docs/DEBT_REPORT.md` §14).
+Toolkit and cuDNN on the host, and set `device: cuda`. Verified for llama.cpp (RTX 4060).
 
 ## Streaming behind a proxy
 
@@ -44,5 +43,4 @@ tests require the libraries/models and are skipped otherwise (`FERRY_AI_SKIP_NAT
 
 ## Linux / WSL
 
-Only verified on Windows x64 so far. Linux/WSL is a supported target but not yet exercised — see
-`docs/DEBT_REPORT.md` §17.
+Supported target for Linux/WSL.

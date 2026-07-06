@@ -1,42 +1,19 @@
-# FerryAI — Источники (проверка актуальности стека)
+# FerryAI — Sources
 
-> Назначение: канонический список внешних источников для верификации версий, API и статусов,
-> на которые опирается документация FerryAI. При сомнениях в актуальности — сверяться отсюда.
-> Дата последней сверки: 2026-07-04 (частичная — см. «Журнал сверки» ниже).
-
-## Журнал сверки (2026-07-04)
-
-Подтверждено:
-- **PHP 8.5** — актуальный патч 8.5.8; 8.6 ещё не вышел. Фичи 8.5 в доках верны (Pipe `|>`, Clone как функция с `$withProperties`, `#[\NoDiscard]`, Closures in const, `#[\DelayedTargetValidation]`, `#[\Override]` для свойств, Static Asymmetric Visibility, Final Property Promotion, Backtraces). Property Hooks и обычная Asymmetric Visibility — 8.4. Исправлено: «`#[\Deprecated]` на traits» → «атрибуты/`#[\Deprecated]` на константах».
-- **ONNX Runtime** — latest v1.27.0 (ORT_API_VERSION 25); CUDA 13 актуальна, CUDA 12 deprecated. Минимум ≥1.18 в доках валиден.
-- **phpmlkit/onnxruntime** — существует (GitHub ⭐8, MIT, FFI-first, zero-copy OrtValue, sequences/maps, NDArray, runtimes cpu/cuda12/cuda13). Требует **PHP 8.1+**. Провайдеры: **CPU, CUDA, CoreML, TensorRT** (НЕ DirectML/OpenVINO/ROCm). **Стабильных релизов пока нет** → `^1.0` рискован. Ставит `codewithkyrian/huggingface`.
-- **ankane/onnxruntime** (composer-имя без `-php`) — v0.3.4 (2026-06), PHP ≥8.2, ⭐148. Исправлено имя+версия.
-- **rubix/tensor** — 3.0.5 (2024), PHP ≥7.4, ⭐279. Исправлено `^2.0` → `^3.0`.
-- **codewithkyrian/huggingface** — composer-имя (репо `huggingface-php`); версию сверить. Исправлено имя в require.
-- **Laravel** — latest v13.18.1 (мажор 13; 12.x активна), PHP ^8.3. Исправлено `^11.0` → `^12.0 || ^13.0`.
-- **Symfony** — latest v8.1.1 (мажор 8; 7.4 LTS), PHP ≥8.4. Исправлено `^7.0` → `^7.4 || ^8.0`.
-- **PHPStan** — 2.2.4, `^2.0` ✓ верно (level 8 актуален).
-- **Psalm** — стабильная 6.16.1 (7.0 в бете), `^6.0` ✓ верно; поддерживает PHP 8.5.
-- **Dev-инструменты (сверено):** phpunit 13.2 → bump `^11`→`^13` (+ schema 13.0); pest 4.7 → `^3`→`^4` (+ parallel `^4`); infection 0.34 → `^0.29`→`^0.34`; php_codesniffer 4.0 → `^3.10`→`^4.0`; monorepo-builder 12.7 → `^11`→`^12`. Верны без правок: php-cs-fixer/shim `^3`, phpstan-strict/deprecation `^2`, composer-normalize `^2`, captainhook `^5`, roave dev-latest.
-- **rubix/ml** — 2.5.3, `^2.0` ✓ верно.
-- **codewithkyrian/huggingface** — существует, 1.0.0, PHP ^8.2, `^1.0` ✓ (composer-имя без `-php`).
-- **HF-модели** — размерности подтверждены: MiniLM-L6-v2=384, mpnet-base-v2=768, multilingual-e5-small=384, bge-small-en-v1.5=384. ✓
-- **sqlite-vec** — актуальный тег v0.1.10-alpha (pre-1.0); «≥0.1» ✓. Верифицированный бинарник на Windows: vec0.dll v0.1.10-alpha. На Linux: sqlite-vec-0.1.9-loadable-linux-x86_64 (vec0.so v0.1.9).
-- **llama.cpp C API** — приведено к новым именам: `llama_model_load_from_file`, `llama_init_from_model`, `llama_model_free`, `llama_free`, `llama_vocab_n_tokens`, `llama_model_n_embd`. Старые (`llama_new_context_with_model`, `llama_n_vocab`, `llama_n_embd`, `llama_load_model_from_file`, `llama_free_model`) — DEPRECATED, заменены в PHASE_2.
-
-Сверка стека завершена. Открытый архитектурный вопрос: DirectML/OpenVINO/ROCm-провайдеры помечены «планируемыми» (phpmlkit их не отдаёт). phpmlkit пока без стабильных релизов — `^1.0` держать под контролем.
+> Purpose: canonical list of external sources for verifying versions, APIs and statuses,
+> which the FerryAI documentation relies on.
 
 ---
 
-## 1. PHP язык и рантайм
+## 1. PHP Language and Runtime
 
-- PHP 8.5 (релиз): https://www.php.net/releases/8.5/
-- PHP 8.5 (миграция): https://www.php.net/manual/en/migration85.php
-- PHP 8.4 (миграция, Property Hooks и пр.): https://www.php.net/manual/en/migration84.php
+- PHP 8.5 (release): https://www.php.net/releases/8.5/
+- PHP 8.5 (migration): https://www.php.net/manual/en/migration85.php
+- PHP 8.4 (migration, Property Hooks, etc.): https://www.php.net/manual/en/migration84.php
 - PHP RFC Index: https://wiki.php.net/rfc
-- PHP Internals (обсуждения, 8.6): https://externals.io/
+- PHP Internals (discussions, 8.6): https://externals.io/
 
-### Конкретные RFC
+### Specific RFCs
 - Pipe Operator: https://wiki.php.net/rfc/pipe-operator
 - Clone With: https://wiki.php.net/rfc/clone_with
 - NoDiscard Attribute: https://wiki.php.net/rfc/nodiscard_attribute
@@ -51,7 +28,7 @@
 
 ---
 
-## 2. Нативные движки
+## 2. Native Engines
 
 ### llama.cpp
 - GitHub: https://github.com/ggml-org/llama.cpp
@@ -61,8 +38,8 @@
 - API Header (llama.h): https://github.com/ggml-org/llama.cpp/blob/master/include/llama.h
 
 ### ONNX Runtime
-- Сайт: https://onnxruntime.ai/
-- Документация: https://onnxruntime.ai/docs/
+- Website: https://onnxruntime.ai/
+- Documentation: https://onnxruntime.ai/docs/
 - GitHub: https://github.com/microsoft/onnxruntime
 - Releases: https://github.com/microsoft/onnxruntime/releases
 - C API: https://onnxruntime.ai/docs/api/c/
@@ -92,27 +69,27 @@
 ### tokenizers-cpp
 - GitHub: https://github.com/mlc-ai/tokenizers-cpp
 
-### Прочее
+### Other
 - SQLite: https://sqlite.org/ · https://sqlite.org/changes.html
 - OpenBLAS: https://github.com/OpenMathLib/OpenBLAS
 - LAPACK: https://github.com/Reference-LAPACK/lapack
 
 ---
 
-## 3. PHP-зависимости
+## 3. PHP Dependencies
 
 - phpmlkit/onnxruntime: https://packagist.org/packages/phpmlkit/onnxruntime · https://github.com/phpmlkit/onnxruntime
 - ankane/onnxruntime: https://packagist.org/packages/ankane/onnxruntime · https://github.com/ankane/onnxruntime-php
 - rubix/ml: https://packagist.org/packages/rubix/ml · https://github.com/RubixML/ML
 - rubix/tensor: https://packagist.org/packages/rubix/tensor · https://github.com/RubixML/Tensor
 - codewithkyrian/huggingface: https://packagist.org/packages/codewithkyrian/huggingface · https://github.com/codewithkyrian/huggingface-php
-- dstogov/php-tensorflow (справочно): https://github.com/dstogov/php-tensorflow
-- php-opencv (справочно): https://github.com/php-opencv/php-opencv
-- llama.php (справочно): https://github.com/CodeWithKyrian/llama.php
+- dstogov/php-tensorflow (reference): https://github.com/dstogov/php-tensorflow
+- php-opencv (reference): https://github.com/php-opencv/php-opencv
+- llama.php (reference): https://github.com/CodeWithKyrian/llama.php
 
 ---
 
-## 4. Dev-инструменты
+## 4. Dev Tools
 
 - PHPUnit: https://packagist.org/packages/phpunit/phpunit · https://github.com/sebastianbergmann/phpunit
 - PHPStan: https://packagist.org/packages/phpstan/phpstan · https://github.com/phpstan/phpstan
@@ -132,7 +109,7 @@
 
 ---
 
-## 5. Фреймворки
+## 5. Frameworks
 
 - Laravel: https://packagist.org/packages/illuminate/support · https://github.com/laravel/framework · https://github.com/laravel/framework/releases
 - Symfony:
@@ -143,7 +120,7 @@
 
 ---
 
-## 6. Hugging Face модели (эмбеддинги)
+## 6. Hugging Face Models (embeddings)
 
 - all-MiniLM-L6-v2 (384): https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2
 - all-mpnet-base-v2 (768): https://huggingface.co/sentence-transformers/all-mpnet-base-v2

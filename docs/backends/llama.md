@@ -1,42 +1,81 @@
 # llama.cpp backend
 
-`FerryAI\LlamaBackend\LlamaBackend` runs GGUF LLMs on CPU and GPU via llama.cpp. Because PHP FFI
-cannot safely pass llama.cpp's by-value struct params, FerryAI talks to a thin **`ferry_llama`
-C wrapper** (see [`native/llama-wrapper`](../../native/llama-wrapper/README.md)) that exposes a
-flat, pointer-only API.
+`FerryAI\LlamaBackend\LlamaBackend` runs GGUF LLMs on CPU and GPU via llama.cpp. Because
+PHP FFI cannot safely pass llama.cpp's by-value struct params, FerryAI talks to a thin
+**`ferry_llama` C wrapper** (see [`native/llama-wrapper`](../../native/llama-wrapper/README.md))
+that exposes a flat, pointer-only API.
 
 ## What you need
 
-1. **llama.cpp Windows build** — `llama.dll`, `ggml.dll`, `ggml-base.dll`, `ggml-cpu-*.dll`; for GPU
-   also `ggml-cuda.dll` + CUDA runtime. From
-   [ggml-org/llama.cpp releases](https://github.com/ggml-org/llama.cpp/releases)
-   (CUDA build: `llama-bXXXX-bin-win-cuda-*.zip`).
-2. **CUDA Toolkit** for GPU: <https://developer.nvidia.com/cuda-downloads>.
-3. **Matching headers** (same commit) + **`ferry_llama.dll`** built with
-   [`native/llama-wrapper/build.ps1`](../../native/llama-wrapper/build.ps1).
+1. **llama.cpp build** — shared libs (`llama.dll` + `ggml.dll` + `ggml-base.dll` +
+   `ggml-cpu-*.dll`); for GPU also `ggml-cuda.dll` + CUDA runtime. From
+   [ggml-org/llama.cpp releases](https://github.com/ggml-org/llama.cpp/releases).
+2. **`ferry_llama.dll`** (or `.so`/`.dylib`) — the C wrapper, built with
+   `native/llama-wrapper/build.ps1` (Windows) or `native/llama-wrapper/build.sh` (Linux/macOS).
+3. **Matching headers** (same commit as the build): `llama.h`, `ggml.h`, `ggml-cpu.h`,
+   `ggml-backend.h`, `ggml-alloc.h`, `ggml-opt.h`, `gguf.h`.
 4. A **GGUF model**, e.g. `bartowski/Qwen2.5-0.5B-Instruct-GGUF` from HuggingFace.
+5. For GPU: **CUDA Toolkit** → <https://developer.nvidia.com/cuda-downloads>.
+
+## Build the wrapper
+
+**Windows:**
+```powershell
+powershell -File native/llama-wrapper/build.ps1 -LlamaDir D:\FerryAI
+```
+
+**Linux / WSL:**
+```bash
+bash native/llama-wrapper/build.sh /opt/llama
+```
+
+The build script generates DLL import libs from the shared libs, compiles `ferry_llama.c`,
+and links against the llama.cpp libraries. It auto-detects CUDA when `ggml-cuda.dll`/`.so`
+is present.
 
 ## Configure
 
 ```php
-putenv('FERRY_AI_LLAMA_WRAPPER=D:\FerryAI\ferry_llama.dll');  // or FERRY_AI_LLAMA_LIB=…\llama.dll
-putenv('PATH=D:\FerryAI;' . getenv('PATH'));                   // dir with the DLLs
+// Point at the wrapper DLL (or set FERRY_AI_LLAMA_LIB to llama.dll in the same dir)
+putenv('FERRY_AI_LLAMA_WRAPPER=D:\FerryAI\ferry_llama.dll');
+putenv('PATH=D:\FerryAI;' . getenv('PATH'));   // DLLs must be on PATH
 
 AI::config([
     'backend'  => 'llama',
     'device'   => 'cuda',        // or 'cpu'
-    'backends' => ['llama' => ['model_path' => 'D:\FerryAI\qwen-0.5b.Q4_K_M.gguf']],
+    'backends' => [
+        'llama' => [
+            'model_path'     => 'D:\FerryAI\qwen-0.5b.Q4_K_M.gguf',
+            'n_gpu_layers'   => 25,      // how many layers to offload (0 = CPU only)
+            'n_ctx'           => 2048,   // context window size
+        ],
+    ],
 ]);
+```
+
+**Linux / WSL:**
+```bash
+export FERRY_AI_LLAMA_WRAPPER=/opt/llama/libferry_llama.so
+export LD_LIBRARY_PATH=/opt/llama:$LD_LIBRARY_PATH
+
+# For CUDA:
+export FERRY_AI_LLAMA_WRAPPER=/opt/llama-cuda/libferry_llama.so
+export LD_LIBRARY_PATH=/opt/llama-cuda:/usr/local/cuda/lib64:$LD_LIBRARY_PATH
 ```
 
 ## Chat & stream
 
 ```php
-$reply = AI::chat([['role' => 'user', 'content' => 'Capital of France?']]);
-echo $reply->text;                      // "The capital of France is Paris."
+// Complete generation
+$reply = AI::chat([
+    ['role' => 'user', 'content' => 'What is the capital of France?'],
+]);
+echo $reply->text;                         // "The capital of France is Paris."
 
+// Token-by-token streaming
 foreach (AI::stream([['role' => 'user', 'content' => 'Count to 5']]) as $piece) {
-    echo $piece;                        // 1 2 3 4 5
+    echo $piece;                           // 1 2 3 4 5
+    @ob_flush(); @flush();
 }
 ```
 
@@ -44,74 +83,103 @@ See [streaming](../streaming.md) and [`examples/03-chat.php`](../../examples/03-
 
 ## Sampling
 
-Per request via chat options:
+Sampling is per-request via chat options. FerryAI ships these samplers:
 
-- `temperature: 0` → greedy (deterministic); `> 0` → nucleus (top-p).
-- `sampler: 'greedy'|'top_k'|'top_p'|'grammar'` to force one.
-- `grammar: '<gbnf>'` (or a JSON-Schema array) → strict grammar-constrained output
-  (`root ::= "yes" | "no"` yields exactly `yes`/`no`). Supported GBNF subset: literals, char
-  classes, `|`, sequences, `( )`, `* + ?`, rule references, `#` comments.
+| Sampler | Class | Behavior |
+|---------|-------|----------|
+| `greedy` | `GreedySampler` | Always pick highest-probability token (temperature=0) |
+| `top_p` | `TopPSampler` | Nucleus sampling — pick from tokens whose cumulative prob ≤ top_p |
+| `top_k` | `TopKSampler` | Sample from top-K most likely tokens |
+| `grammar` | `GrammarSampler` | Constrained sampling — only tokens that match the grammar |
 
-A native top-k pre-filter keeps greedy/top-p/top-k fast; grammar must scan the full vocab and is
-slower.
+The default strategy: `temperature == 0` → greedy; `temperature > 0` → top-p (nucleus).
+A native top-K pre-filter keeps all samplers fast.
 
-## Verified
+```php
+// Greedy (deterministic)
+AI::chat($msgs, ['temperature' => 0]);
 
-RTX 4060, llama.cpp build 9873: CPU and GPU chat/stream work; the model is pooled across calls
-(second chat ~11 ms vs ~470 ms first). Status & limitations: `docs/DEBT_REPORT.md` §12/§14.
+// Top-K (force k=10 candidates)
+AI::chat($msgs, ['sampler' => 'top_k']);
+
+// Grammar-constrained (GBNF)
+AI::chat($msgs, ['grammar' => 'root ::= "yes" | "no"']);
+
+// Grammar-constrained (JSON Schema auto-converted)
+AI::chat($msgs, ['grammar' => [
+    'type' => 'object',
+    'properties' => [
+        'city'   => ['type' => 'string'],
+        'country' => ['type' => 'string'],
+    ],
+    'required' => ['city', 'country'],
+]]);
+```
+
+GBNF grammar support includes: literals, character classes (`[a-z]`), alternation (`|`),
+sequences, grouping (`( )`), repetition (`*`, `+`, `?`), rule references, and `#` comments.
+
+`SamplerMath` provides the shared `softmax`/`argmax`/`weightedPick`/`applyPenalties` routines.
+`SamplerFactory` maps string names to sampler instances.
+
+## ChatFormatter templates
+
+`ChatFormatter` converts `ChatMessage[]` arrays into the format the LLM expects:
+
+| Template | Format | Auto-detected for |
+|----------|--------|-------------------|
+| `chatml` (default) | `<|im_start|>role\ncontent<|im_end|>` | Qwen, Phi |
+| `llama3` | `<|begin_of_text|><|start_header_id|>role<|end_header_id|>\n\ncontent<|eot_id|>` | LLaMA 3 |
+| `vicuna` | `USER: content\nASSISTANT: content` | Vicuna |
+| `alpaca` | `### Instruction:\ncontent\n### Response:\ncontent` | Alpaca |
+| `mistral` | `[INST] content [/INST] content` | Mistral |
+
+Override with `backends.llama.chat_template` config or let auto-detection pick from
+the GGUF metadata.
+
+## Architecture
+
+| Class | Purpose |
+|-------|---------|
+| `LlamaBackend` | Implements `Backend` — `isAvailable()`, `load()`, `version()` |
+| `LlamaModel` | Implements `Model` — `runComplete()`, `runStream()`, `metadata()` |
+| `FerryLlama` | Single FFI wrapper for the `ferry_llama` C API (all pointer args) |
+| `NativeLlamaRuntime` | Production FFI implementation of `LlamaRuntimeInterface` |
+| `NativeLlamaSession` | Production session wrapper around the native context |
+| `ChatFormatter` | Converts chat messages to the LLM's expected format |
+| `LlamaContextParams` | Value object for llama context parameters |
+| `LlamaModelParams` | Value object for llama model parameters |
+
+## Verified performance
+
+RTX 4060, llama.cpp build 9873:
+
+| Path | Tok/s |
+|------|-------|
+| Native `llama-cli` (CPU) | ~328 |
+| Native `llama-bench` (CUDA, `-ngl 99`) | ~384 |
+| **`AI::chat()` (CPU, Linux/WSL)** | ~100 |
+| **`AI::chat()` (GPU, WSL)** | ~176 |
+| **`AI::chat()` (GPU, Windows)** | ~250 |
+
+Model is pooled — first call ~470ms, subsequent calls ~11ms (context is re-created per
+chat but weights are shared).
 
 ## Notes
 
-- Runs in a normal PHP process; under PHPUnit the ggml global constructors conflict, so the
-  integration test drives chat in a subprocess.
+- Runs in a normal PHP process. Under PHPUnit, ggml global constructors conflict with
+  PHPUnit's output buffering — integration tests run in a subprocess.
 - `ferry_llama.dll` is machine-built and not committed — build it or ship a prebuilt binary.
+- `model_path` in config should point at the GGUF file, not a directory.
 
----
+## Appendix: Why the C wrapper?
 
-## Appendix: FFI ABI investigation (historical)
+The historical investigation (see `docs/DEBT_REPORT.md` §12) confirmed that `llama_model_load_from_file`
+crashes when called directly via PHP FFI. The function takes `struct llama_model_params` **by value**
+(64 bytes on x64). While PHP FFI can infer the struct layout from the CDEF, the DLL is compiled with
+**Clang 20.1.8** on GitHub Actions, while PHP FFI on Windows uses the MSVC-compatible ABI. The
+mismatch causes `GGML_ASSERT` failures in `llama-hparams.cpp`.
 
-The direct `llama.dll` → PHP FFI path was investigated and found to crash on
-`llama_model_load_from_file` — this is what the wrapper solves. Key findings kept for context.
-
-### Environment (build 9873, commit `a4107133a`)
-
-| Item | Value |
-|------|-------|
-| Native CLI | `llama-cli -m model.gguf -p "Hello" -n 5` → "Hello! How can I" at **309 t/s** ✅ |
-| `FFI::cdef` | Loads when the DLL dir is on `PATH` |
-| `llama_backend_init` | No crash (loaded backend from `ggml-cpu-x64.dll`) |
-| `supports_mmap` | `true` |
-| Model metadata read | ✅ 38 KV pairs, 290 tensors, tokenizer (151,936 tokens, BPE) |
-| GPU | RTX 4060, `ggml-cuda.dll` present; CUDA backend loads and is verified via the wrapper |
-
-### The crash: struct-by-value ABI
-
-`llama_model_load_from_file` takes `struct llama_model_params` **by value** (64 bytes on x64).
-PHP FFI infers the layout from the CDEF, but the DLL was compiled with **Clang 20.1.8** on
-GitHub Actions, while PHP FFI uses the platform-default C ABI (MSVC-compatible on Windows).
-The mismatch causes `llama-hparams.cpp:55: fatal error`.
-
-Layout verified via `FFI::sizeof`:
-```
-Offset  Size  Field
-0       8     devices (void*)
-8       8     tensor_buft_overrides (void*)
-16      4     n_gpu_layers (int32)
-20      4     split_mode (int32)
-24      4     main_gpu (int32)
-28      4     _pad (explicit padding)
-32      8     tensor_split (float*)
-40      8     progress_callback (fn ptr)
-48      8     progress_callback_user_data (void*)
-56      8     kv_overrides (void*)
-Total: 64 bytes
-```
-
-Despite byte-level match, the crash persisted → the flat C wrapper (`ferry_llama`) was chosen
-as the reliable solution.
-
-### PHPUnit conflict
-
-Under PHPUnit the DLL crashes on `FFI::cdef()` with `GGML_ASSERT(prev != ggml_uncaught_exception)`
-— a C++ exception-state conflict between PHPUnit's output buffering and GGML's global constructors.
-Standalone PHP scripts work fine. The integration test therefore runs the harness in a subprocess.
+The `ferry_llama` wrapper solves this by accepting all parameters as **pointers**, which are ABI-safe:
+`ferry_llama_model_load(const char *path, const struct llama_model_params *params)` — the struct
+pointer is trivially 8 bytes, regardless of ABI.

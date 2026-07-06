@@ -2,7 +2,7 @@
 
 ## Model provenance & verification
 
-Models are executable artefacts — treat them like dependencies.
+Models are executable artefacts -- treat them like dependencies.
 
 - **Never commit models** to the repo (they are `.gitignore`d).
 - Verify downloads before use:
@@ -13,9 +13,9 @@ Models are executable artefacts — treat them like dependencies.
 
 ## Deserialization (RubixML `.rbm`)
 
-The CPU backend loads RubixML estimators. RubixML’s RBX format is preferred; a legacy path uses
-PHP `unserialize()`. **Only load `.rbm` files you produced/trust** — `unserialize` on untrusted
-input is dangerous. See the CPU backend notes and `docs/DEBT_REPORT.md` §15.
+The CPU backend loads RubixML estimators. RubixML's RBX format is preferred; a legacy path uses
+PHP `unserialize()`. **Only load `.rbm` files you produced/trust** -- `unserialize` on untrusted
+input is dangerous. See the CPU backend notes.
 
 ## FFI boundary
 
@@ -24,7 +24,7 @@ sqlite-vec, tokenizers-cpp). Implications:
 
 - Load native libraries only from controlled paths; the directory on `PATH` should not be
   world-writable.
-- FFI executes native code in-process — a malicious/corrupt library has full process access.
+- FFI executes native code in-process -- a malicious/corrupt library has full process access.
 - FerryAI never uses `shell_exec`/subprocess to Python; all native access is FFI.
 
 ## Input handling

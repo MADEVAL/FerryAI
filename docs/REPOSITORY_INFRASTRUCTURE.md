@@ -1,22 +1,22 @@
-# FerryAI — Инфраструктура репозитория
+# FerryAI — Repository Infrastructure
 
-> Версия: 1.0  
-> Назначение: полное описание инфраструктуры монорепо — composer, тестирование, CI/CD, публикация, инструменты  
-> Целевые ОС: Windows (основная разработка), Linux, macOS  
-> Принцип: единая конфигурация на все платформы, ни один разработчик не должен гадать, как запустить
+> Version: 1.0  
+> Purpose: complete description of the monorepo infrastructure — composer, testing, CI/CD, publication, tools  
+> Target OS: Windows (primary development), Linux, macOS  
+> Principle: single configuration for all platforms, no developer should guess how to run
 
 ---
 
-## 0. СТРУКТУРА КОРНЯ РЕПОЗИТОРИЯ
+## 0. ROOT REPOSITORY STRUCTURE
 
 ```
 php-inference/
 ├── .github/
 │   ├── workflows/
-│   │   ├── ci.yml                    # Основной CI: тесты + статанализ
-│   │   ├── release.yml               # Сборка бинарников + Packagist
-│   │   └── docs.yml                  # Генерация и публикация документации
-│   └── dependabot.yml               # Автообновление зависимостей
+│   │   ├── ci.yml                    # Main CI: tests + static analysis
+│   │   ├── release.yml               # Binary build + Packagist
+│   │   └── docs.yml                  # Documentation generation and publication
+│   └── dependabot.yml               # Auto-update dependencies
 ├── packages/
 │   ├── core/
 │   ├── tensor/
@@ -37,7 +37,7 @@ php-inference/
 │   ├── chat.php
 │   └── vector.php
 ├── bin/
-│   └── ferry-ai                      # CLI-инструмент
+│   └── ferry-ai                      # CLI tool
 ├── docs/
 │   ├── index.md
 │   ├── getting-started.md
@@ -58,11 +58,11 @@ php-inference/
 │   ├── deployment.md
 │   ├── troubleshooting.md
 │   ├── api-reference.md
-│   └── specs/                         # Валидированные дизайн-спеки (YYYY-MM-DD-<topic>-design.md)
+│   └── specs/                         # Validated design specs (YYYY-MM-DD-<topic>-design.md)
 ├── tests/
-│   ├── Integration/                   # Интеграционные тесты (cross-package, @group integration)
-│   ├── Verification/                  # Runtime-тесты проверки багов/аудита (@coversNothing)
-│   └── .env                          # Переменные для тестов
+│   ├── Integration/                   # Integration tests (cross-package, @group integration)
+│   ├── Verification/                  # Runtime bug/audit verification tests (@coversNothing)
+│   └── .env                          # Environment variables for tests
 ├── .gitattributes
 ├── .gitignore
 ├── .editorconfig
@@ -70,9 +70,9 @@ php-inference/
 ├── phpstan.neon
 ├── psalm.xml
 ├── phpunit.xml.dist
-├── infection.json5                   # Мутационное тестирование
-├── composer.json                     # Root: мета-пакет + dev-зависимости
-├── monorepo-builder.php              # Инструмент монорепо (symplify)
+├── infection.json5                   # Mutation testing
+├── composer.json                     # Root: meta-package + dev dependencies
+├── monorepo-builder.php              # Monorepo tool (symplify)
 ├── CHANGELOG.md
 ├── CODE_OF_CONDUCT.md
 ├── CONTRIBUTING.md
@@ -83,7 +83,7 @@ php-inference/
 
 ---
 
-## 1. COMPOSER — УПРАВЛЕНИЕ ПАКЕТАМИ
+## 1. COMPOSER — PACKAGE MANAGEMENT
 
 ### 1.1. Root `composer.json`
 
@@ -242,7 +242,7 @@ php-inference/
 }
 ```
 
-### 1.2. Пакетный `composer.json` (шаблон для всех подпакетов)
+### 1.2. Package `composer.json` (template for all subpackages)
 
 ```json
 {
@@ -283,32 +283,32 @@ php-inference/
 }
 ```
 
-**Особенности для каждого пакета:**
+**Features per package:**
 
-| Пакет | Дополнительные `require` | `provide` / `suggest` |
+| Package | Additional `require` | `provide` / `suggest` |
 |---|---|---|
-| `core` | (нет) | — |
-| `tensor` | `ferry-ai/inference-core: ^1.0` | `ext-random: *` (для random-заполнения) |
-| `onnx-backend` | `ferry-ai/inference-core: ^1.0`, `phpmlkit/onnxruntime: ^1.0` | `ankane/onnxruntime: ^0.3` (резервный) |
+| `core` | (none) | — |
+| `tensor` | `ferry-ai/inference-core: ^1.0` | `ext-random: *` (for random-fill) |
+| `onnx-backend` | `ferry-ai/inference-core: ^1.0`, `phpmlkit/onnxruntime: ^1.0` | `ankane/onnxruntime: ^0.3` (fallback) |
 | `llama-backend` | `ferry-ai/inference-core: ^1.0` | — |
 | `cpu-backend` | `ferry-ai/inference-core: ^1.0` | `rubix/ml: ^2.0`, `rubix/tensor: ^3.0` |
 | `tokenizer` | `ferry-ai/inference-core: ^1.0` | — |
 | `embedding` | `ferry-ai/inference-core: ^1.0`, `ferry-ai/inference-onnx-backend: ^1.0`, `ferry-ai/inference-tokenizer: ^1.0` | — |
 | `pipeline` | `ferry-ai/inference-core: ^1.0` | — |
 | `model-hub` | `ferry-ai/inference-core: ^1.0`, `codewithkyrian/huggingface: ^1.0` | `ext-zip: *`, `ext-sodium: *` |
-| `vector` | `ferry-ai/inference-core: ^1.0`, `ferry-ai/inference-embedding: ^1.0` | `ext-pdo_sqlite: *` или `ext-sqlite3: *` |
+| `vector` | `ferry-ai/inference-core: ^1.0`, `ferry-ai/inference-embedding: ^1.0` | `ext-pdo_sqlite: *` or `ext-sqlite3: *` |
 | `dataframe` | `ferry-ai/inference-core: ^1.0`, `ferry-ai/inference-tensor: ^1.0` | — |
-| `ai` | `ferry-ai/inference-core: ^1.0`, `ferry-ai/inference-onnx-backend: ^1.0`, `ferry-ai/inference-llama-backend: ^1.0`, `ferry-ai/inference-cpu-backend: ^1.0`, `ferry-ai/inference-tokenizer: ^1.0`, `ferry-ai/inference-embedding: ^1.0`, `ferry-ai/inference-pipeline: ^1.0`, `ferry-ai/inference-model-hub: ^1.0`, `ferry-ai/inference-vector: ^1.0` | `psr/http-message: ^2.0` (для StreamResponse) |
+| `ai` | `ferry-ai/inference-core: ^1.0`, `ferry-ai/inference-onnx-backend: ^1.0`, `ferry-ai/inference-llama-backend: ^1.0`, `ferry-ai/inference-cpu-backend: ^1.0`, `ferry-ai/inference-tokenizer: ^1.0`, `ferry-ai/inference-embedding: ^1.0`, `ferry-ai/inference-pipeline: ^1.0`, `ferry-ai/inference-model-hub: ^1.0`, `ferry-ai/inference-vector: ^1.0` | `psr/http-message: ^2.0` (for StreamResponse) |
 | `laravel` | `ferry-ai/inference-ai: ^1.0`, `illuminate/support: ^12.0 \|\| ^13.0` | — |
 | `symfony` | `ferry-ai/inference-ai: ^1.0`, `symfony/http-kernel: ^7.4 \|\| ^8.0`, `symfony/config: ^7.4 \|\| ^8.0`, `symfony/dependency-injection: ^7.4 \|\| ^8.0` | — |
 
 ---
 
-## 2. УПРАВЛЕНИЕ МОНОРЕПО
+## 2. MONOREPO MANAGEMENT
 
-### 2.1. Инструмент: `symplify/monorepo-builder`
+### 2.1. Tool: `symplify/monorepo-builder`
 
-**Файл:** `monorepo-builder.php`
+**File:** `monorepo-builder.php`
 
 ```php
 <?php
@@ -336,43 +336,41 @@ return static function (MBConfig $config): void {
 };
 ```
 
-**Команды:**
+**Commands:**
 ```bash
-# Валидация структуры монорепо
+# Validate monorepo structure
 vendor/bin/monorepo-builder validate
 
-# Обновление взаимных зависимостей пакетов (при разработке)
+# Update mutual package dependencies (during development)
 vendor/bin/monorepo-builder merge
 
-# Просмотр объединённого composer.json (для отладки)
+# View merged composer.json (for debugging)
 vendor/bin/monorepo-builder merge --dry-run
 
-# Релиз
+# Release
 vendor/bin/monorepo-builder release v1.0.0
 ```
 
-### 2.2. Релизный процесс одного пакета
+### 2.2. Release process for a single package
 
-Каждый подпакет публикуется на Packagist **отдельно** через GitHub-репозиторий-поддерево (subtree split) или отдельные репозитории-зеркала.
+Each subpackage is published to Packagist **separately** via a GitHub subtree split repository or separate mirror repositories.
 
-**Стратегия split (варианты):**
+**Split strategy (options):**
 
-**Вариант A: GitHub Actions + subtree split (рекомендуется)**
-- Каждый подпакет автоматически зеркалируется в свой репозиторий
-- Packagist подписан на каждый репозиторий отдельно
+**Option A: GitHub Actions + subtree split**
+- Each subpackage is automatically mirrored to its own repository
+- Packagist is subscribed to each repository separately
 
-**Вариант B: Monorepo Builder раздельный релиз**
-- `monorepo-builder release` может публиковать каждый пакет отдельно
-
-**Финальное решение:** Вариант A. Надёжнее для Packagist.
+**Option B: Monorepo Builder split release**
+- `monorepo-builder release` can publish each package separately
 
 ---
 
-## 3. ТЕСТИРОВАНИЕ
+## 3. TESTING
 
-### 3.1. PHPUnit (основной фреймворк)
+### 3.1. PHPUnit (main framework)
 
-**Файл:** `phpunit.xml.dist`
+**File:** `phpunit.xml.dist`
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -410,13 +408,13 @@ vendor/bin/monorepo-builder release v1.0.0
 
     <php>
         <env name="FERRY_AI_TESTING" value="1" force="true"/>
-        <!-- Не требуем нативные библиотеки для unit-тестов -->
+        <!-- Do not require native libraries for unit tests -->
         <env name="FERRY_AI_SKIP_NATIVE" value="1" force="false"/>
     </php>
 </phpunit>
 ```
 
-**Расположение тестов для каждого пакета:**
+**Test layout for each package:**
 
 ```
 packages/core/
@@ -433,40 +431,40 @@ packages/core/
     │   │   └── ...
     │   ├── Exception/
     │   │   └── ...
-    │   └── Contracts/             # Тесты контрактов (abstract test cases)
+    │   └── Contracts/             # Contract tests (abstract test cases)
     │       ├── BackendContractTest.php
     │       ├── ModelContractTest.php
     │       └── TensorContractTest.php
-    └── Integration/               # Если нужны (обычно в корневом tests/)
+    └── Integration/               # If needed (usually in root tests/)
 ```
 
-### 3.2. Pest PHP (альтернативный/дополнительный фреймворк)
+### 3.2. Pest PHP (alternative/additional framework)
 
-Pest установлен как dev-зависимость в корневом composer.json. Используется опционально — разработчик выбирает PHPUnit или Pest.
+Pest is installed as a dev dependency in the root composer.json. Used optionally — the developer chooses PHPUnit or Pest.
 
 ```bash
-# Запуск тестов через Pest (все)
+# Run tests via Pest (all)
 vendor/bin/pest
 
-# Параллельный запуск
+# Parallel run
 vendor/bin/pest --parallel
 
-# Конкретный файл
+# Specific file
 vendor/bin/pest packages/core/tests/Unit/Enums/DeviceTest.php
 
-# С покрытием
+# With coverage
 vendor/bin/pest --coverage
 ```
 
-### 3.3. Mock-объекты и FFI
+### 3.3. Mock objects and FFI
 
-**Проблема:** FFI нельзя замокать стандартными средствами, потому что это расширение C.  
-**Решение:** Абстракция через интерфейсы.
+**Problem:** FFI cannot be mocked with standard tools because it is a C extension.  
+**Solution:** Abstraction via interfaces.
 
-Для каждого нативного вызова создаётся тонкая обёртка-интерфейс:
+For each native call, a thin wrapper interface is created:
 
 ```php
-// Пример: интерфейс для LlamaCpp
+// Example: interface for LlamaCpp
 interface LlamaCppInterface
 {
     public function modelLoadFromFile(string $path): object;
@@ -474,14 +472,14 @@ interface LlamaCppInterface
     // ...
 }
 
-// Реальная реализация
-class NativeLlamaCpp implements LlamaCppInterface { /* FFI-вызовы */ }
+// Real implementation
+class NativeLlamaCpp implements LlamaCppInterface { /* FFI calls */ }
 
-// Mock-реализация для тестов
-class MockLlamaCpp implements LlamaCppInterface { /* возвращает предсказуемые данные */ }
+// Mock implementation for tests
+class MockLlamaCpp implements LlamaCppInterface { /* returns predictable data */ }
 ```
 
-Внедрение через конструктор (Dependency Injection):
+Constructor injection (Dependency Injection):
 ```php
 class LlamaBackend
 {
@@ -491,16 +489,16 @@ class LlamaBackend
 }
 ```
 
-Тест:
+Test:
 ```php
 $mock = new MockLlamaCpp();
 $backend = new LlamaBackend($mock);
-// тестируем без реального llama.cpp
+// test without real llama.cpp
 ```
 
-### 3.4. Абстрактные тестовые классы для контрактов
+### 3.4. Abstract test classes for contracts
 
-Для каждого интерфейса в `core/Contracts` создаётся абстрактный тестовый класс, который проверяет контракт. Каждая конкретная реализация наследует этот тест:
+For each interface in `core/Contracts`, an abstract test class is created that verifies the contract. Each concrete implementation extends this test:
 
 ```php
 // packages/core/tests/Unit/Contracts/BackendContractTest.php
@@ -540,55 +538,55 @@ class OnnxBackendTest extends BackendContractTest
 }
 ```
 
-### 3.5. Интеграционные тесты
+### 3.5. Integration tests
 
-**Файл:** `tests/Integration/.env`
+**File:** `tests/Integration/.env`
 
 ```env
-# Пути к тестовым моделям (скачиваются CI-скриптом)
+# Paths to test models (downloaded by CI script)
 FERRY_AI_TEST_ONNX_MODEL=./tests/fixtures/test_model.onnx
 FERRY_AI_TEST_GGUF_MODEL=./tests/fixtures/test_model.gguf
 FERRY_AI_TEST_TOKENIZER=./tests/fixtures/tokenizer.json
 
-# Пропускать интеграционные тесты, если модели отсутствуют
+# Skip integration tests if models are missing
 FERRY_AI_SKIP_MISSING_MODELS=1
 ```
 
-**Структура интеграционных тестов:**
+**Integration test structure:**
 
 ```
 tests/
 ├── Integration/
 │   ├── Onnx/
-│   │   ├── OnnxInferenceTest.php       # Реальный ONNX-инференс
-│   │   ├── OnnxProvidersTest.php       # Провайдеры (CPU/CUDA)
-│   │   └── OnnxTensorTest.php          # Тензорные операции
+│   │   ├── OnnxInferenceTest.php       # Real ONNX inference
+│   │   ├── OnnxProvidersTest.php       # Providers (CPU/CUDA)
+│   │   └── OnnxTensorTest.php          # Tensor operations
 │   ├── Llama/
-│   │   ├── LlamaChatTest.php           # Чат с LLM
-│   │   ├── LlamaStreamingTest.php      # Стриминг
-│   │   └── LlamaSamplingTest.php       # Сэмплеры
+│   │   ├── LlamaChatTest.php           # Chat with LLM
+│   │   ├── LlamaStreamingTest.php      # Streaming
+│   │   └── LlamaSamplingTest.php       # Samplers
 │   ├── Embedding/
-│   │   ├── EmbeddingTest.php           # Эмбеддинги
-│   │   └── BatchEmbeddingTest.php      # Пакетные
+│   │   ├── EmbeddingTest.php           # Embeddings
+│   │   └── BatchEmbeddingTest.php      # Batch embeddings
 │   ├── Vector/
-│   │   ├── VectorStoreTest.php         # CRUD + поиск
-│   │   └── FilterTest.php              # Фильтрация метаданных
+│   │   ├── VectorStoreTest.php         # CRUD + search
+│   │   └── FilterTest.php              # Metadata filtering
 │   ├── Pipeline/
-│   │   └── PipelineIntegrationTest.php # Полный пайплайн
+│   │   └── PipelineIntegrationTest.php # Full pipeline
 │   └── RAG/
 │       └── RagFlowTest.php             # End-to-end: chunk → embed → store → search
 ├── fixtures/
-│   └── .gitkeep                        # Тестовые модели (в .gitignore, скачиваются CI)
-└── bootstrap.php                       # Общий bootstrap для интеграционных тестов
+│   └── .gitkeep                        # Test models (in .gitignore, downloaded by CI)
+└── bootstrap.php                       # Common bootstrap for integration tests
 ```
 
 ---
 
-## 4. СТАТИЧЕСКИЙ АНАЛИЗ
+## 4. STATIC ANALYSIS
 
 ### 4.1. PHPStan
 
-**Файл:** `phpstan.neon`
+**File:** `phpstan.neon`
 
 ```neon
 parameters:
@@ -606,7 +604,7 @@ parameters:
     parallel:
         maximumNumberOfProcesses: 4
     ignoreErrors:
-        # FFI-вызовы не могут быть полностью типизированы
+        # FFI calls cannot be fully typed
         - '#Cannot access property \$cdata on mixed#'
         - '#Call to an undefined method .*\\FFI::new\(\)#'
         - '#Parameter \#1 \$ptr of function .* expects .*FFI\\CData#'
@@ -615,14 +613,14 @@ parameters:
         Vector: list<float>
 ```
 
-**Запуск:**
+**Run:**
 ```bash
 vendor/bin/phpstan analyse --memory-limit=512M
 ```
 
 ### 4.2. Psalm
 
-**Файл:** `psalm.xml`
+**File:** `psalm.xml`
 
 ```xml
 <?xml version="1.0"?>
@@ -644,7 +642,7 @@ vendor/bin/phpstan analyse --memory-limit=512M
     </projectFiles>
 
     <issueHandlers>
-        <!-- FFI: неизбежные несоответствия типов -->
+        <!-- FFI: unavoidable type mismatches -->
         <MixedPropertyFetch errorLevel="suppress"/>
         <MixedMethodCall errorLevel="suppress"/>
         <MixedArgument errorLevel="suppress"/>
@@ -663,11 +661,11 @@ vendor/bin/phpstan analyse --memory-limit=512M
 
 ---
 
-## 5. КАЧЕСТВО КОДА
+## 5. CODE QUALITY
 
 ### 5.1. PHP CS Fixer
 
-**Файл:** `.php-cs-fixer.dist.php`
+**File:** `.php-cs-fixer.dist.php`
 
 ```php
 <?php
@@ -698,7 +696,7 @@ return (new PhpCsFixer\Config())
         'blank_line_before_statement' => [
             'statements' => ['return', 'throw', 'try', 'if', 'for', 'foreach', 'while', 'do', 'switch'],
         ],
-        // Строгость
+        // Strictness
         'declare_equal_normalize' => ['space' => 'none'],
         'dir_constant' => true,
         'is_null' => true,
@@ -711,7 +709,7 @@ return (new PhpCsFixer\Config())
 
 ### 5.2. EditorConfig
 
-**Файл:** `.editorconfig`
+**File:** `.editorconfig`
 
 ```ini
 root = true
@@ -803,7 +801,7 @@ docker-compose.override.yml
 ### 6.2. `.gitattributes`
 
 ```gitattributes
-# Export-ignore: не включать в архив при скачивании релиза
+# Export-ignore: exclude from archive when downloading release
 /.github            export-ignore
 /tests              export-ignore
 /benchmarks         export-ignore
@@ -829,7 +827,7 @@ docker-compose.override.yml
 
 ### 6.3. Git Hooks (CaptainHook)
 
-**Файл:** `captainhook.json` (генерируется `vendor/bin/captainhook configure`)
+**File:** `captainhook.json` (generated by `vendor/bin/captainhook configure`)
 
 ```json
 {
@@ -839,7 +837,7 @@ docker-compose.override.yml
             {
                 "action": "\\CaptainHook\\App\\Hook\\Message\\Rule\\RegexMatching",
                 "options": {
-                    "regex": "/^(feat|fix|docs|style|refactor|perf|test|chore|ci|build|revert)(\([a-z-]+\))?: .{1,72}/"
+                    "regex": "/^(feat|fix|docs|style|refactor|perf|test|chore|ci|build|revert)(\\([a-z-]+\\))?: .{1,72}/"
                 }
             }
         ]
@@ -866,7 +864,7 @@ docker-compose.override.yml
 }
 ```
 
-**Установка хуков:**
+**Install hooks:**
 ```bash
 vendor/bin/captainhook install --force
 ```
@@ -875,7 +873,7 @@ vendor/bin/captainhook install --force
 
 ## 7. CI/CD (GitHub Actions)
 
-### 7.1. Основной CI: `.github/workflows/ci.yml`
+### 7.1. Main CI: `.github/workflows/ci.yml`
 
 ```yaml
 name: CI
@@ -892,7 +890,7 @@ concurrency:
 
 jobs:
   # ============================================================
-  # Статический анализ (быстрый, без матрицы ОС)
+  # Static analysis (fast, no OS matrix)
   # ============================================================
   static-analysis:
     name: "Static Analysis"
@@ -918,7 +916,7 @@ jobs:
         run: vendor/bin/psalm --no-progress --output-format=github --shepherd
 
   # ============================================================
-  # Тесты (матрица: PHP × ОС)
+  # Tests (matrix: PHP × OS)
   # ============================================================
   tests:
     name: "PHP ${{ matrix.php }} on ${{ matrix.os }}"
@@ -972,7 +970,7 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}
 
   # ============================================================
-  # Мутационное тестирование (только Linux, только 8.5)
+  # Mutation testing (Linux only, 8.5 only)
   # ============================================================
   mutation:
     name: "Mutation Testing"
@@ -991,7 +989,7 @@ jobs:
       - run: vendor/bin/infection --threads=4 --min-msi=70 --min-covered-msi=80 --logger-github
 
   # ============================================================
-  # Безопасность
+  # Security
   # ============================================================
   security:
     name: "Security Audit"
@@ -1008,9 +1006,9 @@ jobs:
       - run: composer audit --no-interaction
 ```
 
-### 7.2. Скрипт загрузки тестовых моделей
+### 7.2. Test model download script
 
-**Файл:** `.github/scripts/download-test-models.sh`
+**File:** `.github/scripts/download-test-models.sh`
 
 ```bash
 #!/usr/bin/env bash
@@ -1019,10 +1017,10 @@ set -euo pipefail
 FIXTURES_DIR="tests/fixtures"
 mkdir -p "$FIXTURES_DIR"
 
-# Минимальная ONNX-модель для тестов (сложения векторов)
+# Minimal ONNX model for tests (vector addition)
 if [ ! -f "$FIXTURES_DIR/test_model.onnx" ]; then
     echo "Downloading test ONNX model..."
-    # Генерируем простую модель: y = x + 1
+    # Generate a simple model: y = x + 1
     python3 -c "
 import onnx
 from onnx import helper, TensorProto
@@ -1038,7 +1036,7 @@ onnx.save(model, '$FIXTURES_DIR/test_model.onnx')
 "
 fi
 
-# Текстовый фикстурный токенизатор (минимальный)
+# Text fixture tokenizer (minimal)
 if [ ! -f "$FIXTURES_DIR/tokenizer.json" ]; then
     echo "Creating minimal tokenizer.json..."
     cat > "$FIXTURES_DIR/tokenizer.json" << 'EOF'
@@ -1056,7 +1054,7 @@ fi
 echo "Test fixtures ready."
 ```
 
-### 7.3. Релизный workflow: `.github/workflows/release.yml`
+### 7.3. Release workflow: `.github/workflows/release.yml`
 
 ```yaml
 name: Release
@@ -1068,7 +1066,7 @@ on:
 
 jobs:
   # ============================================================
-  # Публикация на Packagist (через subtree split)
+  # Publication to Packagist (via subtree split)
   # ============================================================
   packagist:
     name: "Publish to Packagist"
@@ -1114,10 +1112,10 @@ jobs:
           curl -X POST \
             -H 'Content-Type: application/json' \
             -d '{"repository":{"url":"https://github.com/MADEVAL/${{ matrix.package }}"}}' \
-            https://packagist.org/api/update-package?username=php-ai&apiToken=${{ secrets.PACKAGIST_API_TOKEN }}   # TODO: заменить php-ai на реальный Packagist-аккаунт
+            https://packagist.org/api/update-package?username=php-ai&apiToken=${{ secrets.PACKAGIST_API_TOKEN }}
 
   # ============================================================
-  # Сборка нативных бинарников
+  # Build native binaries
   # ============================================================
   build-binaries:
     name: "Build native binaries"
@@ -1144,7 +1142,7 @@ jobs:
       - name: Build ONNX Runtime (Linux)
         if: runner.os == 'Linux'
         run: |
-          # Используем precompiled ONNX Runtime
+          # Use precompiled ONNX Runtime
           wget https://github.com/microsoft/onnxruntime/releases/download/v1.18.0/onnxruntime-linux-x64-1.18.0.tgz
           tar xzf onnxruntime-linux-x64-1.18.0.tgz
           cp onnxruntime-linux-x64-1.18.0/lib/libonnxruntime.so native-binaries/${{ matrix.target }}/libonnxruntime.${{ matrix.lib-ext }}
@@ -1156,7 +1154,7 @@ jobs:
           cd llama.cpp && cmake -B build && cmake --build build --config Release -j
           cp build/libllama.${{ matrix.lib-ext }} ../native-binaries/${{ matrix.target }}/libllama.${{ matrix.lib-ext }}
 
-      # ... аналогичные шаги для macOS и Windows
+      # ... similar steps for macOS and Windows
 
       - name: Upload binaries
         uses: actions/upload-artifact@v4
@@ -1195,21 +1193,21 @@ jobs:
 
 ---
 
-## 8. ИНСТРУМЕНТЫ РАЗРАБОТКИ
+## 8. DEVELOPMENT TOOLS
 
-### 8.1. Локальная разработка (Windows)
+### 8.1. Local development (Windows)
 
-**Установка PHP на Windows:**
+**Installing PHP on Windows:**
 ```powershell
-# Вариант 1: Установщик с php.net
-# Скачать https://windows.php.net/downloads/releases/php-8.5.x-nts-Win32-vs17-x64.zip
-# Распаковать в C:\php
-# Добавить C:\php в PATH
+# Option 1: Installer from php.net
+# Download https://windows.php.net/downloads/releases/php-8.5.x-nts-Win32-vs17-x64.zip
+# Extract to C:\php
+# Add C:\php to PATH
 
-# Вариант 2: Chocolatey
+# Option 2: Chocolatey
 choco install php --version=8.5.0
 
-# Включить расширения в php.ini:
+# Enable extensions in php.ini:
 # extension=ffi
 # extension=pdo_sqlite
 # extension=sodium
@@ -1219,33 +1217,33 @@ choco install php --version=8.5.0
 # ffi.enable=true
 ```
 
-**Установка Composer:**
+**Installing Composer:**
 ```powershell
-# Скачать и запустить https://getcomposer.org/Composer-Setup.exe
-# Или через PowerShell:
+# Download and run https://getcomposer.org/Composer-Setup.exe
+# Or via PowerShell:
 Invoke-WebRequest -Uri https://getcomposer.org/installer -OutFile composer-setup.php
 php composer-setup.php --install-dir=C:\bin --filename=composer
 ```
 
-**Клонирование и настройка:**
+**Cloning and setup:**
 ```powershell
 git clone https://github.com/MADEVAL/FerryAI.git php-inference
 cd php-inference
 composer install
 
-# Проверка окружения
+# Environment check
 php -r "echo 'PHP ' . PHP_VERSION . PHP_EOL; echo 'FFI: ' . (extension_loaded('ffi') ? 'enabled' : 'disabled') . PHP_EOL;"
 
-# Запуск тестов
+# Run tests
 composer test
 
-# Запуск линтеров
+# Run linters
 composer lint
 ```
 
-### 8.2. Скрипт быстрой проверки окружения
+### 8.2. Quick environment check script
 
-**Файл:** `bin/ferry-ai` (CLI-инструмент)
+**File:** `bin/ferry-ai` (CLI tool)
 
 ```php
 #!/usr/bin/env php
@@ -1253,7 +1251,7 @@ composer lint
 
 declare(strict_types=1);
 
-// Минимальный CLI для проверки и диагностики
+// Minimal CLI for verification and diagnostics
 $command = $argv[1] ?? 'help';
 
 match ($command) {
@@ -1284,7 +1282,7 @@ function checkEnvironment(): void
         printf("  %-20s %s\n", $label . ':', $status);
     }
 
-    // Проверка доступности нативных библиотек
+    // Check native library availability
     echo "\nNative libraries:\n";
     $libs = [
         'ONNX Runtime' => PHP_OS_FAMILY === 'Windows' ? 'onnxruntime.dll' : 'libonnxruntime.' . (PHP_OS_FAMILY === 'Darwin' ? 'dylib' : 'so'),
@@ -1317,9 +1315,9 @@ HELP;
 }
 ```
 
-### 8.3. Makefile (для Linux/macOS)
+### 8.3. Makefile (for Linux/macOS)
 
-**Файл:** `Makefile`
+**File:** `Makefile`
 
 ```makefile
 .PHONY: install test lint check clean coverage benchmark
@@ -1353,15 +1351,9 @@ clean:
 	rm -rf packages/*/vendor/
 	rm -rf vendor/
 	rm -f composer.lock
-
-# Для Windows аналог в PowerShell
-.PHONY: docs
-docs:
-	# Генерация документации (например, через phpDocumentor)
-	echo "Documentation generation not configured yet"
 ```
 
-**PowerShell-эквивалент для Windows** (`Makefile.ps1`):
+**PowerShell equivalent for Windows** (`Makefile.ps1`):
 
 ```powershell
 param([string]$target = "help")
@@ -1402,32 +1394,32 @@ Targets:
 
 ---
 
-## 9. ПУБЛИКАЦИЯ
+## 9. PUBLICATION
 
 ### 9.1. Packagist
 
-Каждый подпакет публикуется отдельно на Packagist:
+Each subpackage is published separately to Packagist:
 
-| Пакет | Packagist URL |
+| Package | Packagist URL |
 |---|---|
 | `ferry-ai/inference-core` | https://packagist.org/packages/ferry-ai/inference-core |
 | `ferry-ai/inference-tensor` | https://packagist.org/packages/ferry-ai/inference-tensor |
 | ... | ... |
 | `ferry-ai/php-inference` | https://packagist.org/packages/ferry-ai/php-inference |
 
-**Требования Packagist:**
-- Каждый пакет в отдельном git-репозитории (через subtree split)
-- Валидный `composer.json` в корне репозитория
-- PSR-4 автозагрузка
-- Git-теги в формате `vX.Y.Z`
+**Packagist requirements:**
+- Each package in a separate git repository (via subtree split)
+- Valid `composer.json` in the repository root
+- PSR-4 autoloading
+- Git tags in format `vX.Y.Z`
 
-**Автоматизация:** GitHub Actions workflow `release.yml` выполняет subtree split и пуш в отдельные репозитории при создании тега.
+**Automation:** GitHub Actions workflow `release.yml` performs subtree split and push to separate repositories upon tag creation.
 
-### 9.2. Нативные бинарники
+### 9.2. Native binaries
 
-Нативные бинарники (ONNX Runtime, llama.cpp) публикуются как GitHub Release assets.
+Native binaries (ONNX Runtime, llama.cpp) are published as GitHub Release assets.
 
-**Структура GitHub Release:**
+**GitHub Release structure:**
 ```
 v1.0.0
 ├── ferry-ai-native-linux-x86_64.tar.gz
@@ -1444,22 +1436,22 @@ v1.0.0
 └── checksums.sha256
 ```
 
-**Автоскачивание в рантайме:**
-Пакет `ai` содержит `NativeBinaryManager`, который:
-1. Определяет платформу
-2. Ищет библиотеку в системе
-3. Если нет — скачивает с GitHub Releases
-4. Проверяет SHA-256
-5. Кэширует локально
+**Auto-download at runtime:**
+The `ai` package contains `NativeBinaryManager`, which:
+1. Determines the platform
+2. Looks for the library in the system
+3. If not found — downloads from GitHub Releases
+4. Verifies SHA-256
+5. Caches locally
 
-### 9.3. Документация
+### 9.3. Documentation
 
-Публикуется через GitHub Pages.  
-Репозиторий: `MADEVAL/ferry-ai-docs` (или `gh-pages` ветка основного репо).
+Published via GitHub Pages.  
+Repository: `MADEVAL/ferry-ai-docs` (or `gh-pages` branch of the main repo).
 
 ---
 
-## 10. БЕЗОПАСНОСТЬ РЕПОЗИТОРИЯ
+## 10. REPOSITORY SECURITY
 
 ### 10.1. `SECURITY.md`
 
@@ -1475,7 +1467,7 @@ v1.0.0
 
 ## Reporting a Vulnerability
 
-Please report security vulnerabilities to **security@php-ai.dev**. <!-- TODO: заменить на реальный домен/email -->
+Please report security vulnerabilities to **security@php-ai.dev**.
 
 Do NOT create public GitHub issues for security vulnerabilities.
 
@@ -1491,7 +1483,7 @@ We will respond within 48 hours and publish a fix as soon as possible.
 
 ### 10.2. `CODE_OF_CONDUCT.md`
 
-Стандартный Contributor Covenant.
+Standard Contributor Covenant.
 
 ### 10.3. `CONTRIBUTING.md`
 
@@ -1537,14 +1529,14 @@ MIT License.
 
 ---
 
-## 11. DOCKER ДЛЯ ТЕСТИРОВАНИЯ
+## 11. DOCKER FOR TESTING
 
-### 11.1. `Dockerfile` (dev-образ)
+### 11.1. `Dockerfile` (dev image)
 
 ```dockerfile
 FROM php:8.5-cli
 
-# Системные зависимости
+# System dependencies
 RUN apt-get update && apt-get install -y \
     libzip-dev \
     libsodium-dev \
@@ -1553,7 +1545,7 @@ RUN apt-get update && apt-get install -y \
     unzip \
     && rm -rf /var/lib/apt/lists/*
 
-# PHP-расширения
+# PHP extensions
 RUN docker-php-ext-install \
     ffi \
     zip \
@@ -1565,7 +1557,7 @@ RUN docker-php-ext-install \
 # Composer
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
-# Нативные библиотеки (копируем из prebuilt)
+# Native libraries (copy from prebuilt)
 COPY native-binaries/linux-x86_64/*.so /usr/local/lib/
 RUN ldconfig
 
@@ -1580,7 +1572,7 @@ RUN composer install --no-dev --no-interaction --prefer-dist --optimize-autoload
 CMD ["php", "-a"]
 ```
 
-### 11.2. `docker-compose.yml` (dev-окружение)
+### 11.2. `docker-compose.yml` (dev environment)
 
 ```yaml
 services:
@@ -1606,57 +1598,57 @@ volumes:
 
 ---
 
-## 12. ПОЛНЫЙ СПИСОК DEV-ЗАВИСИМОСТЕЙ
+## 12. FULL LIST OF DEV DEPENDENCIES
 
-| Пакет | Назначение | Обязателен |
+| Package | Purpose | Required |
 |---|---|---|
-| `phpunit/phpunit` | Unit-тесты | Да |
-| `pestphp/pest` | Альтернативный тест-фреймворк | Нет |
-| `pestphp/pest-plugin-parallel` | Параллельные тесты | Нет |
-| `phpstan/phpstan` | Статический анализ (level 8) | Да |
-| `phpstan/phpstan-strict-rules` | Строгие правила PHPStan | Да |
-| `phpstan/phpstan-deprecation-rules` | Детект устаревшего кода | Да |
-| `vimeo/psalm` | Статический анализ (level 3) | Да |
-| `squizlabs/php_codesniffer` | Альтернативный линтер | Нет |
-| `php-cs-fixer/shim` | Автофикс код-стиля | Да |
-| `infection/infection` | Мутационное тестирование | Рекомендован |
-| `symplify/monorepo-builder` | Управление монорепо | Да |
-| `roave/security-advisories` | Блокировка уязвимых пакетов | Да |
-| `ergebnis/composer-normalize` | Нормализация composer.json | Рекомендован |
-| `captainhook/captainhook` | Git-хуки | Рекомендован |
+| `phpunit/phpunit` | Unit tests | Yes |
+| `pestphp/pest` | Alternative test framework | No |
+| `pestphp/pest-plugin-parallel` | Parallel tests | No |
+| `phpstan/phpstan` | Static analysis (level 8) | Yes |
+| `phpstan/phpstan-strict-rules` | PHPStan strict rules | Yes |
+| `phpstan/phpstan-deprecation-rules` | Deprecation detection | Yes |
+| `vimeo/psalm` | Static analysis (level 3) | Yes |
+| `squizlabs/php_codesniffer` | Alternative linter | No |
+| `php-cs-fixer/shim` | Auto-fix code style | Yes |
+| `infection/infection` | Mutation testing | Recommended |
+| `symplify/monorepo-builder` | Monorepo management | Yes |
+| `roave/security-advisories` | Block vulnerable packages | Yes |
+| `ergebnis/composer-normalize` | Normalize composer.json | Recommended |
+| `captainhook/captainhook` | Git hooks | Recommended |
 
 ---
 
-## 13. ЧЕКЛИСТ: НОВЫЙ РАЗРАБОТЧИК
+## 13. CHECKLIST: NEW DEVELOPER
 
-После клонирования репозитория новый разработчик выполняет:
+After cloning the repository, a new developer performs:
 
 ```bash
-# 1. Клонирование
+# 1. Clone
 git clone https://github.com/MADEVAL/FerryAI.git php-inference
 cd php-inference
 
-# 2. Установка зависимостей
+# 2. Install dependencies
 composer install
 
-# 3. Проверка окружения
+# 3. Environment check
 php bin/ferry-ai check
 
-# 4. Установка git-хуков (опционально)
+# 4. Install git hooks (optional)
 vendor/bin/captainhook install --force
 
-# 5. Запуск тестов
+# 5. Run tests
 composer test
 
-# 6. Запуск линтеров
+# 6. Run linters
 composer lint
 
-# 7. Полная проверка
+# 7. Full check
 composer check
 ```
 
-**Если все шаги зелёные — можно начинать разработку.**
+**If all steps are green — development can begin.**
 
 ---
 
-> **Документ является неотъемлемой частью технического задания. Репозиторий должен быть создан в точном соответствии с данной спецификацией.**
+> **This document is an integral part of the technical specification. The repository must be created in exact accordance with this specification.**
