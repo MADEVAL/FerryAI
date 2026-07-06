@@ -9,6 +9,7 @@ use FerryAI\Core\Enums\Device;
 use FerryAI\Core\Enums\DType;
 use FerryAI\Core\Exception\DeviceNotAvailableException;
 use FerryAI\Core\Exception\ShapeMismatchException;
+use FerryAI\Core\Tensor\CommonTensorOps;
 use FerryAI\Core\ValueObjects\Shape;
 
 /**
@@ -18,6 +19,7 @@ use FerryAI\Core\ValueObjects\Shape;
  */
 final class ArrayTensor implements Tensor
 {
+    use CommonTensorOps;
     /**
      * @param array<int, int|float> $data flat row-major values
      */
@@ -334,26 +336,7 @@ final class ArrayTensor implements Tensor
      *
      * @return int[]
      */
-    private static function inferShape(array $data): array
-    {
-        $dims = [];
-        $node = $data;
 
-        while (\is_array($node)) {
-            $dims[] = \count($node);
-            $key = array_key_first($node);
-            $node = $key === null ? null : ($node[$key] ?? null);
-        }
-
-        return $dims;
-    }
-
-    /**
-     * @param array<int, int|float> $flat
-     * @param int[]                 $dims
-     *
-     * @return array<int, mixed>
-     */
     private static function buildNested(array $flat, array $dims): array
     {
         if (\count($dims) <= 1) {
@@ -388,78 +371,5 @@ final class ArrayTensor implements Tensor
                 implode(', ', $axes),
             ));
         }
-    }
-
-    /**
-     * @param int[] $dims
-     *
-     * @return int[]
-     */
-    private static function strides(array $dims): array
-    {
-        $strides = [];
-        $stride = 1;
-
-        for ($i = \count($dims) - 1; $i >= 0; --$i) {
-            $strides[$i] = $stride;
-            $stride *= $dims[$i];
-        }
-
-        ksort($strides);
-
-        return $strides;
-    }
-
-    /**
-     * @param int[] $dims
-     *
-     * @return int[]
-     */
-    private static function unravel(int $index, array $dims): array
-    {
-        $multi = [];
-
-        for ($i = \count($dims) - 1; $i >= 0; --$i) {
-            $multi[$i] = $index % $dims[$i];
-            $index = intdiv($index, $dims[$i]);
-        }
-
-        ksort($multi);
-
-        return $multi;
-    }
-
-    /**
-     * @param array<int, mixed>               $data
-     * @param array<int, int|array{int, int}> $slices
-     */
-    private static function applySlice(array $data, array $slices, int $axis): mixed
-    {
-        $spec = $slices[$axis] ?? null;
-
-        if ($spec === null) {
-            return array_map(
-                static fn(mixed $child): mixed => \is_array($child)
-                    ? self::applySlice($child, $slices, $axis + 1)
-                    : $child,
-                $data,
-            );
-        }
-
-        if (\is_int($spec)) {
-            $selected = $data[$spec];
-
-            return \is_array($selected) ? self::applySlice($selected, $slices, $axis + 1) : $selected;
-        }
-
-        [$start, $length] = $spec;
-        $window = \array_slice($data, $start, $length);
-
-        return array_map(
-            static fn(mixed $child): mixed => \is_array($child)
-                ? self::applySlice($child, $slices, $axis + 1)
-                : $child,
-            $window,
-        );
     }
 }
