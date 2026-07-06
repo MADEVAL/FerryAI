@@ -58,6 +58,7 @@ final class Embedder implements EmbedderContract
     public function embed(string $text): array
     {
         $this->ensureModelLoaded();
+        \assert($this->model !== null);
 
         $encoded = $this->tokenizer->encode($text);
         $seqLen = \count($encoded);

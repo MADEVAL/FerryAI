@@ -38,12 +38,6 @@
     </projectFiles>
 
     <issueHandlers>
-        <!-- FFI: unavoidable type mismatches -->
-        <MixedPropertyFetch errorLevel="suppress"/>
-        <MixedMethodCall errorLevel="suppress"/>
-        <MixedArgument errorLevel="suppress"/>
-        <MixedAssignment errorLevel="suppress"/>
-        <MixedReturnStatement errorLevel="suppress"/>
-        <MixedReturnTypeCoercion errorLevel="suppress"/>
+        <!-- FFI-boundary files are excluded from analysis via <ignoreFiles> above. -->
     </issueHandlers>
 </psalm>
