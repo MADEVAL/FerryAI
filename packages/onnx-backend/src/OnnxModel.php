@@ -36,6 +36,11 @@ final class OnnxModel implements Model
         $this->outputInfo = $session === null ? [] : $runtime->sessionOutputs($session);
     }
 
+    public function __destruct()
+    {
+        $this->unload();
+    }
+
     /**
      * @param array<string, mixed> $inputs
      *

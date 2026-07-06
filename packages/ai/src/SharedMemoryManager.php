@@ -15,6 +15,13 @@ final class SharedMemoryManager implements SharedMemory
     /** @var array<string, \Shmop> */
     private array $handles = [];
 
+    public function __destruct()
+    {
+        foreach (\array_keys($this->segments) as $modelId) {
+            $this->detachModel($modelId);
+        }
+    }
+
     #[\Override]
     public function isAvailable(): bool
     {
