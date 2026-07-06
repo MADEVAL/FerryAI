@@ -53,6 +53,26 @@ final class GrammarSamplerTest extends TestCase
         self::assertSame(0, $sampler->sample([0 => 5.0, 6 => 9.0], new SamplingParams()));
     }
 
+    public function testCharPrefilterRejectsTokensWithWrongFirstByte(): void
+    {
+        // Token 5="yes", 6="no", and noise tokens whose first char is never 'y' or 'n'.
+        $noiseIds = [];
+        $decoderMap = [5 => 'yes', 6 => 'no'];
+
+        for ($i = 100; $i < 200; $i++) {
+            $c = chr($i % 24 + 97); // a-x only, never y or n
+            $decoderMap[$i] = $c . 'xxx';
+            $noiseIds[] = $i;
+        }
+
+        $decoder = static fn(int $t): string => $decoderMap[$t] ?? '';
+        $sampler = (new GrammarSampler(GbnfGrammar::fromString('root ::= "yes" | "no"')))->bind($decoder, 0);
+
+        $logits = [0 => -5.0, 5 => 1.0, 6 => 0.5] + array_fill_keys($noiseIds, 9.0);
+
+        self::assertSame(5, $sampler->sample($logits, new SamplingParams()));
+    }
+
     public function testBindStartsFreshState(): void
     {
         $decoder = static fn(int $t): string => [5 => 'yes', 6 => 'no'][$t] ?? '';

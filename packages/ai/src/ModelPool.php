@@ -21,6 +21,13 @@ final class ModelPool
         $this->maxMemoryBytes = $maxMemoryBytes ?? 2_147_483_648;
     }
 
+    public function __destruct()
+    {
+        foreach (\array_keys($this->pool) as $modelId) {
+            $this->evict($modelId);
+        }
+    }
+
     /**
      * Preloads models into the pool using the supplied loader. Already-pooled ids are skipped.
      *

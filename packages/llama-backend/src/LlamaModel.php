@@ -45,6 +45,11 @@ final class LlamaModel implements Model
         private readonly ?GbnfGrammar $grammar = null,
     ) {}
 
+    public function __destruct()
+    {
+        $this->unload();
+    }
+
     /**
      * Generates a single token.
      *
@@ -216,8 +221,9 @@ final class LlamaModel implements Model
     }
 
     /**
-     * Grammar sampling needs the whole vocabulary; every other sampler works on a native
-     * top-k pre-filter, which keeps PHP off the ~150k-token hot path.
+     * Grammar sampling needs enough candidates that the correct token is likely to be present
+     * even under constraint; using a large top-k pre-filter avoids scanning the full ~150k-token
+     * vocabulary in PHP while still depending on the logit distribution rather than a hard cap.
      *
      * @param list<int> $tokens
      *
@@ -226,7 +232,9 @@ final class LlamaModel implements Model
     private function nextLogits(LlamaSession $session, array $tokens, int $nPast, Sampler $sampler, SamplingParams $params): array
     {
         if ($sampler instanceof GrammarSampler) {
-            return $this->runtime->evaluate($session, $tokens, $nPast);
+            $k = 4096;
+
+            return $this->runtime->evaluateTopK($session, $tokens, $nPast, $k);
         }
 
         $k = max(256, $params->topK);

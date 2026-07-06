@@ -61,6 +61,11 @@ final class FerryLlama
         $this->ffi->ferry_llama_backend_init();
     }
 
+    public function __destruct()
+    {
+        $this->ffi->ferry_llama_backend_free();
+    }
+
     public static function resolveWrapperPath(): ?string
     {
         $explicit = \getenv('FERRY_AI_LLAMA_WRAPPER');

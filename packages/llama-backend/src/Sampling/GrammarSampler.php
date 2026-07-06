@@ -52,44 +52,49 @@ final class GrammarSampler implements Sampler
         }
 
         $decoder = $this->decoder;
-        $work = $logits;
 
-        while ($work !== []) {
-            $bestKey = null;
-            $bestValue = -\INF;
+        // Sort once by descending logit: pick the highest-probability candidates first.
+        $pairs = [];
 
-            foreach ($work as $id => $value) {
-                if ($value > $bestValue) {
-                    $bestValue = $value;
-                    $bestKey = $id;
-                }
-            }
+        foreach ($logits as $id => $value) {
+            $pairs[] = [(int) $id, $value];
+        }
 
-            if ($bestKey === null) {
-                break;
-            }
+        \usort($pairs, static fn(array $a, array $b): int => $b[1] <=> $a[1]);
 
-            $token = (int) $bestKey;
+        // Pre-filter: which single characters can start a valid grammar continuation?
+        // Instead of calling isViable() + decoder() for every candidate token (~150k),
+        // we check only printable ASCII bytes (~95) and then filter candidates whose
+        // first decoded character is not in the viable set.
+        $validFirstChars = $this->computeValidFirstChars();
+
+        foreach ($pairs as $pair) {
+            $token = $pair[0];
 
             if ($token === $this->eosToken) {
                 if ($this->matcher->isComplete($this->accumulated)) {
                     return $token;
                 }
 
-                unset($work[$bestKey]);
-
                 continue;
             }
 
             $piece = $decoder($token);
 
-            if ($piece !== '' && $this->matcher->isViable($this->accumulated . $piece)) {
+            if ($piece === '') {
+                continue;
+            }
+
+            // Fast-path: drop tokens whose first byte cannot start a viable continuation.
+            if ($validFirstChars !== null && !isset($validFirstChars[$piece[0]])) {
+                continue;
+            }
+
+            if ($this->matcher->isViable($this->accumulated . $piece)) {
                 $this->accumulated .= $piece;
 
                 return $token;
             }
-
-            unset($work[$bestKey]);
         }
 
         if ($this->eosToken >= 0 && $this->matcher->isComplete($this->accumulated)) {
@@ -97,6 +102,34 @@ final class GrammarSampler implements Sampler
         }
 
         return $this->delegate->sample($logits, $params);
+    }
+
+    /**
+     * @return array<string, true>|null set of first bytes that can continue the grammar,
+     *         or null when the accumulated prefix is empty (every char is viable).
+     */
+    private function computeValidFirstChars(): ?array
+    {
+        if ($this->accumulated === '') {
+            return null;
+        }
+
+        $prefix = $this->accumulated;
+        $valid = [];
+
+        // Printable ASCII only — covers every BPE/WordPiece token start.
+        for ($c = 32; $c <= 126; ++$c) {
+            $ch = \chr($c);
+
+            if ($this->matcher->isViable($prefix . $ch)) {
+                $valid[$ch] = true;
+            }
+        }
+
+        // Also check the empty / control path: sometimes grammar allows EOS (empty continuation).
+        // It is checked separately via $this->eosToken above.
+
+        return $valid;
     }
 
     public function grammar(): GbnfGrammar
