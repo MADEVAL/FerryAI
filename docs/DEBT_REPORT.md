@@ -9,7 +9,7 @@
 > implemented content removed — the implemented surface now lives in the code
 > (`packages/*/src`), `docs/api-reference.md` and the per-capability guides.
 >
-> Last pass: 2026-07-06. Baseline: 686 unit tests, PHPStan L8 + Psalm L3 clean.
+> Last pass: 2026-07-06. Baseline: 676 unit tests, PHPStan L8 + Psalm L3 clean.
 
 ---
 
@@ -20,8 +20,8 @@ The authoritative list of specified-but-unbuilt features (details in the numbere
 | Item | Spec phase | Status |
 |------|-----------|--------|
 | `dataframe` package (`DataFrame`, `Column`, CSV/JSON/Parquet IO) | Phase 4 | **Not created.** `Contracts\DataFrame` exists; no implementation. See §7. |
-| `BackedTensor` arithmetic (tensor over a native backend tensor) | Phase 1+ | **Stub** — every op throws `Not implemented in Phase 1.`. `ArrayTensor` is the working pure-PHP tensor. See §3. |
-| ONNX GPU execution providers (TensorRT / DirectML / OpenVINO / ROCm) | Phase 1/4 | **Planned**, not implemented. CoreML not FFI-wired; CUDA needs cuDNN. See §2 / §13. |
+| `BackedTensor` arithmetic (tensor over a native backend tensor) | Phase 1+ | **Deleted.** Was a stub with zero references. `ArrayTensor`/`OnnxTensor`/`CpuNativeTensor` cover all tensor needs; `BackedTensor` was never used by any code path. |
+| ONNX GPU execution providers (TensorRT / DirectML / OpenVINO / ROCm) | Phase 1/4 | **Deleted** — the FerryAI wrapper classes were stub-only, unreferenced by the backend. GPU inference works via `OnnxTypeMapper`. Additional providers can be added to that mapper when their native runtimes are available. See §2. |
 | Safetensors **loader** | — | **Not supported** — detection only; conversion via Python required. See §12. |
 | HuggingFace native tokenizer (`tokenizers-cpp` binding) | Phase 2 | **Optional accelerator**, not built; pure-PHP BPE/WordPiece covers all needed types. See §1. |
 | Dev tooling (Infection, Pest, CaptainHook, Monorepo-builder, Composer-normalize) | Phase 4 | **Referenced in scripts, not installed.** See §9. |
@@ -49,16 +49,16 @@ PHPStan/Psalm and tested via hand-rolled stubs in unit tests. Real path: integra
 
 ---
 
-## 2. ONNX GPU Providers — Hardcoded `false`
+## 2. ONNX GPU Providers — Deleted
 
-| Class | Why |
-|-------|-----|
-| `CudaProvider` | `isAvailable()=false` — ONNX GPU package installed, CUDA provider detected, but **cuDNN missing** (requires manual download from developer.nvidia.com). Provider detection works; session creation fails without cuDNN. See §12. |
-| `TensorRtProvider` | Planned, not implemented. |
-| `DirectMlProvider` | Planned. |
-| `RocmProvider` | Planned. |
-| `OpenVinoProvider` | Planned. |
-| `CoreMlProvider` | `PHP_OS_FAMILY === 'Darwin'` only, not wired to FFI. |
+The FerryAI provider wrapper classes (`CudaProvider`, `TensorRtProvider`, `DirectMlProvider`,
+`RocmProvider`, `OpenVinoProvider`, `CoreMlProvider`) were stubs — each had `isAvailable()=false`
+hardcoded, and none were referenced by the backend (which uses `OnnxTypeMapper::providerNamesForDevice()`
+directly). **Deleted.** The `CpuProvider` and `ExecutionProvider` interface remain (they are tested
+and the interface is the contract for future providers).
+
+ONNX GPU inference works via `OnnxBackend::load()` → `OnnxTypeMapper` and does not need these
+wrapper classes. See §13 for the ONNX CUDA GPU status.
 
 ---
 
@@ -67,8 +67,8 @@ PHPStan/Psalm and tested via hand-rolled stubs in unit tests. Real path: integra
 | Class | What happens |
 |-------|-------------|
 | `CpuNativeModel::run()` (no RubixML) | `throw BackendNotAvailableException` with actionable guidance. With RubixML it delegates to real predict/proba. |
-| `tensor/src/BackedTensor.php` | Phase-1 stub: `reshape`/`transpose`/arithmetic/`toArray` etc. throw `Not implemented in Phase 1.`. The working pure-PHP tensor is `ArrayTensor`; ONNX/CPU backends return their own `OnnxTensor`/`CpuNativeTensor`. `BackedTensor` (a tensor wrapping a native backend tensor) is not needed by any current path. |
 
+> `BackedTensor` — Phase-1 stub, removed (zero references; `ArrayTensor`/`OnnxTensor`/`CpuNativeTensor` cover all needs).
 > `HuggingFaceTokenizer` — pure-PHP BPE/WordPiece covers all needed tokenizer types; native
 > binding is optional and not a stub.
 > `CpuNativeTensor` arithmetic — real pure-PHP implementation.
@@ -141,7 +141,7 @@ Listed in `composer.json` scripts: Infection, Pest, CaptainHook, Monorepo-builde
 ## 10. Test Coverage Gaps — FFI Boundary
 
 8 FFI-boundary files excluded from unit tests **by design**. All pure-PHP classes are tested
-(686 unit tests).
+(676 unit tests).
 
 ---
 
@@ -151,11 +151,11 @@ Listed in `composer.json` scripts: Infection, Pest, CaptainHook, Monorepo-builde
 |----------|--------|
 | llama.cpp CPU + GPU | ✅ Windows (RTX 4060 ~250 t/s) + Linux (~176 t/s). |
 | ONNX Runtime CPU | ✅ Windows + Linux (embeddings 7/7 integration). |
-| ONNX Runtime GPU | 🔴 GPU build installed; CUDA provider detected; **cuDNN missing** (manual download). |
+| ONNX Runtime GPU | 🟢 WSL (CUDA 13, verified); 🔴 Windows (needs cuDNN manual download). See §13. |
 | sqlite-vec | ✅ Windows + Linux (native KNN). |
 | PostgreSQL vector store | ✅ Windows (pgvector 0.8.4). WSL → PG blocked by `pg_hba.conf` (environment). |
 | RubixML | ✅ Windows + Linux (isolated, subprocess harness). |
-| Pure-PHP suite | ✅ 686 unit + PHPStan L8 + Psalm L3, Windows + Linux. |
+| Pure-PHP suite | ✅ 676 unit + PHPStan L8 + Psalm L3, Windows + Linux. |
 | Safetensors | 🔴 Format detected, no loader. Requires Python conversion. |
 | HuggingFace native tokenizer | Optional accelerator; pure-PHP covers all needed types. |
 | `ferry_llama.dll/.so` | Machine-built, not committed. Build via `native/llama-wrapper/build.{ps1,sh}`. |
