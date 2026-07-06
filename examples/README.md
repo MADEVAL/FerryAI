@@ -66,7 +66,7 @@ in the table below.
 | 06 | `rag.php` | RAG: embed chunks → vector store → search → metadata filter | ONNX Runtime |
 | 07 | `pipeline.php` | Transform/Filter/Normalize/Chunk stages, pipe operator | Tokenizer file |
 | 08 | `classification.php` | Classify, moderate, tabular prediction | ONNX Runtime + models |
-| 09 | `grammar.php` | GBNF grammar, JSON Schema → GBNF, samplers (greedy/top-k/top-p) | None |
+| 09 | `grammar.php` | GBNF parsing, JSON Schema → GBNF, samplers (greedy/top-k/top-p), grammar-constrained vs free generation | llama.cpp (optional) |
 | 10 | `vector-store.php` | CRUD, search, MetadataFilter operators, export/import | None |
 | 11 | `multilingual.php` | Embedding in 7 languages, cross-lingual similarity matrix | ONNX Runtime |
 
