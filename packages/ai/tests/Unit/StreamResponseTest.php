@@ -54,4 +54,23 @@ final class StreamResponseTest extends TestCase
         self::assertSame("\n\n", $response->toSse());
         self::assertSame("\n", $response->toNdjson());
     }
+
+    public function testToSseHandlesTokensWithNewlines(): void
+    {
+        $tokens = ["line1\nline2", 'plain'];
+        $response = new StreamResponse($tokens);
+
+        $sse = $response->toSse();
+
+        self::assertStringContainsString(
+            'data: line1',
+            $sse,
+            'SSE must still contain "data: line1" prefix for the first line.',
+        );
+        self::assertStringNotContainsString(
+            "\nline2\n",
+            $sse,
+            'Raw newline in token must not appear as un-prefixed SSE line.',
+        );
+    }
 }

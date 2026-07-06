@@ -103,7 +103,8 @@
         "coverage": [
             "@putenv XDEBUG_MODE=coverage",
             "@php vendor/bin/phpunit --testsuite unit --coverage-html build/coverage --coverage-text"
-        ]
+        ],
+        "mutation": "@php vendor/bin/infection"
     },
     "scripts-descriptions": {
         "test": "Run all unit tests",

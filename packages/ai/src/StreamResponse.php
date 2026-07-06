@@ -74,7 +74,13 @@ final class StreamResponse
         $lines = [];
 
         foreach ($this->tokens as $token) {
-            $lines[] = 'data: ' . $token;
+            if (\str_contains($token, "\n")) {
+                foreach (\explode("\n", $token) as $tokenLine) {
+                    $lines[] = 'data: ' . $tokenLine;
+                }
+            } else {
+                $lines[] = 'data: ' . $token;
+            }
         }
 
         return \implode("\n\n", $lines) . "\n\n";

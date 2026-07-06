@@ -468,7 +468,9 @@ final class AI
 
     private static function observability(): Observability
     {
-        return self::$observability ??= new Observability();
+        \assert(self::$observability !== null);
+
+        return self::$observability;
     }
 
     private static function modelPool(): ModelPool
