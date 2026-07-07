@@ -24,7 +24,9 @@ final class CsvReader
 
         $rows = [];
 
-        while (($row = \fgetcsv($handle, 0, $this->detectDelimiter($path), '"', '\\')) !== false) {
+        $delimiter = $this->detectDelimiter($path);
+
+        while (($row = \fgetcsv($handle, 0, $delimiter, '"', '\\')) !== false) {
             if ($row === [null] || $row === []) {
                 continue;
             }

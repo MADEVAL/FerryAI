@@ -147,4 +147,26 @@ final class CsvReaderTest extends TestCase
         self::assertSame(1, $df->numRows());
         self::assertSame(['a', 'b'], $df->columns());
     }
+
+    public function testReadOpensFileALinearNumberOfTimes(): void
+    {
+        CountingStreamWrapper::$opens = 0;
+        CountingStreamWrapper::$content = "name,age\nalice,25\nbob,30\ncarol,40\ndave,50\n";
+
+        \stream_wrapper_register('ferrycsv', CountingStreamWrapper::class);
+
+        try {
+            $df = (new CsvReader())->read('ferrycsv://data.csv', true);
+        } finally {
+            \stream_wrapper_unregister('ferrycsv');
+        }
+
+        // Behaviour is preserved.
+        self::assertSame(4, $df->numRows());
+        self::assertSame(['alice', 'bob', 'carol', 'dave'], $df->column('name'));
+
+        // The file must not be reopened once per row: one open for the read handle
+        // plus at most one for delimiter detection.
+        self::assertLessThanOrEqual(2, CountingStreamWrapper::$opens);
+    }
 }
