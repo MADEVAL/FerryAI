@@ -42,24 +42,23 @@ Or register it in `config/app.php`:
 
 The provider reads these environment variables and maps them to FerryAI config keys:
 
-| Env | Maps to |
-|-----|---------|
-| `FERRY_AI_BACKEND` | `backend` |
-| `FERRY_AI_DEVICE` | `device` |
-| `FERRY_AI_MODEL_CACHE` | `model_cache` |
-| `FERRY_AI_MAX_TOKENS` | `max_tokens` |
-| `FERRY_AI_TEMPERATURE` | `temperature` |
-| `FERRY_AI_TOP_P` | `top_p` |
-| `FERRY_AI_ONNX_PROVIDERS` | `backends.onnx.providers` |
-| `FERRY_AI_ONNX_OPTIMIZATION` | `backends.onnx.optimization` |
-| `FERRY_AI_ONNX_MODEL_PATH` | `backends.embedding.model_path` |
-| `FERRY_AI_LLAMA_MODEL_PATH` | `backends.llama.model_path` |
-| `FERRY_AI_LLAMA_N_CTX` | `backends.llama.n_ctx` |
-| `FERRY_AI_LLAMA_N_GPU_LAYERS` | `backends.llama.n_gpu_layers` |
-| `FERRY_AI_LLAMA_LIB` | `backends.llama.lib_path` |
-| `FERRY_AI_VERIFY_SIGNATURES` | `verify_signatures` |
-| `FERRY_AI_WARMUP` | Comma-separated model IDs to preload on boot |
-| `FERRY_AI_LOG_CHANNEL` | Log channel for FerryAI events |
+| Env | Maps to | Default |
+|-----|---------|---------|
+| `FERRY_AI_BACKEND` | `backend` | `auto` |
+| `FERRY_AI_DEVICE` | `device` | `auto` |
+| `FERRY_AI_MODEL_CACHE` | `model_cache` | temp dir |
+| `FERRY_AI_MAX_TOKENS` | `max_tokens` | `2048` |
+| `FERRY_AI_TEMPERATURE` | `temperature` | `0.7` |
+| `FERRY_AI_TOP_P` | `top_p` | `1.0` |
+| `FERRY_AI_VERIFY_SIGNATURES` | `verify_signatures` | `true` |
+| `FERRY_AI_LOG_LEVEL` | `log_level` | `warning` |
+| `FERRY_AI_ONNX_PROVIDERS` | `backends.onnx.providers` (comma-separated) | `CUDA,CPU` |
+| `FERRY_AI_ONNX_OPTIMIZATION` | `backends.onnx.graph_optimization` | `ALL` |
+| `FERRY_AI_LLAMA_MODEL_PATH` | `backends.llama.model_path` | `''` |
+| `FERRY_AI_LLAMA_N_CTX` | `backends.llama.n_ctx` | `2048` |
+| `FERRY_AI_LLAMA_GPU_LAYERS` | `backends.llama.n_gpu_layers` | `0` |
+| `FERRY_AI_WARMUP` | `warmup` — comma-separated model IDs to preload on boot | `''` |
+| `FERRY_AI_LOG_CHANNEL` | `log_channel` | `stack` |
 
 ## Use in controllers
 

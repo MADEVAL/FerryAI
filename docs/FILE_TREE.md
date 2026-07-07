@@ -55,11 +55,16 @@ php-inference/
 │   │       │   ├── ShapeMismatchException.php
 │   │       │   ├── DeviceNotAvailableException.php
 │   │       │   ├── TokenizerException.php
-│   │       │   └── ConfigurationException.php
+│   │       │   ├── ConfigurationException.php
+│   │       │   ├── InvalidStateException.php
+│   │       │   ├── IoException.php
+│   │       │   └── ValidationException.php
 │   │       ├── AIConfig.php
 │   │       ├── PlatformDetector.php     # OS/arch detection
 │   │       ├── Logger.php               # PSR-3 logger
 │   │       ├── RetryHandler.php         # Retry logic
+│   │       ├── Tensor/
+│   │       │   └── CommonTensorOps.php  # Shared tensor helpers (trait)
 │   │       └── FFI/
 │   │           └── CdefGenerator.php    # C header → \FFI::cdef() string
 │   ├── tensor/
@@ -67,7 +72,6 @@ php-inference/
 │   │   ├── phpunit.xml.dist
 │   │   └── src/
 │   │       ├── TensorFactory.php
-│   │       ├── BackedTensor.php         # Tensor implementation over backend tensor
 │   │       └── ArrayTensor.php          # Pure-PHP implementation for CPU fallback
 │   ├── onnx-backend/
 │   │   ├── composer.json
@@ -77,13 +81,7 @@ php-inference/
 │   │       ├── OnnxTensor.php
 │   │       ├── Provider/
 │   │       │   ├── ExecutionProvider.php
-│   │       │   ├── CpuProvider.php
-│   │       │   ├── CudaProvider.php
-│   │       │   ├── TensorRtProvider.php
-│   │       │   ├── CoreMlProvider.php
-│   │       │   ├── DirectMlProvider.php
-│   │       │   ├── OpenVinoProvider.php
-│   │       │   └── RocmProvider.php
+│   │       │   └── CpuProvider.php
 │   │       ├── OnnxRuntimeFactory.php
 │   │       ├── OnnxTypeMapper.php        # ONNX type ↔ FerryAI enum mapping
 │   │       └── Runtime/
@@ -127,6 +125,7 @@ php-inference/
 │   │       ├── CpuNativeBackend.php
 │   │       ├── CpuNativeModel.php
 │   │       ├── CpuNativeTensor.php
+│   │       ├── Predictor.php             # Predictor interface (RubixML seam)
 │   │       └── RubixMLAdapter.php        # Adapter to RubixML/ML
 │   ├── tokenizer/
 │   │   ├── composer.json
@@ -180,7 +179,8 @@ php-inference/
 │   │       │   ├── FormatDetector.php     # Format detection (.onnx, .gguf, .safetensors, .ai)
 │   │       │   ├── AiArchive.php          # Read/write .ai archives
 │   │       │   ├── OnnxInspector.php      # .onnx introspection
-│   │       │   └── GgufInspector.php      # .gguf introspection
+│   │       │   ├── GgufInspector.php      # .gguf introspection
+│   │       │   └── SafetensorsInspector.php # .safetensors header introspection
 │   │       └── Signature/
 │   │           ├── SignatureVerifier.php  # Ed25519 verification
 │   │           └── Sha256Verifier.php     # SHA-256 verification
@@ -284,13 +284,17 @@ php-inference/
 | 32 | `Exception/DeviceNotAvailableException.php` | Exception | Exception\FerryAIException, Enums\Device |
 | 33 | `Exception/TokenizerException.php` | Exception | Exception\FerryAIException |
 | 34 | `Exception/ConfigurationException.php` | Exception | Exception\FerryAIException |
-| 35 | `AIConfig.php` | final class `AIConfig` (implements ArrayAccess) | Enums\Device, Enums\BackendType |
-| 36 | `PlatformDetector.php` | class `PlatformDetector` — OS/arch detection | (none) |
-| 37 | `Logger.php` | class `Logger` — PSR-3 compatible | (none) |
-| 38 | `RetryHandler.php` | class `RetryHandler` — retry logic | (none) |
-| 39 | `FFI/CdefGenerator.php` | class `CdefGenerator` — C header → `\FFI::cdef()` string | (none) |
+| 35 | `Exception/InvalidStateException.php` | Exception (`FERRY_AI_INVALID_STATE`) | Exception\FerryAIException |
+| 36 | `Exception/IoException.php` | Exception (`FERRY_AI_IO`) | Exception\FerryAIException |
+| 37 | `Exception/ValidationException.php` | Exception (`FERRY_AI_VALIDATION`) | Exception\FerryAIException |
+| 38 | `AIConfig.php` | final class `AIConfig` (implements ArrayAccess) | Enums\Device, Enums\BackendType |
+| 39 | `PlatformDetector.php` | class `PlatformDetector` — OS/arch detection | (none) |
+| 40 | `Logger.php` | class `Logger` — PSR-3 compatible | (none) |
+| 41 | `RetryHandler.php` | class `RetryHandler` — retry logic | (none) |
+| 42 | `Tensor/CommonTensorOps.php` | trait `CommonTensorOps` — shared tensor helpers (shape inference, strides, slicing) | (none) |
+| 43 | `FFI/CdefGenerator.php` | class `CdefGenerator` — C header → `\FFI::cdef()` string | (none) |
 
-**Total: 39 files**
+**Total: 43 files**
 
 ---
 
@@ -299,31 +303,35 @@ php-inference/
 | # | Path | Contains | Depends on |
 |---|---|---|---|
 | 1 | `TensorFactory.php` | final class `TensorFactory` | core Contracts\Tensor, Enums\Device, Enums\DType, ValueObjects\Shape |
-| 2 | `BackedTensor.php` | class `BackedTensor` implements Tensor | core Contracts\Tensor (all interface dependencies) |
-| 3 | `ArrayTensor.php` | class `ArrayTensor` implements Tensor | core Contracts\Tensor (Pure PHP fallback, no FFI) |
+| 2 | `ArrayTensor.php` | class `ArrayTensor` implements Tensor | core Contracts\Tensor (Pure PHP fallback, no FFI) |
 
-**Total: 3 files**
+**Total: 2 files**
 
 ---
 
-### Package `onnx-backend` (12 files)
+### Package `onnx-backend` (11 files)
 
 | # | Path | Contains | Depends on |
 |---|---|---|---|
-| 1 | `OnnxBackend.php` | class `OnnxBackend` implements Backend | core Contracts\Backend, phpmlkit/onnxruntime |
+| 1 | `OnnxBackend.php` | class `OnnxBackend` implements Backend | core Contracts\Backend, Runtime\OnnxRuntimeInterface |
 | 2 | `OnnxModel.php` | class `OnnxModel` implements Model | core Contracts\Model |
-| 3 | `OnnxTensor.php` | class `OnnxTensor` implements Tensor | core Contracts\Tensor, phpmlkit/onnxruntime (OrtValue) |
-| 4 | `OnnxRuntimeFactory.php` | class `OnnxRuntimeFactory` | phpmlkit/onnxruntime |
-| 5 | `Provider/ExecutionProvider.php` | interface `ExecutionProvider` | core Enums\Device |
-| 6 | `Provider/CpuProvider.php` | class `CpuProvider` implements ExecutionProvider | Provider\ExecutionProvider |
-| 7 | `Provider/CudaProvider.php` | class `CudaProvider` implements ExecutionProvider | Provider\ExecutionProvider |
-| 8 | `Provider/TensorRtProvider.php` | class `TensorRtProvider` implements ExecutionProvider | Provider\ExecutionProvider |
-| 9 | `Provider/CoreMlProvider.php` | class `CoreMlProvider` implements ExecutionProvider | Provider\ExecutionProvider |
-| 10 | `Provider/DirectMlProvider.php` | class `DirectMlProvider` implements ExecutionProvider | Provider\ExecutionProvider |
-| 11 | `Provider/OpenVinoProvider.php` | class `OpenVinoProvider` implements ExecutionProvider | Provider\ExecutionProvider |
-| 12 | `Provider/RocmProvider.php` | class `RocmProvider` implements ExecutionProvider | Provider\ExecutionProvider |
+| 3 | `OnnxTensor.php` | class `OnnxTensor` implements Tensor | core Contracts\Tensor (wraps native OrtValue) |
+| 4 | `OnnxRuntimeFactory.php` | class `OnnxRuntimeFactory` | Runtime\OnnxRuntimeInterface |
+| 5 | `OnnxTypeMapper.php` | final class `OnnxTypeMapper` — ONNX type/provider ↔ FerryAI enum mapping | core Enums\DType, Enums\Device |
+| 6 | `Provider/ExecutionProvider.php` | interface `ExecutionProvider` | core Enums\Device |
+| 7 | `Provider/CpuProvider.php` | class `CpuProvider` implements ExecutionProvider | Provider\ExecutionProvider |
+| 8 | `Runtime/OnnxRuntimeInterface.php` | interface `OnnxRuntimeInterface` — mockable seam | Runtime\OnnxSession |
+| 9 | `Runtime/OnnxSession.php` | class `OnnxSession` — session handle marker | (none) |
+| 10 | `Runtime/NativeOnnxRuntime.php` | class `NativeOnnxRuntime` implements OnnxRuntimeInterface — production FFI impl | Runtime\OnnxRuntimeInterface, Runtime\NativeOnnxSession |
+| 11 | `Runtime/NativeOnnxSession.php` | class `NativeOnnxSession` extends OnnxSession — production session wrapper | Runtime\OnnxSession |
 
-**Total: 12 files**
+**Total: 11 files**
+
+> Device selection uses `OnnxTypeMapper::providerNamesForDevice()`, which maps each
+> `Device` to ordered ONNX Runtime provider strings (e.g. `CUDAExecutionProvider`,
+> `CoreMLExecutionProvider`, `DmlExecutionProvider`, `ROCMExecutionProvider`,
+> `OpenVINOExecutionProvider`) with a `CPUExecutionProvider` fallback. There are no
+> per-provider PHP classes beyond `CpuProvider`.
 
 ---
 
@@ -362,25 +370,27 @@ php-inference/
 | # | Path | Contains | Depends on |
 |---|---|---|---|
 | 1 | `CpuNativeBackend.php` | class `CpuNativeBackend` implements Backend | core Contracts\Backend, RubixML\ML |
-| 2 | `CpuNativeModel.php` | class `CpuNativeModel` implements Model | core Contracts\Model, RubixML\ML |
-| 3 | `CpuNativeTensor.php` | class `CpuNativeTensor` implements Tensor | core Contracts\Tensor, RubixML\Tensor |
-| 4 | `RubixMLAdapter.php` | class `RubixMLAdapter` — adapter to RubixML API | RubixML\ML |
+| 2 | `CpuNativeModel.php` | class `CpuNativeModel` implements Model | core Contracts\Model, Predictor |
+| 3 | `CpuNativeTensor.php` | class `CpuNativeTensor` implements Tensor | core Contracts\Tensor |
+| 4 | `Predictor.php` | interface `Predictor` — `isAvailable`/`predict`/`proba` seam over RubixML | (none) |
+| 5 | `RubixMLAdapter.php` | class `RubixMLAdapter` implements Predictor — adapter to RubixML API | Predictor, RubixML\ML |
 
-**Total: 4 files**
+**Total: 5 files**
 
 ---
 
-### Package `tokenizer` (5 files)
+### Package `tokenizer` (6 files)
 
 | # | Path | Contains | Depends on |
 |---|---|---|---|
 | 1 | `TokenizerFactory.php` | class `TokenizerFactory` | core Contracts\Tokenizer, HuggingFaceTokenizer, PureBpeTokenizer |
 | 2 | `HuggingFaceTokenizer.php` | class `HuggingFaceTokenizer` implements Tokenizer | core Contracts\Tokenizer, FFI binding to tokenizers-cpp |
-| 3 | `PureBpeTokenizer.php` | class `PureBpeTokenizer` implements Tokenizer | core Contracts\Tokenizer |
-| 4 | `PureWordPieceTokenizer.php` | class `PureWordPieceTokenizer` implements Tokenizer | core Contracts\Tokenizer |
-| 5 | `TokenizerLoader.php` | class `TokenizerLoader` — load tokenizer.json | core Enums\TokenizerType |
+| 3 | `PureBpeTokenizer.php` | class `PureBpeTokenizer` implements Tokenizer | core Contracts\Tokenizer, SpecialTokens |
+| 4 | `PureWordPieceTokenizer.php` | class `PureWordPieceTokenizer` implements Tokenizer | core Contracts\Tokenizer, SpecialTokens |
+| 5 | `SpecialTokens.php` | final class `SpecialTokens` — `extract()` bos/eos/unk/pad roles from config | (none) |
+| 6 | `TokenizerLoader.php` | class `TokenizerLoader` — load tokenizer.json + type detection | core Enums\TokenizerType |
 
-**Total: 5 files**
+**Total: 6 files**
 
 ---
 
@@ -419,7 +429,7 @@ php-inference/
 
 ---
 
-### Package `model-hub` (13 files)
+### Package `model-hub` (14 files)
 
 | # | Path | Contains | Depends on |
 |---|---|---|---|
@@ -427,17 +437,18 @@ php-inference/
 | 2 | `HuggingFaceClient.php` | class `HuggingFaceClient` | codewithkyrian/huggingface-php |
 | 3 | `CacheManager.php` | class `CacheManager` — LRU, cleanup, size | (none) |
 | 4 | `ModelVerifier.php` | class `ModelVerifier` | Signature\*, Format\* |
-| 5 | `ModelIntrospector.php` | class `ModelIntrospector` | Format\* |
+| 5 | `ModelIntrospector.php` | class `ModelIntrospector` — static `introspect()` → ModelMetadata | Format\* |
 | 6 | `Downloader.php` | class `Downloader` — progress, retries, resume | HuggingFaceClient |
 | 7 | `StreamLoader.php` | class `StreamLoader` — mmap/stream for large models | (none) |
 | 8 | `Format/FormatDetector.php` | class `FormatDetector` — format detection by magic bytes | (none) |
 | 9 | `Format/AiArchive.php` | class `AiArchive` — read/write .ai | ext-zip |
 | 10 | `Format/OnnxInspector.php` | class `OnnxInspector` — .onnx introspection | (none) |
 | 11 | `Format/GgufInspector.php` | class `GgufInspector` — .gguf introspection | (none) |
-| 12 | `Signature/SignatureVerifier.php` | class `SignatureVerifier` — Ed25519 | ext-sodium |
-| 13 | `Signature/Sha256Verifier.php` | class `Sha256Verifier` — SHA-256 | ext-hash |
+| 12 | `Format/SafetensorsInspector.php` | final class `SafetensorsInspector` — `.safetensors` header introspection | (none) |
+| 13 | `Signature/SignatureVerifier.php` | class `SignatureVerifier` — Ed25519 | ext-sodium |
+| 14 | `Signature/Sha256Verifier.php` | class `Sha256Verifier` — SHA-256 | ext-hash |
 
-**Total: 13 files**
+**Total: 14 files**
 
 ---
 
@@ -525,21 +536,21 @@ php-inference/
 
 | Package | Files | Composer name |
 |---|---|---|
-| `core` | 39 | `ferry-ai/inference-core` |
-| `tensor` | 3 | `ferry-ai/inference-tensor` |
-| `onnx-backend` | 12 | `ferry-ai/inference-onnx-backend` |
+| `core` | 43 | `ferry-ai/inference-core` |
+| `tensor` | 2 | `ferry-ai/inference-tensor` |
+| `onnx-backend` | 11 | `ferry-ai/inference-onnx-backend` |
 | `ai` | 14 | `ferry-ai/inference-ai` |
 | `llama-backend` | 21 | `ferry-ai/inference-llama-backend` |
-| `tokenizer` | 5 | `ferry-ai/inference-tokenizer` |
+| `tokenizer` | 6 | `ferry-ai/inference-tokenizer` |
 | `embedding` | 7 | `ferry-ai/inference-embedding` |
 | `vector` | 10 | `ferry-ai/inference-vector` |
-| `model-hub` | 13 | `ferry-ai/inference-model-hub` |
+| `model-hub` | 14 | `ferry-ai/inference-model-hub` |
 | `pipeline` | 10 | `ferry-ai/inference-pipeline` |
-| `cpu-backend` | 4 | `ferry-ai/inference-cpu-backend` |
+| `cpu-backend` | 5 | `ferry-ai/inference-cpu-backend` |
 | `dataframe` | 6 | `ferry-ai/inference-dataframe` |
 | `laravel` | 2 | `ferry-ai/inference-laravel` |
 | `symfony` | 3 | `ferry-ai/inference-symfony` |
-| **TOTAL** | **149** | `ferry-ai/php-inference` (root) |
+| **TOTAL** | **154** | `ferry-ai/php-inference` (root) |
 
 ---
 
@@ -585,19 +596,17 @@ Topological order: a file is created only when all its dependencies already exis
 35. core/src/Contracts/DataFrame.php                       (29)
 36. onnx-backend/src/Provider/ExecutionProvider.php        (1)
 37. onnx-backend/src/Provider/CpuProvider.php              (36)
-38. onnx-backend/src/Provider/CudaProvider.php             (36)
-39. onnx-backend/src/Provider/TensorRtProvider.php         (36)
-40. onnx-backend/src/Provider/CoreMlProvider.php           (36)
-41. onnx-backend/src/Provider/DirectMlProvider.php         (36)
-42. onnx-backend/src/OnnxRuntimeFactory.php                (37)
-43. onnx-backend/src/OnnxTensor.php                        (29)
-44. onnx-backend/src/OnnxModel.php                         (28, 43)
-45. onnx-backend/src/OnnxBackend.php                       (27, 44)
-46. tensor/src/ArrayTensor.php                             (29)
-47. tensor/src/BackedTensor.php                            (29)
-48. tensor/src/TensorFactory.php                           (29, 46, 47)
-49. ai/src/BackendRegistry.php                             (27, 3)
-50. ai/src/TaskRouter.php                                  (49)
-51. ai/src/AIFactory.php                                   (all backends)
-52. ai/src/AI.php                                          (50, 51)
+38. onnx-backend/src/OnnxTypeMapper.php                    (1, 12)
+39. onnx-backend/src/Runtime/OnnxSession.php               (0 dependencies)
+40. onnx-backend/src/Runtime/OnnxRuntimeInterface.php      (39)
+41. onnx-backend/src/OnnxRuntimeFactory.php                (40)
+42. onnx-backend/src/OnnxTensor.php                        (29)
+43. onnx-backend/src/OnnxModel.php                         (28, 42)
+44. onnx-backend/src/OnnxBackend.php                       (27, 43)
+45. tensor/src/ArrayTensor.php                             (29)
+46. tensor/src/TensorFactory.php                           (29, 45)
+47. ai/src/BackendRegistry.php                             (27, 3)
+48. ai/src/TaskRouter.php                                  (47)
+49. ai/src/AIFactory.php                                   (all backends)
+50. ai/src/AI.php                                          (48, 49)
 ```

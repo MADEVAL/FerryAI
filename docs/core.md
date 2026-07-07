@@ -32,7 +32,11 @@ $cfg['temperature'];                      // ArrayAccess read
     'stream_timeout' => 30,
     'verify_signatures' => true,
     'log_level'      => 'warning',
-    'backends'       => [],
+    'backends'       => [
+        'classify' => ['model_path' => ''],
+        'moderate' => ['model_path' => ''],
+        'predict'  => ['model_path' => ''],
+    ],
 ]
 ```
 
@@ -85,7 +89,7 @@ php bin/generate-ffi.php --header=llama.h --output=llama_cdef.txt
 | `DistanceMetric` | `COSINE`, `EUCLIDEAN`, `DOT` |
 | `IndexType` | `HNSW`, `IVF`, `FLAT` |
 | `QuantizationType` | `FLOAT32`, `FLOAT16`, `INT8`, `BINARY` |
-| `GraphOptimizationLevel` | `All`, `Extended`, `Basic`, `Disable` |
+| `GraphOptimizationLevel` | `DISABLE_ALL`, `BASIC`, `EXTENDED`, `ALL` |
 
 ## Value objects
 
@@ -93,28 +97,34 @@ All are `readonly` classes under `FerryAI\Core\ValueObjects\`:
 
 | Class | Properties |
 |-------|-----------|
-| `Shape` | `array $dims`, `int $rank`, `int $size` (computed: `array_product($dims)`) |
-| `ModelMetadata` | `string $name`, `int $sizeBytes`, `array $extra` |
-| `ChatMessage` | `string $role` (`system`\|`user`\|`assistant`), `string $content` |
-| `SamplingParams` | `float $temperature`, `float $topP`, `int $maxTokens`, `float $repetitionPenalty`, `float $frequencyPenalty`, `float $presencePenalty` |
-| `GenerationResult` | `string $text`, `int $tokensGenerated`, `int $tokensPrompt`, `int $tokensTotal`, `float $durationMs` |
-| `EmbeddingResult` | `array $vector` (float[]), `int $dimension`, `string $modelName` |
-| `ClassificationResult` | `string $label`, `float $confidence`, `array $allScores` |
+| `Shape` | `int[] $dimensions`; methods `rank()`, `size()` (product; `-1` if any axis dynamic), `dimension(int $axis)`, `isStatic()`, `compatibleWith(Shape)`, static `fromString()` |
+| `ModelMetadata` | `string $name`, `string $version`, `string $author`, `string $license`, `string[] $tags`, `int $sizeBytes`, `?string $architecture`, `?string $description`, `?string $homepage`; static `fromJson()` |
+| `ChatMessage` | `string $role` (`system`\|`user`\|`assistant`), `string\|array $content`, `?string $name`, `?string $toolCallId`, `?array $toolCalls`; factories `system()`, `user()`, `assistant()`, `fromArray()` |
+| `SamplingParams` | `float $temperature`, `float $topP`, `int $topK`, `float $repetitionPenalty`, `float $frequencyPenalty`, `float $presencePenalty`, `int $maxTokens`, `?string[] $stop`, `?int $seed` |
+| `GenerationResult` | `string $text`, `int $tokensGenerated`, `int $tokensPrompt`, `int $tokensTotal`, `float $durationMs`, `?array $logprobs` |
+| `EmbeddingResult` | `float[] $vector`, `int $dimension`, `string $modelName` |
+| `ClassificationResult` | `string $label`, `float $confidence`, `array<string,float> $allScores` |
 
 ## Exceptions
 
 All under `FerryAI\Core\Exception\`, all extend `FerryAIException` (extends `\RuntimeException`).
 
 Each exposes `errorCode(): string` returning a `FERRY_AI_*` code:
-- `FERRY_AI_BACKEND_UNAVAILABLE`
-- `FERRY_AI_MODEL_NOT_FOUND`
-- `FERRY_AI_MODEL_LOAD`
-- `FERRY_AI_INFERENCE`
-- `FERRY_AI_SHAPE_MISMATCH`
-- `FERRY_AI_DEVICE_UNAVAILABLE`
-- `FERRY_AI_TOKENIZER`
-- `FERRY_AI_CONFIGURATION`
-- `FERRY_AI_INVALID_STATE`
+
+| Exception | `errorCode()` |
+|-----------|--------------|
+| `FerryAIException` (base) | `FERRY_AI_ERROR` |
+| `BackendNotAvailableException` | `FERRY_AI_BACKEND_NOT_AVAILABLE` |
+| `ModelNotFoundException` | `FERRY_AI_MODEL_NOT_FOUND` |
+| `ModelLoadException` | `FERRY_AI_MODEL_LOAD` |
+| `InferenceException` | `FERRY_AI_INFERENCE` |
+| `ShapeMismatchException` | `FERRY_AI_SHAPE_MISMATCH` |
+| `DeviceNotAvailableException` | `FERRY_AI_DEVICE_NOT_AVAILABLE` |
+| `TokenizerException` | `FERRY_AI_TOKENIZER` |
+| `ConfigurationException` | `FERRY_AI_CONFIGURATION` |
+| `InvalidStateException` | `FERRY_AI_INVALID_STATE` |
+| `IoException` | `FERRY_AI_IO` |
+| `ValidationException` | `FERRY_AI_VALIDATION` |
 
 ## Contracts
 

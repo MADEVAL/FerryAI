@@ -119,8 +119,8 @@ AI::chat($msgs, ['grammar' => [
 GBNF grammar support includes: literals, character classes (`[a-z]`), alternation (`|`),
 sequences, grouping (`( )`), repetition (`*`, `+`, `?`), rule references, and `#` comments.
 
-`SamplerMath` provides the shared `softmax`/`argmax`/`weightedPick`/`applyPenalties` routines.
-`SamplerFactory` maps string names to sampler instances.
+`SamplerMath` provides the shared `softmax`/`argmax`/`weightedIndex`/`applyPenalties` routines.
+`SamplerFactory` maps string names to sampler instances (`create()`, `forParams()`).
 
 ## ChatFormatter templates
 
@@ -128,21 +128,21 @@ sequences, grouping (`( )`), repetition (`*`, `+`, `?`), rule references, and `#
 
 | Template | Format | Auto-detected for |
 |----------|--------|-------------------|
-| `chatml` (default) | `<|im_start|>role\ncontent<|im_end|>` | Qwen, Phi |
+| `chatml` (default) | `<|im_start|>role\ncontent<|im_end|>` | Qwen (fallback) |
 | `llama3` | `<|begin_of_text|><|start_header_id|>role<|end_header_id|>\n\ncontent<|eot_id|>` | LLaMA 3 |
-| `vicuna` | `USER: content\nASSISTANT: content` | Vicuna |
-| `alpaca` | `### Instruction:\ncontent\n### Response:\ncontent` | Alpaca |
-| `mistral` | `[INST] content [/INST] content` | Mistral |
+| `mistral` | `<s>[INST] content [/INST] content</s>` | Mistral / Mixtral |
+| `gemma` | `<start_of_turn>role\ncontent<end_of_turn>` | Gemma |
+| `phi` | `<|role|>\ncontent<|end|>` | Phi |
 
-Override with `backends.llama.chat_template` config or let auto-detection pick from
-the GGUF metadata.
+Override with `backends.llama.chat_template` config or let `ChatFormatter::detectFormat()`
+pick from the model name.
 
 ## Architecture
 
 | Class | Purpose |
 |-------|---------|
 | `LlamaBackend` | Implements `Backend` — `isAvailable()`, `load()`, `version()` |
-| `LlamaModel` | Implements `Model` — `runComplete()`, `runStream()`, `metadata()` |
+| `LlamaModel` | Implements `Model` (`run()`); adds `runComplete()`/`runStream()` for chat + streaming |
 | `FerryLlama` | Single FFI wrapper for the `ferry_llama` C API (all pointer args) |
 | `NativeLlamaRuntime` | Production FFI implementation of `LlamaRuntimeInterface` |
 | `NativeLlamaSession` | Production session wrapper around the native context |
@@ -174,7 +174,7 @@ chat but weights are shared).
 
 ## Appendix: Why the C wrapper?
 
-The historical investigation (see `docs/DEBT_REPORT.md` §12) confirmed that `llama_model_load_from_file`
+The historical investigation confirmed that `llama_model_load_from_file`
 crashes when called directly via PHP FFI. The function takes `struct llama_model_params` **by value**
 (64 bytes on x64). While PHP FFI can infer the struct layout from the CDEF, the DLL is compiled with
 **Clang 20.1.8** on GitHub Actions, while PHP FFI on Windows uses the MSVC-compatible ABI. The

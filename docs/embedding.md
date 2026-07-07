@@ -58,8 +58,9 @@ interface Embedder
     public function embed(string $text): array;          // float[]
     public function embedBatch(array $texts): array;     // float[][]
     public function dimension(): int;
-    public function modelName(): string;
+    public function normalize(array $vector): array;     // L2-normalised float[]
     public function cosineSimilarity(array $a, array $b): float;
+    public function modelName(): string;
 }
 ```
 

@@ -25,14 +25,15 @@ $hits = $store->search($query, k: 5, filter: ['lang' => ['eq' => 'en']]);
 // [ ['id' => 'doc1', 'distance' => 0.02, 'metadata' => ['lang'=>'en']], ... ]
 
 // CRUD
-$store->get('doc1');                       // fetch by id
-$store->update('doc1', $newVector);        // update vector only
+$store->update('doc1', $newVector);        // update vector (metadata optional)
 $store->delete('doc1');                    // delete by id
-$store->deleteByFilter(['lang' => ['eq' => 'fr']]);
+$store->deleteByFilter(['lang' => ['eq' => 'fr']]);   // returns number deleted
 $store->count();                           // how many vectors
 $store->dimension();                       // vector dimension (0 if auto-detect)
+$store->collectionName();                  // the collection name
 $store->clear();                           // delete all
 $store->export();                          // json-serializable snapshot
+foreach ($store->iterator() as $row) { /* stream all entries */ }
 ```
 
 See [`examples/10-vector-store.php`](../examples/10-vector-store.php).
@@ -44,16 +45,16 @@ interface VectorStore
 {
     public function add(string $id, array $vector, ?array $metadata = null): void;
     public function addBatch(array $items): void;
-    public function search(array $query, int $k, ?array $filter = null): array;
-    public function get(string $id): ?array;
-    public function update(string $id, array $vector, ?array $metadata = null): void;
+    public function search(array $queryVector, int $k = 10, ?array $filter = null): array;
     public function delete(string $id): void;
-    public function deleteByFilter(array $filter): void;
+    public function deleteByFilter(array $filter): int;    // number deleted
+    public function update(string $id, ?array $vector = null, ?array $metadata = null): void;
     public function count(): int;
     public function dimension(): int;
-    public function clear(): void;
+    public function collectionName(): string;
+    public function iterator(): \Iterator;
     public function export(): array;
-    public function getIterator(): \Traversable;
+    public function clear(): void;
 }
 ```
 
@@ -111,9 +112,11 @@ AI::config(['vector' => [
 
 $store = AI::vector('docs');               // PostgresCollection (native ANN)
 
-// Build a HNSW index for fast approximate search
-$pdo = new PDO('pgsql:host=127.0.0.1;port=5432;dbname=ferryai', 'postgres', 'postgres');
-\FerryAI\Vector\PostgresVecIndex::createIndex('docs', 'hnsw', $pdo);
+// Build a HNSW index for fast approximate search (instance method over a PostgresStore)
+$index = new \FerryAI\Vector\PostgresVecIndex(
+    new \FerryAI\Vector\PostgresStore('pgsql:host=127.0.0.1;port=5432;dbname=ferryai', 'postgres', 'postgres'),
+);
+$index->createIndex('docs', 'hnsw', 'cosine');
 ```
 
 Requires `ext-pdo_pgsql` + the [pgvector](https://github.com/pgvector/pgvector) extension.
@@ -127,5 +130,13 @@ Metrics map: `cosine → <=>`, `euclidean → <->`, `dot → <#>`.
 ```php
 $json = $store->export();                           // json-serializable array
 \FerryAI\Vector\ExportImport::toJson($store, '/path/to/export.json');
-\FerryAI\Vector\ExportImport::fromJson($newStore, '/path/to/export.json');
+\FerryAI\Vector\ExportImport::toCsv($store, '/path/to/export.csv');
+
+// Import rebuilds a Collection from a JSON snapshot over an SQLiteStore
+$restored = \FerryAI\Vector\ExportImport::fromJson(
+    '/path/to/export.json',
+    'docs',       // collection name
+    384,          // dimension
+    $sqliteStore, // SQLiteStore instance
+);
 ```

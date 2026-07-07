@@ -14,7 +14,7 @@ composer require ferry-ai/php-inference
 | You want to... | Read |
 |---|---|
 | Install and run first inference | `README.md` (repo root) |
-| See all capabilities in action | [`examples/`](../examples/) — 20 runnable scripts |
+| See all capabilities in action | [`examples/`](../examples/) — 26 runnable scripts |
 | Look up a method / facade signature | `api-reference.md` (+ interfaces in `packages/core/src/Contracts/`) |
 | Read a per-capability guide | the guides below (onnx, llama, cpu, embedding, vector-store, pipeline, model-hub, tokenizer, tensor, core, streaming, laravel, symfony) |
 | Find where a class lives | `FILE_TREE.md` |
@@ -44,7 +44,7 @@ FerryAI/
 │   ├── ai/                       # Facade, factory, registry, metrics, profiler
 │   ├── laravel/                  # Service provider + facade
 │   └── symfony/                  # Bundle + DI extension
-├── examples/                     # 20 standalone runnable examples
+├── examples/                     # 26 standalone runnable examples
 ├── tests/                        # Integration + verification suites
 └── docs/                         # You are here
 ```
@@ -67,7 +67,7 @@ FerryAI/
 `getting-started.md`, `configuration.md`, `api-reference.md`, `backends/onnx.md`,
 `backends/llama.md`, `backends/cpu.md`, `embedding.md`, `vector-store.md`, `pipeline.md`,
 `model-hub.md`, `tokenizer.md`, `tensor.md`, `core.md`, `streaming.md`, `security.md`,
-`laravel.md`, `symfony.md`, `deployment.md`, `troubleshooting.md`.
+`safetensors-conversion.md`, `laravel.md`, `symfony.md`, `deployment.md`, `troubleshooting.md`.
 
 ---
 

@@ -28,12 +28,11 @@ $tok = $factory->createFromFile('/path/to/tokenizer.json');
 $ids  = $tok->encode('Hello world');
 $text = $tok->decode([101, 7592, 2088, 102]);
 
-// Special tokens
-$tok->bosId();     // e.g. 101
-$tok->eosId();     // e.g. 102
-$tok->padId();     // e.g. 0
-$tok->unkId();     // e.g. 100
-$tok->vocabSize(); // e.g. 30522
+// Special tokens (role-keyed: bos/eos/unk/pad/cls/sep/mask)
+$tok->specialTokens();          // ['bos' => 1, 'eos' => 2, 'pad' => 0, ...]
+$tok->specialTokenId('bos');    // e.g. 1  (null if the role is absent)
+$tok->countTokens('Hello world'); // int — token count without materialising IDs
+$tok->vocabSize();              // e.g. 30522
 ```
 
 See [`examples/02-tokenizer.php`](../examples/02-tokenizer.php).
@@ -52,17 +51,15 @@ See [`examples/02-tokenizer.php`](../examples/02-tokenizer.php).
 ```php
 interface Tokenizer
 {
-    public function encode(string $text, ?array $options = null): array;
+    public function encode(string $text, bool $addSpecialTokens = true): array;
     public function decode(array $ids): string;
-    public function encodeBatch(array $texts): array;
+    public function encodeBatch(array $texts, bool $padToMaxLength = true): array;
     public function vocabSize(): int;
-    public function tokenizerType(): TokenizerType;
-    public function bosToken(): string;
-    public function eosToken(): string;
-    public function bosId(): int;
-    public function eosId(): int;
-    public function padId(): int;
-    public function unkId(): int;
+    public function type(): TokenizerType;
+    public function specialTokenId(string $tokenName): ?int;
+    public function specialTokens(): array;
+    public function countTokens(string $text): int;
+    public function chunk(string $text, int $maxTokens = 512, int $overlap = 64): array;
 }
 ```
 
@@ -75,18 +72,25 @@ For maximum speed and fidelity, install the
 BPE and WordPiece. Unsupported types (e.g. Unigram, SentencePiece) without the native binding
 raise `TokenizerException` with actionable guidance.
 
-The `TokenizerLoader` class handles detection of the tokenizer type from the JSON structure.
+The `TokenizerLoader` class handles detection of the tokenizer type from the JSON structure
+(`loadFromFile()`, `loadFromModel()`, `detectType()`).
 
 ## Special tokens
+
+`SpecialTokens::extract()` reads a decoded `tokenizer.json` config and returns a role-keyed
+map of token IDs (`bos`, `eos`, `unk`, `pad`, `cls`, `sep`, `mask`). It is what the pure-PHP
+tokenizers use to back `specialTokens()` / `specialTokenId()`:
 
 ```php
 use FerryAI\Tokenizer\SpecialTokens;
 
-$st = SpecialTokens::fromTokenizer($tok);
-$st->bos();    // '[CLS]' or '<s>' depending on the vocab
-$st->eos();    // '[SEP]' or '</s>'
-$st->pad();    // '[PAD]' or '<pad>'
-$st->unk();    // '[UNK]' or '<unk>'
+$config = json_decode(file_get_contents('/path/to/tokenizer.json'), true);
+$roles  = SpecialTokens::extract($config);
+// e.g. ['bos' => 1, 'eos' => 2, 'unk' => 0]  — only roles present in the vocab
+
+// On a tokenizer instance the same data is exposed as:
+$tok->specialTokens();          // full role => id map
+$tok->specialTokenId('eos');    // 2 (or null)
 ```
 
 ## In embedding / pipelines

@@ -54,10 +54,11 @@ actionable guidance to install `rubix/ml` via Composer.
 
 ```php
 use FerryAI\CpuBackend\CpuNativeTensor;
-use FerryAI\Core\Enums\DType;
+use FerryAI\Core\ValueObjects\Shape;
 
-$a = CpuNativeTensor::fromNested([[1, 2], [3, 4]], DType::Float32);
-$b = CpuNativeTensor::fromNested([[5, 6], [7, 8]], DType::Float32);
+// Constructor takes FLAT data + dimensions
+$a = new CpuNativeTensor([1, 2, 3, 4], [2, 2]);   // [[1, 2], [3, 4]]
+$b = new CpuNativeTensor([5, 6, 7, 8], [2, 2]);   // [[5, 6], [7, 8]]
 
 $c = $a->add($b);                    // [[6, 8], [10, 12]]
 $d = $a->sub($b);                    // [[-4, -4], [-4, -4]]
@@ -67,11 +68,12 @@ $e = $a->mul($b);                    // [[5, 12], [21, 32]]
 $f = $a->matmul($b);                 // [[19, 22], [43, 50]]
 
 // Reshape and transpose
-$g = $a->reshape(new Shape([4]));   // [1, 2, 3, 4]
+$g = $a->reshape(new Shape([4]));    // [1, 2, 3, 4]
 $h = $a->transpose();                // [[1, 3], [2, 4]]
 
-// Slice
-$i = $a->slice(new Shape([1, 1]), new Shape([1, 1]));   // [[4]] (slice from [1,1])
+// Slice: per-axis spec — int selects an index, [start, length] a range, null keeps the axis
+$i = $a->slice([1]);                 // row 1 → [3, 4]
+$j = $a->slice([1, 1]);              // element [1][1] → 4
 ```
 
 All operations are validated — shape mismatches throw `ShapeMismatchException`. The tensor
@@ -82,8 +84,9 @@ has a fixed shape: appending via `$t[] =` or `unset($t[$i])` throws `\BadMethodC
 | Class | Purpose |
 |-------|---------|
 | `CpuNativeBackend` | Implements `Backend` — `isAvailable()`, `load()`, `version()` |
-| `CpuNativeModel` | Implements `Model` — `run()`, `metadata()`; delegates to `RubixMLAdapter` |
-| `RubixMLAdapter` | Real `predict`/`proba` bridge to RubixML; `loadModel()` deserializes `.rbm` |
+| `CpuNativeModel` | Implements `Model` — `run()`, `metadata()`; delegates to a `Predictor` |
+| `Predictor` | Interface (`isAvailable`/`predict`/`proba`) that isolates the RubixML dependency |
+| `RubixMLAdapter` | `Predictor` implementation: `loadModel()` deserializes `.rbm`, delegates `predict`/`proba` |
 | `CpuNativeTensor` | Pure-PHP tensor with full arithmetic |
 
 `RubixMLAdapter` handles the serialization-based model loading (RubixML stores estimators
@@ -116,6 +119,5 @@ See [`examples/24-rubix-cpu.php`](../../examples/24-rubix-cpu.php).
 - `CpuNativeBackend` is always the fallback — if ONNX and llama are unavailable, the cpu
   backend still provides tensor math.
 - RubixML is verified end to end on Windows + Linux via an isolated subprocess harness.
-  See `docs/DEBT_REPORT.md`.
 - The `.rbm` model path must point at a serialized RubixML `Estimator` object, not a
   directory.

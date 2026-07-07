@@ -46,17 +46,23 @@ Typically you use it through the facade — see [embedding](../embedding.md).
 $devices = $onnx->availableDevices();   // [Device::CPU]
 ```
 
-| Provider | Device enum | Requires |
-|----------|------------|----------|
-| `CPUExecutionProvider` | `CPU` | CPU build (default) |
-| `CUDAExecutionProvider` | `CUDA` | GPU build + CUDA Toolkit + cuDNN |
-| `TensorrtExecutionProvider` | `CUDA` | GPU build + TensorRT |
-| `DirectMlProvider` | `DIRECTML` | Windows GPU build |
-| `CoreMlProvider` | `METAL` | macOS (built into ONNX Runtime macOS) |
-| `OpenVinoProvider` | `OPENVINO` | Intel OpenVINO toolkit |
-| `RocmProvider` | `ROCM` | AMD ROCm stack |
+Device → provider mapping is handled entirely by `OnnxTypeMapper` (there is no per-provider
+PHP class beyond `CpuProvider`). `OnnxTypeMapper::providerNamesForDevice()` returns the ordered
+ONNX Runtime provider strings requested for a target device, always with a `CPUExecutionProvider`
+fallback:
 
-Provider selection maps from the configured `device` via `OnnxTypeMapper`.
+| `Device` | ONNX Runtime providers (in order) | Requires |
+|----------|-----------------------------------|----------|
+| `CPU` | `CPUExecutionProvider` | CPU build (default) |
+| `CUDA` | `CUDAExecutionProvider`, `CPUExecutionProvider` | GPU build + CUDA Toolkit + cuDNN |
+| `METAL` | `CoreMLExecutionProvider`, `CPUExecutionProvider` | macOS (built into ONNX Runtime macOS) |
+| `DIRECTML` | `DmlExecutionProvider`, `CPUExecutionProvider` | Windows GPU build |
+| `ROCM` | `ROCMExecutionProvider`, `CPUExecutionProvider` | AMD ROCm stack |
+| `OPENVINO` | `OpenVINOExecutionProvider`, `CPUExecutionProvider` | Intel OpenVINO toolkit |
+
+`OnnxTypeMapper::providerToDevice()` performs the reverse lookup (e.g. both
+`CUDAExecutionProvider` and `TensorrtExecutionProvider` map back to `Device::CUDA`), and
+`OnnxTypeMapper::toDType()` maps ONNX element types (`tensor(float)`, `int64`, …) to `DType`.
 
 ## GPU (CUDA)
 

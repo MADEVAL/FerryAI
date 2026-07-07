@@ -21,50 +21,49 @@ packages/symfony/src/
 
 ## Bundle
 
-`AIBundle::boot()` reads the Symfony configuration tree and calls `AI::config()`.
-`FerryAIExtension` loads `config/packages/ferry_ai.yaml`. `Configuration` describes
-the full valid config tree.
+`AIBundle::boot(array $configs = [])` merges the given config over the bundle defaults and
+calls `AI::config()`. `FerryAIExtension::load()` performs the same wiring inside a Symfony
+container. `Configuration::getConfigTree()` returns the **default** tree shown below; any
+additional [`AIConfig`](configuration.md) key you supply (e.g. `embedding.*`, `vector.*`,
+`model_pool.*`, `observability.*`) is passed straight through to `AI::config()`.
 
 ## Configuration
+
+Bundle defaults (from `Configuration::getConfigTree()`):
 
 ```yaml
 # config/packages/ferry_ai.yaml
 ferry_ai:
-    backend: onnx
-    device: cpu
-    model_cache: '%kernel.cache_dir%/ferry-ai-models'
+    backend: auto
+    device: auto
+    model_cache: '%kernel.project_dir%/var/models'
     max_tokens: 2048
     temperature: 0.7
+    top_p: 1.0
     verify_signatures: true
     backends:
-        embedding:
-            model_path: '%kernel.project_dir%/models/all-MiniLM-L6-v2-onnx'
-            tokenizer_path: ~
-        classify:
-            model_path: ~
-        moderate:
-            model_path: ~
-        predict:
-            model_path: ~
+        onnx:
+            providers: ['CUDA', 'CPU']
+            graph_optimization: ALL
         llama:
-            model_path: '%kernel.project_dir%/models/model.gguf'
+            model_path: ~
             n_ctx: 2048
             n_gpu_layers: 0
-            lib_path: ~
-    embedding:
-        pooling: mean
-        normalize: true
-    vector:
-        driver: sqlite
-        db_path: ':memory:'
-        metric: cosine
-    model_pool:
-        max_memory_bytes: ~
-        shared_memory: false
-    observability:
-        metrics: false
-        profiling: false
-        logging: false
+    warmup: []
+    log_channel: stack
+```
+
+Additional keys accepted by `AI::config()` (not part of the default tree, but forwarded if
+present) — see [configuration](configuration.md) for the full list:
+
+```yaml
+ferry_ai:
+    backends:
+        embedding: { model_path: '%kernel.project_dir%/models/all-MiniLM-L6-v2-onnx' }
+        classify:  { model_path: ~ }
+    embedding: { pooling: mean, normalize: true }
+    vector:    { driver: sqlite, db_path: ':memory:', metric: cosine }
+    observability: { metrics: false, profiling: false, logging: false }
 ```
 
 ## Register the bundle
@@ -121,17 +120,16 @@ class InferenceController
 }
 ```
 
-## Dependency injection (optional)
+## Accessing FerryAI
 
-The extension can register FerryAI services in the container for DI-based access:
+The adapter does not register container services; use the static `FerryAI\AI` facade directly
+from any service or controller once the bundle has booted. To inject FerryAI behind your own
+service, create thin wrappers in your app and call `AI::embed()` / `AI::vector()` inside them:
 
-```yaml
-# config/services.yaml
+```php
+// config/services.yaml
 services:
-    App\Service\RagService:
-        arguments:
-            $embedder: '@ferry_ai.embedder'
-            $vectorStore: '@ferry_ai.vector_store'
+    App\Service\RagService: ~   # calls FerryAI\AI internally
 ```
 
 See [`examples/20-symfony.php`](../examples/20-symfony.php) and

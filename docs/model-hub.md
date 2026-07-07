@@ -18,14 +18,15 @@ private/gated repos.
 ```php
 $hub = AI::hub();
 
-// Model metadata from HuggingFace
-$info = $hub->info('sentence-transformers/all-MiniLM-L6-v2');
-// $info → ModelMetadata { name, sizeBytes, extra }
+// Download (returns the local path) and read metadata from the downloaded file
+$path = $hub->download('sentence-transformers/all-MiniLM-L6-v2');
+$meta = $hub->introspect($path);
+// $meta → ModelMetadata { name, version, author, license, tags, sizeBytes, architecture?, ... }
 
 // Raw HuggingFace API access
 $client = new FerryAI\ModelHub\HuggingFaceClient();
 $files = $client->listFiles('Qwen/Qwen3-0.6B');
-$fileInfo = $client->fileInfo('Qwen/Qwen3-0.6B', 'README.md');
+$info  = $client->getModelInfo('Qwen/Qwen3-0.6B');
 ```
 
 See [`examples/12-model-hub.php`](../examples/12-model-hub.php).
@@ -35,25 +36,32 @@ See [`examples/12-model-hub.php`](../examples/12-model-hub.php).
 ```php
 interface ModelHub
 {
-    public function info(string $modelId): ModelMetadata;
-    public function search(string $query, int $limit): array;
-    public function download(string $modelId, ?string $version): string;
-    public function verify(string $path, ?string $expectedHash): bool;
-    public function cachePath(string $modelId): string;
+    public function download(string $modelId, ?string $version = null): string;
+    public function cached(string $modelId, ?string $version = null): ?string;
+    public function verify(string $path, ?string $sha256 = null, ?string $signature = null): bool;
+    public function introspect(string $path): ModelMetadata;
+    public function downloadWithProgress(string $modelId, ?string $version = null): \Generator;
+    public function remove(string $modelId, ?string $version = null): void;
+    public function prune(?int $maxSizeBytes = null): int;
+    public function cacheSize(): int;
+    public function warmup(array $modelIds): void;
 }
 ```
 
+`Hub` additionally offers `list()`, `register(name, path, ?sha256)` and `checkUpdates()`.
+
 ## Download & cache
 
-`Downloader` fetches files with configurable retry (`RetryHandler`) and optional progress
-logging. `CacheManager` provides an LRU cache under `model_cache` (config /
-`FERRY_AI_MODEL_CACHE`). `HuggingFaceClient::downloadFile()` retries transient failures
-automatically.
+`Downloader` fetches a single URL to a destination path with configurable retry
+(`RetryHandler`) and optional progress logging. `CacheManager` provides an LRU cache under
+`model_cache` (config / `FERRY_AI_MODEL_CACHE`). `HuggingFaceClient::downloadFile()` retries
+transient failures automatically. Use `Hub::download()` for the high-level
+"model id → local path" flow.
 
 ```php
 $downloader = new FerryAI\ModelHub\Downloader();
-$localPath = $downloader->download('sentence-transformers/all-MiniLM-L6-v2');
-// → /tmp/ferry-ai-models/all-MiniLM-L6-v2/model.onnx
+$downloader->download($url, '/tmp/ferry-ai-models/model.onnx');           // void
+$downloader->download($url, $dest, fn(int $done, int $total) => /* ... */ null);
 ```
 
 ## Verification
@@ -73,16 +81,19 @@ $localPath = $downloader->download('sentence-transformers/all-MiniLM-L6-v2');
 |--------|----------|-----------|
 | ONNX (`.onnx`) | `ONNX` + protobuf header | `OnnxInspector` |
 | GGUF (`.gguf`) | `GGUF` magic (0x46554747) | `GgufInspector` |
-| Safetensors (`.safetensors`) | JSON header | — (No runtime support — convert to ONNX/GGUF) |
+| Safetensors (`.safetensors`) | JSON header length prefix | `SafetensorsInspector` (metadata only — not loadable) |
 | RubixML (`.rbm`) | PHP serialized object | — |
 | AiArchive (`.ai`) | ZIP with `manifest.json` | `AiArchive` |
 
-`ModelIntrospector` reads metadata without loading the model:
+`ModelIntrospector::introspect()` (static) reads metadata without loading the model and
+returns a `ModelMetadata`:
 ```php
-$introspector = new FerryAI\ModelHub\ModelIntrospector();
-$meta = $introspector->inspect('/path/to/model.onnx');
-// → ['format' => 'onnx', 'input_names' => [...], 'output_names' => [...]]
+$meta = FerryAI\ModelHub\ModelIntrospector::introspect('/path/to/model.onnx');
+// → ModelMetadata { name, sizeBytes, architecture, ... }
 ```
+
+`SafetensorsInspector::inspect($path)` returns the raw header dictionary and
+`SafetensorsInspector::sizeBytes($path)` the on-disk size, for `.safetensors` files.
 
 ## Streaming large models
 
@@ -109,9 +120,10 @@ AiArchive::create('/output/model.ai', [
     'manifest.json' => json_encode(['name' => 'my-model', 'version' => '1.0']),
 ]);
 
-// Read
-$archive = new AiArchive('/path/to/model.ai');
-$onnxPath = $archive->extract('model.onnx');
+// Inspect / validate / extract (all static)
+AiArchive::list('/path/to/model.ai');                    // string[] entry names
+AiArchive::validate('/path/to/model.ai');                // bool — has manifest.json
+$extracted = AiArchive::extract('/path/to/model.ai', '/tmp/out');   // map name => path
 ```
 
 > **safetensors** is detected but not loadable — it carries raw weights without a compute

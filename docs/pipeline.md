@@ -15,20 +15,24 @@ $out = AI::pipeline()
 ```
 
 `run()` accepts a single value, an array, or a `Generator` and returns a `Generator`.
-A stage returning `null` filters the item out. Stages are PHP 8.5 pipe-operator compatible.
+A stage whose `process()` returns `null` filters the item out. A `Pipeline` itself is
+invokable (`__invoke`), so it works with the PHP 8.5 pipe operator: `$input |> $pipeline`.
 
 ## Contract
 
 ```php
 interface Stage
 {
-    public function __invoke(mixed $item): mixed;   // return null to drop
+    public function process(mixed $input): mixed;   // return null to drop the item
+    public function name(): string;
 }
 
 interface Pipeline
 {
-    public function pipe(Stage $stage): static;
-    public function run(mixed $items): \Generator;
+    public function pipe(Stage $stage): self;
+    public function run(mixed $input): \Generator;
+    public function stages(): array;                 // Stage[]
+    public function __invoke(mixed $input): \Generator;
 }
 ```
 
@@ -36,14 +40,14 @@ interface Pipeline
 
 | Stage | Constructor | Purpose |
 |-------|------------|---------|
-| `TransformStage` | `(callable $fn)` | Map each item through a callable |
-| `FilterStage` | `(callable $predicate)` | Drop items failing the predicate |
-| `NormalizeStage` | `(?int $dimension)` | Normalize input shape / values |
-| `ChunkStage` | `(Tokenizer $tok, int $size, ?int $overlap)` | Split text into overlapping chunks |
-| `TokenizeStage` | `(Tokenizer $tok, ?int $maxLength)` | Encode text to token IDs |
+| `TransformStage` | `(\Closure $transform, string $name = 'transform')` | Map each item through a callable |
+| `FilterStage` | `(\Closure $predicate)` | Drop items failing the predicate |
+| `NormalizeStage` | `()` | L2-normalize an embedding vector |
+| `ChunkStage` | `(Tokenizer $tok, int $maxTokens = 512, int $overlap = 64)` | Split text into overlapping chunks |
+| `TokenizeStage` | `(Tokenizer $tok, bool $addSpecialTokens = true)` | Encode text to token IDs |
 | `EmbedStage` | `(Embedder $embedder)` | Text → embedding vector |
 | `ClassifyStage` | `(Backend $backend, string $modelPath)` | Text → `ClassificationResult` |
-| `StoreStage` | `(VectorStore $store, ?string $idPrefix)` | Persist results to a vector store |
+| `StoreStage` | `(VectorStore $store)` | Persist results to a vector store |
 
 ## RAG example
 
@@ -55,7 +59,7 @@ $store = AI::vector('knowledge');
 
 // Index phase: chunk → embed → store
 AI::pipeline()
-    ->pipe(new ChunkStage($tok, size: 256, overlap: 32))
+    ->pipe(new ChunkStage($tok, maxTokens: 256, overlap: 32))
     ->pipe(new EmbedStage($embedder))
     ->pipe(new StoreStage($store))
     ->run($documents);
@@ -70,16 +74,21 @@ See [`examples/06-rag.php`](../examples/06-rag.php) and
 
 ## Custom stages
 
-Implement `Stage` and return `null` to drop an item:
+Implement `Stage` and return `null` from `process()` to drop an item:
 
 ```php
 use FerryAI\Core\Contracts\Stage;
 
 class UppercaseStage implements Stage
 {
-    public function __invoke(mixed $item): mixed
+    public function process(mixed $input): mixed
     {
-        return is_string($item) ? strtoupper($item) : null;
+        return is_string($input) ? strtoupper($input) : null;
+    }
+
+    public function name(): string
+    {
+        return 'uppercase';
     }
 }
 

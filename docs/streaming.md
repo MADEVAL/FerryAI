@@ -96,18 +96,18 @@ For live streaming to a browser:
 ## ChatFormatter templates
 
 `ChatFormatter` converts chat message arrays into the format that the LLM expects.
-Five templates are supported:
+Five templates are supported (via `ChatFormatter::format()`):
 
 | Template | Prompt format | Models |
 |----------|--------------|--------|
-| `chatml` (default) | `<|im_start|>role\ncontent<|im_end|>` | Qwen, Phi |
+| `chatml` (default) | `<|im_start|>role\ncontent<|im_end|>` | Qwen |
 | `llama3` | `<|begin_of_text|><|start_header_id|>role<|end_header_id|>\n\ncontent<|eot_id|>` | LLaMA 3 |
-| `vicuna` | `USER: content\nASSISTANT: content` | Vicuna |
-| `alpaca` | `### Instruction:\ncontent\n### Response:\ncontent` | Alpaca |
-| `mistral` | `[INST] content [/INST] content` | Mistral |
+| `mistral` | `<s>[INST] content [/INST] content</s>` | Mistral / Mixtral |
+| `gemma` | `<start_of_turn>role\ncontent<end_of_turn>` | Gemma |
+| `phi` | `<|role|>\ncontent<|end|>` | Phi |
 
-Select via `backends.llama.chat_template` config or let `ChatFormatter` auto-detect from
-the GGUF metadata.
+`ChatFormatter::detectFormat($modelName)` auto-selects from the model name (llama3, mistral,
+gemma, phi, else chatml). Select explicitly via `backends.llama.chat_template` config.
 
 ## Streaming with grammar
 

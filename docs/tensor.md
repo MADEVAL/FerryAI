@@ -12,15 +12,22 @@ interface Tensor extends ArrayAccess, Countable, JsonSerializable
 {
     public function shape(): Shape;
     public function dtype(): DType;
+    public function to(Device $device): self;
     public function device(): Device;
     public function toArray(): array;
-    public function reshape(Shape $shape): static;
-    public function transpose(?array $axes = null): static;
-    public function add(Tensor $other): static;
-    public function sub(Tensor $other): static;
-    public function mul(Tensor $other): static;
+    public function data(): mixed;
+    public function add(self $other): self;
+    public function sub(self $other): self;
+    public function mul(self $other): self;
+    public function matmul(self $other): self;
+    public function transpose(?array $axes = null): self;
+    public function reshape(Shape $newShape): self;
+    public function slice(array $slices): self;
 }
 ```
+
+(Plus `__clone`, `jsonSerialize`, `__serialize`, `__unserialize`. Full signatures:
+[INTERFACE_CONTRACTS.md](INTERFACE_CONTRACTS.md).)
 
 A tensor has a **fixed shape**. Element assignment (`$t[$i] = $v`) is allowed; appending
 (`$t[] = $v`) and `unset($t[$i])` throw `\BadMethodCallException` because they break the
@@ -79,7 +86,6 @@ json_encode($a);   // JSON via JsonSerializable
 | `ArrayTensor` | tensor | Primary pure-PHP tensor for CPU fallback. Full math support. |
 | `OnnxTensor` | onnx-backend | Wraps ONNX Runtime output (ONNXRuntime\OrtValue). Math ops throw — ONNX does the math natively. |
 | `CpuNativeTensor` | cpu-backend | Pure-PHP tensor used by CPU backend. Full math support. |
-| `BackedTensor` | tensor | Wraps a backend-native tensor. Ops throw when native tensor is unavailable. |
 
 ## Shape
 
@@ -87,7 +93,14 @@ json_encode($a);   // JSON via JsonSerializable
 use FerryAI\Core\ValueObjects\Shape;
 
 $s = new Shape([2, 3, 4]);
-$s->dims;   // [2, 3, 4]
-$s->rank;   // 3
-$s->size;   // 24  (2 × 3 × 4)
+$s->dimensions;      // [2, 3, 4]  (the only property)
+$s->rank();          // 3
+$s->size();          // 24  (2 × 3 × 4; -1 if any axis is dynamic)
+$s->dimension(1);    // 3   (size along an axis)
+$s->isStatic();      // true (no -1 dynamic axes)
+(string) $s;         // "2,3,4"  (Stringable)
+Shape::fromString('1,3,224,224');   // parse from string
 ```
+
+A dimension of `-1` marks a dynamic axis; any other negative value throws
+`ValidationException`.
