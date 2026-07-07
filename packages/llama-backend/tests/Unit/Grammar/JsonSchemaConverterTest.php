@@ -78,4 +78,35 @@ final class JsonSchemaConverterTest extends TestCase
         self::assertStringContainsString('number ::=', $gbnf);
         self::assertStringContainsString('"["', $gbnf);
     }
+
+    public function testManyOptionalPropertiesDoNotBlowUpGrammarSize(): void
+    {
+        $properties = [];
+
+        for ($i = 0; $i < 15; $i++) {
+            $properties["p{$i}"] = ['type' => 'string'];
+        }
+
+        // All optional (no "required"). The old inlining grew as O(2^n): 15 fields ≈ 1.4 MB.
+        $gbnf = $this->converter->convert(['type' => 'object', 'properties' => $properties])->toString();
+
+        self::assertLessThan(50_000, \strlen($gbnf), 'Object grammar must grow linearly, not exponentially, in the number of optional properties.');
+    }
+
+    public function testManyOptionalPropertiesStillAcceptSubsets(): void
+    {
+        $properties = [];
+
+        for ($i = 0; $i < 15; $i++) {
+            $properties["p{$i}"] = ['type' => 'integer'];
+        }
+
+        $grammar = $this->converter->convert(['type' => 'object', 'properties' => $properties]);
+        $matcher = new GbnfMatcher($grammar);
+
+        self::assertTrue($matcher->isComplete('{}'));
+        self::assertTrue($matcher->isComplete('{"p0":1}'));
+        self::assertTrue($matcher->isComplete('{"p0":1,"p7":2,"p14":3}'));
+        self::assertFalse($matcher->isComplete('{"p14":3,"p0":1}'), 'out-of-order properties are not accepted');
+    }
 }

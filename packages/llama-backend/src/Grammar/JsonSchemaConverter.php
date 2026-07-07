@@ -119,54 +119,53 @@ final class JsonSchemaConverter
 
         $rules[$name] = $pieces === []
             ? '"{" ws "}"'
-            : '"{" ws ' . $this->objectHead($pieces, 0) . ' ws "}"';
+            : '"{" ws ' . $this->objectPropertyRules($pieces, $rules, $counter) . ' ws "}"';
 
         return $name;
     }
 
     /**
-     * Grammar for properties[$i..] where the first present property carries no leading comma.
-     * Optional properties may be skipped so any in-order subset is accepted.
+     * Emits O(n) named GBNF rules describing the object body, which matches any in-order subset
+     * of the optional properties. Earlier revisions inlined this recursively, doubling the grammar
+     * text per optional property (O(2^n)); referencing named rules keeps it linear.
+     *
+     * Returns the rule reference for the object body (head at index 0).
      *
      * @param list<array{bool, string}> $pieces
+     * @param array<string, string>     $rules
      */
-    private function objectHead(array $pieces, int $i): string
+    private function objectPropertyRules(array $pieces, array &$rules, int &$counter): string
     {
-        if ($i >= \count($pieces)) {
-            return '""';
+        $count = \count($pieces);
+
+        // tail[$i]: rule reference (or '""') matching the comma-prefixed remainder from property $i.
+        $tail = [$count => '""'];
+
+        for ($i = $count - 1; $i >= 0; --$i) {
+            [$isRequired, $piece] = $pieces[$i];
+            $sub = $tail[$i + 1];
+            $segment = 'ws "," ws ' . $piece . ($sub === '""' ? '' : ' ' . $sub);
+            $body = $isRequired ? '(' . $segment . ')' : '((' . $segment . ') | ' . $sub . ')';
+            $ruleName = 'objtail-' . $counter++;
+            $rules[$ruleName] = $body;
+            $tail[$i] = $ruleName;
         }
 
-        [$isRequired, $piece] = $pieces[$i];
-        $tail = $this->objectTail($pieces, $i + 1);
-        $present = '(' . $piece . ($tail === '""' ? '' : ' ' . $tail) . ')';
+        // head[$i]: rule reference matching the remainder from $i where the first present property
+        // carries no leading comma.
+        $head = [$count => '""'];
 
-        if ($isRequired) {
-            return $present;
+        for ($i = $count - 1; $i >= 0; --$i) {
+            [$isRequired, $piece] = $pieces[$i];
+            $sub = $tail[$i + 1];
+            $present = '(' . $piece . ($sub === '""' ? '' : ' ' . $sub) . ')';
+            $body = $isRequired ? $present : '(' . $present . ' | ' . $head[$i + 1] . ')';
+            $ruleName = 'objhead-' . $counter++;
+            $rules[$ruleName] = $body;
+            $head[$i] = $ruleName;
         }
 
-        return '(' . $present . ' | ' . $this->objectHead($pieces, $i + 1) . ')';
-    }
-
-    /**
-     * Grammar for properties[$i..] where every present property carries a leading comma.
-     *
-     * @param list<array{bool, string}> $pieces
-     */
-    private function objectTail(array $pieces, int $i): string
-    {
-        if ($i >= \count($pieces)) {
-            return '""';
-        }
-
-        [$isRequired, $piece] = $pieces[$i];
-        $sub = $this->objectTail($pieces, $i + 1);
-        $segment = 'ws "," ws ' . $piece . ($sub === '""' ? '' : ' ' . $sub);
-
-        if ($isRequired) {
-            return '(' . $segment . ')';
-        }
-
-        return '((' . $segment . ') | ' . $sub . ')';
+        return $head[0];
     }
 
     /**
