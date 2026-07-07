@@ -46,35 +46,6 @@ $data = \unserialize($content);
 
 ## 🟠 ВАЖНО
 
-## [ВАЖНО] C-обёртка не валидирует аргументы на границе FFI (переполнение буфера / разыменование NULL)
-
-Файл: `native/llama-wrapper/ferry_llama.c`, строки 112, 115, 123, 173-210
-Категория: Надёжность / Безопасность
-
-Проблема: ни одна экспортируемая функция не проверяет указатели и размеры. Наиболее опасное:
-- `ferry_eval`: при отрицательном `out_size` проверка `n_vocab > out_size` истинна → `n_vocab` становится отрицательным → `(size_t) n_vocab` в `memcpy` = гигантское число.
-- `ferry_tokenize`: `strlen(text)` без проверки `text != NULL`.
-- `ferry_eval_topk`: пишет до `k` элементов в `out_ids`/`out_logits`, но параметра размера буфера нет вообще.
-
-Доказательство:
-```c
-if (n_vocab > out_size) n_vocab = out_size;              // 112: out_size<0 => n_vocab<0
-memcpy(out, logits, (size_t) n_vocab * sizeof(float));   // 115: SIZE_MAX*4
-```
-```c
-return llama_tokenize(vocab, text, (int) strlen(text), ...); // 123: text может быть NULL
-```
-```c
-FERRY_API int ferry_eval_topk(..., int k, int * out_ids, float * out_logits) { // нет out_size
-    out_logits[pos] = v; out_ids[pos] = t;               // запись по pos<k без границы буфера
-```
-
-Вектор / последствие: аргументы приходят из PHP-кода Ferry (граница доверия внутри процесса), но любая ошибка/несоответствие размеров ведёт к SIGSEGV или порче кучи в процессе PHP. Функция, пересекающая границу FFI, обязана защищать себя.
-
-Решение: в начале каждой функции отклонять `NULL`-указатели (`return -1/-2`) и `out_size <= 0`; добавить параметр `out_size` в `ferry_eval_topk` и ограничивать каждую запись `pos < out_size`.
-
----
-
 ## [ВАЖНО] Скачанный нативный бинарник загружается через FFI без проверки целостности
 
 Файл: `packages/ai/src/NativeBinaryManager.php`, строки 24, 62-70
