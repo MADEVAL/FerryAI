@@ -4,9 +4,87 @@ on:
   push:
     tags: ['v*']
 
+# Pinned llama.cpp build the wrapper is compiled/ABI-matched against.
+# Keep in sync with native/llama-wrapper/README.md.
+env:
+  LLAMA_BUILD: b9873
+
+permissions:
+  contents: write
+
 jobs:
+  build-wrapper:
+    name: "Build ferry_llama (${{ matrix.target }})"
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: linux-x86_64
+            ext: so
+          - os: windows-latest
+            target: windows-x86_64
+            ext: dll
+    steps:
+      - uses: actions/checkout@v4
+
+      # Matching headers (same commit as the prebuilt libs).
+      - name: Checkout llama.cpp headers at pinned build
+        uses: actions/checkout@v4
+        with:
+          repository: ggml-org/llama.cpp
+          ref: ${{ env.LLAMA_BUILD }}
+          path: llama-src
+
+      - name: Assemble llama.cpp libs + headers
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p llama
+          asset="llama-${LLAMA_BUILD}-bin-${{ runner.os == 'Windows' && 'win-cpu-x64' || 'ubuntu-x64' }}.zip"
+          url="https://github.com/ggml-org/llama.cpp/releases/download/${LLAMA_BUILD}/${asset}"
+          echo "Downloading $url"
+          curl -fSL -o libs.zip "$url"
+          unzip -o -q libs.zip -d libs
+          # Shared libs live at the archive root (Windows) or build/bin (Linux).
+          find libs \( -name '*.so' -o -name '*.so.*' -o -name '*.dll' \) -exec cp -f {} llama/ \;
+          # Headers from the pinned source.
+          cp llama-src/include/llama.h llama/
+          cp llama-src/ggml/include/*.h llama/
+          ls -l llama/
+
+      - name: Build & stage wrapper (Linux)
+        if: runner.os == 'Linux'
+        run: bash native/llama-wrapper/package-release.sh "$PWD/llama" ${{ matrix.target }}
+
+      - name: Build & stage wrapper (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          powershell -File native/llama-wrapper/package-release.ps1 -LlamaDir "$PWD\llama" -OutDir "native-binaries/${{ matrix.target }}"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ferry_llama-${{ matrix.target }}
+          path: native-binaries/${{ matrix.target }}/*
+
   release:
+    name: "Publish GitHub Release"
+    needs: build-wrapper
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: echo "Release workflow — add build steps for native binaries"
+
+      - name: Download all wrapper artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      - name: Publish release with wrapper binaries
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "FerryAI ${{ github.ref_name }}"
+          generate_release_notes: true
+          files: |
+            dist/**/ferry_llama-*

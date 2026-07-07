@@ -103,8 +103,36 @@ int   ferry_tokenize(void* model, const char* text, int* out_tokens, int max_tok
 int   ferry_eval(void* ctx, void* model, const int* tokens, int n_tokens,
                  float* out, int out_size);          // full-vocab logits (for grammar)
 int   ferry_eval_topk(void* ctx, void* model, const int* tokens, int n_tokens, int k,
-                      int* out_ids, float* out_logits); // native top-k pre-filter (fast sampling)
+                      int* out_ids, float* out_logits, int out_size); // native top-k pre-filter (fast sampling)
 void  ferry_reset(void* ctx);                          // clear KV cache
+```
+
+Every exported function validates its arguments at the FFI boundary: NULL pointers and
+non-positive sizes (`out_size`, `max_tokens`, `n_tokens`, `buf_size`) are rejected with a
+`-1` / `NULL` return instead of dereferencing them, so a bad call from PHP cannot segfault or
+corrupt the host process heap. `ferry_eval_topk` takes an `out_size` = the capacity of the
+`out_ids`/`out_logits` arrays and never writes past it.
+
+## Prebuilt binaries
+
+Machine-built wrappers for tagged releases are published on the
+[GitHub Releases](https://github.com/MADEVAL/FerryAI/releases) page as
+`ferry_llama-<platform>.<ext>` (e.g. `ferry_llama-windows-x86_64.dll`,
+`ferry_llama-linux-x86_64.so`), built against the pinned llama.cpp build **b9873**. A prebuilt
+wrapper is ABI-tied to that llama.cpp build, so you still need the matching `llama`/`ggml`
+shared libraries (same build) next to it at runtime — download them from the
+[llama.cpp release b9873](https://github.com/ggml-org/llama.cpp/releases/tag/b9873). If your
+llama.cpp version differs, rebuild the wrapper from source with the steps above.
+
+To (re)produce and stage the release artifacts locally:
+
+```powershell
+# Windows — builds then copies ferry_llama.dll + SHA256 into native-binaries/windows-x86_64/
+powershell -File native/llama-wrapper/package-release.ps1 -LlamaDir C:\llama
+```
+```bash
+# Linux/macOS — builds then copies ferry_llama.so/.dylib + SHA256 into native-binaries/<target>/
+native/llama-wrapper/package-release.sh /opt/llama
 ```
 
 ## Notes / limits

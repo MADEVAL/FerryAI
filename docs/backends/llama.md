@@ -55,11 +55,11 @@ AI::config([
 
 **Linux / WSL:**
 ```bash
-export FERRY_AI_LLAMA_WRAPPER=/opt/llama/libferry_llama.so
+export FERRY_AI_LLAMA_WRAPPER=/opt/llama/ferry_llama.so
 export LD_LIBRARY_PATH=/opt/llama:$LD_LIBRARY_PATH
 
 # For CUDA:
-export FERRY_AI_LLAMA_WRAPPER=/opt/llama-cuda/libferry_llama.so
+export FERRY_AI_LLAMA_WRAPPER=/opt/llama-cuda/ferry_llama.so
 export LD_LIBRARY_PATH=/opt/llama-cuda:/usr/local/cuda/lib64:$LD_LIBRARY_PATH
 ```
 
@@ -169,7 +169,9 @@ chat but weights are shared).
 
 - Runs in a normal PHP process. Under PHPUnit, ggml global constructors conflict with
   PHPUnit's output buffering — integration tests run in a subprocess.
-- `ferry_llama.dll` is machine-built and not committed — build it or ship a prebuilt binary.
+- `ferry_llama.dll` is machine-built and not committed. Either build it (above) or download a
+  prebuilt `ferry_llama-<platform>.<ext>` from the [GitHub Releases](https://github.com/MADEVAL/FerryAI/releases)
+  page — see [`native/llama-wrapper/README.md`](../../native/llama-wrapper/README.md#prebuilt-binaries).
 - `model_path` in config should point at the GGUF file, not a directory.
 
 ## Appendix: Why the C wrapper?
