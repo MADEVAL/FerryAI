@@ -65,4 +65,61 @@ final class SamplingParamsTest extends TestCase
 
         new SamplingParams(repetitionPenalty: -0.5);
     }
+
+    public function testTemperatureNanIsRejected(): void
+    {
+        $this->expectException(ValidationException::class);
+
+        new SamplingParams(temperature: \NAN);
+    }
+
+    public function testTopPNanIsRejected(): void
+    {
+        $this->expectException(ValidationException::class);
+
+        new SamplingParams(topP: \NAN);
+    }
+
+    public function testRepetitionPenaltyNanIsRejected(): void
+    {
+        $this->expectException(ValidationException::class);
+
+        new SamplingParams(repetitionPenalty: \NAN);
+    }
+
+    public function testFrequencyPenaltyNanIsRejected(): void
+    {
+        $this->expectException(ValidationException::class);
+
+        new SamplingParams(frequencyPenalty: \NAN);
+    }
+
+    public function testFrequencyPenaltyOutOfRangeIsRejected(): void
+    {
+        $this->expectException(ValidationException::class);
+
+        new SamplingParams(frequencyPenalty: 3.0);
+    }
+
+    public function testPresencePenaltyNanIsRejected(): void
+    {
+        $this->expectException(ValidationException::class);
+
+        new SamplingParams(presencePenalty: \NAN);
+    }
+
+    public function testPresencePenaltyOutOfRangeIsRejected(): void
+    {
+        $this->expectException(ValidationException::class);
+
+        new SamplingParams(presencePenalty: -3.0);
+    }
+
+    public function testValidPenaltiesAtBoundariesAreAccepted(): void
+    {
+        $params = new SamplingParams(frequencyPenalty: 2.0, presencePenalty: -2.0);
+
+        self::assertSame(2.0, $params->frequencyPenalty);
+        self::assertSame(-2.0, $params->presencePenalty);
+    }
 }

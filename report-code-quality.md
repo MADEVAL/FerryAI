@@ -46,26 +46,6 @@ $data = \unserialize($content);
 
 ## 🟠 ВАЖНО
 
-## [ВАЖНО] `SamplingParams`: NaN обходит валидацию диапазонов
-
-Файл: `packages/core/src/ValueObjects/SamplingParams.php`, строки 27, 31
-Категория: Надёжность
-
-Проблема: проверки вида `$x < min || $x > max` не отсекают `NAN` (любое сравнение с NaN — `false`). Плюс `frequencyPenalty` и `presencePenalty` не валидируются вообще.
-
-Доказательство:
-```php
-if ($temperature < 0.0 || $temperature > 2.0) { throw ...; }   // NAN проходит
-if ($topP < 0.0 || $topP > 1.0) { throw ...; }                 // NAN проходит
-// frequencyPenalty / presencePenalty — без единой проверки
-```
-
-Вектор / последствие: `new SamplingParams(temperature: NAN)` конструируется успешно, NaN течёт в softmax → NaN-логиты → некорректный вывод без исключения.
-
-Решение: проверять через положительную форму: `if (!($temperature >= 0.0 && $temperature <= 2.0))`; добавить диапазоны для `frequencyPenalty`/`presencePenalty` (например `[-2.0, 2.0]`).
-
----
-
 ## [ВАЖНО] GGUF: тип int8 читает байт дважды и сбивает позицию потока
 
 Файл: `packages/model-hub/src/Format/GgufInspector.php`, строка 155
