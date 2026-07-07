@@ -51,4 +51,18 @@ final class SamplingParamsTest extends TestCase
 
         new SamplingParams(maxTokens: 0);
     }
+
+    public function testRepetitionPenaltyZeroIsRejected(): void
+    {
+        $this->expectException(ValidationException::class);
+
+        new SamplingParams(repetitionPenalty: 0.0);
+    }
+
+    public function testRepetitionPenaltyNegativeIsRejected(): void
+    {
+        $this->expectException(ValidationException::class);
+
+        new SamplingParams(repetitionPenalty: -0.5);
+    }
 }

@@ -129,7 +129,7 @@ final class SamplerMath
 
             $logit = $logits[$tokenId];
 
-            if ($repetition !== 1.0) {
+            if ($repetition > 0.0 && $repetition !== 1.0) {
                 $logit = $logit > 0.0 ? $logit / $repetition : $logit * $repetition;
             }
 

@@ -73,4 +73,12 @@ final class SamplerMathTest extends TestCase
         self::assertEqualsWithDelta(0.0, $result[0], 1e-9);
         self::assertSame(2.0, $result[1]);
     }
+
+    public function testApplyPenaltiesZeroRepetitionDoesNotDivideByZero(): void
+    {
+        $result = SamplerMath::applyPenalties([0 => 10.0, 1 => 5.0], [0 => 1], 0.0, 0.0, 0.0);
+
+        self::assertFinite($result[0]);
+        self::assertSame(10.0, $result[0]);
+    }
 }

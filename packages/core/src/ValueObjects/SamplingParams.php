@@ -36,8 +36,8 @@ readonly class SamplingParams
             throw new ValidationException(\sprintf('topK must be >= 1, got %d.', $topK));
         }
 
-        if ($repetitionPenalty < 0.0) {
-            throw new ValidationException(\sprintf('repetitionPenalty must be >= 0.0, got %F.', $repetitionPenalty));
+        if ($repetitionPenalty <= 0.0) {
+            throw new ValidationException(\sprintf('repetitionPenalty must be > 0.0, got %F.', $repetitionPenalty));
         }
 
         if ($maxTokens < 1) {
