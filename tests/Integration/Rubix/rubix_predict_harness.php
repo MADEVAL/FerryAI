@@ -26,9 +26,9 @@ if (!interface_exists('Rubix\ML\Estimator')) {
 
 error_reporting(\E_ALL & ~\E_DEPRECATED);
 
-use Rubix\ML\Datasets\Labeled;
-use Rubix\ML\Classifiers\KNearestNeighbors;
 use FerryAI\AI;
+use Rubix\ML\Classifiers\KNearestNeighbors;
+use Rubix\ML\Datasets\Labeled;
 
 $rbmPath = sys_get_temp_dir() . '/ferry-predict-' . uniqid() . '.rbm';
 

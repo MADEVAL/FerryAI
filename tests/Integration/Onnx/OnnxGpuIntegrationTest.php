@@ -15,7 +15,7 @@ use PHPUnit\Framework\TestCase;
  * Verifies ONNX GPU (CUDA) execution provider availability.
  *
  * Skipped when ONNX Runtime is not available or when CUDA is not installed.
- * Requires CUDA runtime libraries + cuDNN on Windows (see docs/DEBT_REPORT.md §13).
+ * Requires CUDA runtime libraries + cuDNN on Windows (see docs/backends/onnx.md).
  */
 #[Group('integration')]
 #[CoversNothing]

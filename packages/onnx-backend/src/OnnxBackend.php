@@ -80,7 +80,7 @@ final class OnnxBackend implements Backend
         } catch (\Throwable $e) {
             // A GPU build can advertise a provider (e.g. CUDA) that fails to load at session time
             // because its native runtime is incomplete (missing CUDA/cuDNN/math libraries).
-            // Fall back to CPU-only execution so inference still works. See DEBT_REPORT §13.
+            // Fall back to CPU-only execution so inference still works.
             if ($target === Device::CPU || $providerNames === ['CPUExecutionProvider']) {
                 throw new ModelLoadException($source, $e->getMessage());
             }

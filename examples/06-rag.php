@@ -5,8 +5,8 @@ declare(strict_types=1);
 
 require __DIR__ . '/../vendor/autoload.php';
 
-use FerryAI\OnnxBackend\OnnxBackend;
 use FerryAI\Embedding\Embedder;
+use FerryAI\OnnxBackend\OnnxBackend;
 use FerryAI\Tokenizer\TokenizerFactory;
 use FerryAI\Vector\CollectionManager;
 use FerryAI\Vector\SQLiteStore;
@@ -40,7 +40,8 @@ $chunks = [
     ['id' => 'chunk-7', 'text' => 'PHP 8.5 introduced the pipe operator and clone-with syntax for immutable objects.', 'source' => 'php'],
 ];
 
-echo "Step 1: Embed and store " . count($chunks) . " chunks...\n";
+echo 'Step 1: Embed and store ' . count($chunks) . " chunks...\n";
+
 foreach ($chunks as $chunk) {
     $vec = $embedder->embed($chunk['text']);
     $collection->add($chunk['id'], $vec, ['source' => $chunk['source'], 'text' => $chunk['text']]);
@@ -56,8 +57,9 @@ $queries = [
 
 foreach ($queries as $query => $filter) {
     echo "Query: '$query'\n";
+
     if ($filter) {
-        echo "Filter: " . json_encode($filter) . "\n";
+        echo 'Filter: ' . json_encode($filter) . "\n";
     }
 
     $qVec = $embedder->embed($query);

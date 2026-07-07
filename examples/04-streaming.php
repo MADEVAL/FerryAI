@@ -6,8 +6,8 @@ declare(strict_types=1);
 require __DIR__ . '/../vendor/autoload.php';
 
 use FerryAI\AI;
-use FerryAI\StreamResponse;
 use FerryAI\Core\PlatformDetector;
+use FerryAI\StreamResponse;
 
 echo "=== 04 — Streaming ===\n\n";
 
@@ -37,7 +37,8 @@ $messages = [
     ['role' => 'user', 'content' => 'Count from 1 to 5.'],
 ];
 
-echo "stream: ";
+echo 'stream: ';
+
 foreach (AI::stream($messages) as $token) {
     echo $token;
 }

@@ -5,12 +5,12 @@ declare(strict_types=1);
 
 require __DIR__ . '/../vendor/autoload.php';
 
+use FerryAI\AI;
 use FerryAI\Pipeline\Pipeline;
 use FerryAI\Pipeline\Stages\ChunkStage;
 use FerryAI\Pipeline\Stages\FilterStage;
 use FerryAI\Pipeline\Stages\NormalizeStage;
 use FerryAI\Pipeline\Stages\TransformStage;
-use FerryAI\AI;
 
 $modelDir = getenv('FERRY_AI_MODEL_DIR') ?: 'D:\FerryAI\all-MiniLM-L6-v2-onnx';
 $tokenizerPath = $modelDir . '/tokenizer.json';
@@ -36,9 +36,9 @@ $pipeline
 
 $inputs = ['hi', 'hello', 'greetings', 'yo'];
 
-echo "Input:  " . json_encode($inputs) . "\n";
+echo 'Input:  ' . json_encode($inputs) . "\n";
 $results = iterator_to_array($pipeline->run($inputs));
-echo "Output: " . json_encode($results) . "\n";
+echo 'Output: ' . json_encode($results) . "\n";
 printf("stages: %s\n", implode(' → ', array_map(fn($s) => $s->name(), $pipeline->stages())));
 echo "\n";
 

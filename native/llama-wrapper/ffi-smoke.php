@@ -5,7 +5,7 @@ declare(strict_types=1);
 /*
  * Smoke test for the ferry_llama wrapper — real llama.cpp inference through PHP FFI on
  * CPU and GPU. Run standalone (NOT under PHPUnit; the ggml global constructors conflict
- * with PHPUnit's output/exception handling — see DEBT_REPORT.md #12).
+ * with PHPUnit's output/exception handling).
  *
  *   Windows:  $env:PATH = "D:\FerryAI;" + $env:PATH; php native/llama-wrapper/ffi-smoke.php
  *   Linux:    FERRY_AI_LLAMA_DIR=/opt/llama FERRY_AI_GGUF=/path/model.gguf \
@@ -57,6 +57,7 @@ $run = static function (FFI $ffi, string $gguf, int $ngl, string $label): void {
 
     if ($model === null || FFI::isNull($model)) {
         echo "[$label] model load FAILED" . PHP_EOL;
+
         return;
     }
 
@@ -73,7 +74,7 @@ $run = static function (FFI $ffi, string $gguf, int $ngl, string $label): void {
     $ms = (microtime(true) - $t0) * 1000;
 
     echo "[$label] " . trim(FFI::string($out)) . PHP_EOL;
-    echo "[$label] ~" . round($nNew / ($ms / 1000), 1) . " tok/s" . PHP_EOL;
+    echo "[$label] ~" . round($nNew / ($ms / 1000), 1) . ' tok/s' . PHP_EOL;
 
     $ffi->ferry_free_context($ctx);
     $ffi->ferry_free_model($model);

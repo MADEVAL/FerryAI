@@ -5,14 +5,12 @@ declare(strict_types=1);
 
 require __DIR__ . '/../vendor/autoload.php';
 
-use FerryAI\AI;
-use FerryAI\ModelHub\Format\FormatDetector;
 use FerryAI\ModelHub\Format\AiArchive;
+use FerryAI\ModelHub\Format\FormatDetector;
+use FerryAI\ModelHub\HuggingFaceClient;
 use FerryAI\ModelHub\ModelIntrospector;
-use FerryAI\ModelHub\ModelVerifier;
 use FerryAI\ModelHub\Signature\Sha256Verifier;
 use FerryAI\ModelHub\Signature\SignatureVerifier;
-use FerryAI\ModelHub\HuggingFaceClient;
 
 $modelDir = getenv('FERRY_AI_MODEL_DIR') ?: 'D:\FerryAI\all-MiniLM-L6-v2-onnx';
 $modelPath = $modelDir . '/model.onnx';
@@ -63,12 +61,15 @@ if (extension_loaded('sodium')) {
         $sigPath = sys_get_temp_dir() . '/ferry.sig';
         file_put_contents($sigPath, $signature);
 
-        printf("verifyEd25519(correct): %s\n",
-            SignatureVerifier::verify($modelPath, $sigPath, $pubPath) ? 'PASS' : 'FAIL');
+        printf(
+            "verifyEd25519(correct): %s\n",
+            SignatureVerifier::verify($modelPath, $sigPath, $pubPath) ? 'PASS' : 'FAIL',
+        );
     }
 
     unlink($pubPath);
     unlink($privPath);
+
     if (isset($sigPath)) {
         unlink($sigPath);
     }
@@ -95,6 +96,7 @@ echo "--- HuggingFace Hub ---\n\n";
 
 $hf = new HuggingFaceClient();
 $info = $hf->getModelInfo('sentence-transformers/all-MiniLM-L6-v2');
+
 if ($info !== []) {
     printf("Model:      %s\n", $info['modelId'] ?? $info['id'] ?? '?');
     printf("Pipeline:   %s\n", $info['pipeline_tag'] ?? '?');

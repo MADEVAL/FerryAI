@@ -5,10 +5,9 @@ declare(strict_types=1);
 
 require __DIR__ . '/../vendor/autoload.php';
 
-use FerryAI\AI;
+use FerryAI\CpuBackend\CpuNativeModel;
 use FerryAI\ModelPool;
 use FerryAI\SharedMemoryManager;
-use FerryAI\CpuBackend\CpuNativeModel;
 
 echo "=== 15 — Model Pool & Shared Memory ===\n\n";
 

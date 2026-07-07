@@ -5,13 +5,12 @@ declare(strict_types=1);
 
 require __DIR__ . '/../vendor/autoload.php';
 
+use FerryAI\Core\ValueObjects\SamplingParams;
 use FerryAI\LlamaBackend\Grammar\GbnfGrammar;
-use FerryAI\LlamaBackend\Grammar\JsonSchemaConverter;
 use FerryAI\LlamaBackend\Sampling\GreedySampler;
+use FerryAI\LlamaBackend\Sampling\SamplerFactory;
 use FerryAI\LlamaBackend\Sampling\TopKSampler;
 use FerryAI\LlamaBackend\Sampling\TopPSampler;
-use FerryAI\LlamaBackend\Sampling\SamplerFactory;
-use FerryAI\Core\ValueObjects\SamplingParams;
 
 echo "=== 09 — Grammar & Samplers ===\n\n";
 

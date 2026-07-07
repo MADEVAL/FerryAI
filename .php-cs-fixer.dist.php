@@ -3,11 +3,15 @@
 declare(strict_types=1);
 
 $finder = PhpCsFixer\Finder::create()
-    ->in(__DIR__ . '/packages')
-    ->exclude('vendor')
-    ->exclude('tests/fixtures')
-    ->notPath('#/FFI/|/Runtime/#')
-    ->name('*.php');
+    ->in(__DIR__)
+    ->exclude(['vendor', 'build'])
+    ->notPath('#/tests/fixtures/#')
+    ->name('*.php')
+    ->append([
+        __DIR__ . '/.php-cs-fixer.dist.php',
+        __DIR__ . '/bin/ferry-ai',
+        __DIR__ . '/bin/generate-ffi',
+    ]);
 
 return (new PhpCsFixer\Config())
     ->setRiskyAllowed(true)

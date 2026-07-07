@@ -49,6 +49,7 @@ printf("braces balanced: %s\n\n", substr_count($cdef, '{') === substr_count($cde
 
 if (extension_loaded('ffi')) {
     $types = "typedef struct point { int32_t x; int32_t y; } point;\nenum color { RED, GREEN, BLUE };";
+
     try {
         FFI::cdef((new CdefGenerator())->generate($types));
         echo "FFI::cdef parses generated type declarations: OK\n\n";

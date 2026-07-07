@@ -4,9 +4,7 @@ declare(strict_types=1);
 
 namespace FerryAI\Tests\Verification;
 
-use FerryAI\Core\Enums\DType;
 use FerryAI\Core\Logger;
-use FerryAI\Core\ValueObjects\Shape;
 use FerryAI\ModelHub\Format\FormatDetector;
 use FerryAI\Tensor\ArrayTensor;
 use FerryAI\Vector\Collection;

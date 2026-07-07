@@ -10,7 +10,7 @@ use FerryAI\LlamaBackend\LlamaModelParams;
 
 /**
  * Production {@see LlamaRuntimeInterface} backed by llama.cpp through the flat
- * `ferry_llama` wrapper (docs/DEBT_REPORT.md §12). Real CPU + GPU inference.
+ * `ferry_llama` wrapper (see native/llama-wrapper/README.md). Real CPU + GPU inference.
  *
  * Excluded from static analysis (FFI boundary). Standalone-process only — under
  * PHPUnit the ggml global constructors conflict with the test runner, so unit

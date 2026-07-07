@@ -76,4 +76,3 @@ echo json_encode([
     'output' => $prediction['output'],
     'proba_a' => $proba[0]['a'] ?? null,
 ]);
-

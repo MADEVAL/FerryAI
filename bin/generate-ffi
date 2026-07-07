@@ -44,21 +44,34 @@ $parseArgs = static function (array $argv): array {
 
 $options = $parseArgs($argv);
 
+$usage = <<<'USAGE'
+    Generate an \FFI::cdef()-compatible declaration string from a C header.
+
+    Usage:
+      php bin/generate-ffi --header <path> [--output <path>] [--class <Name>] [--strip <A,B,C>] [--validate]
+
+    Options:
+      --header    Path to the C header (e.g. llama.h).                  [required]
+      --output    Write a PHP class file instead of printing the cdef.
+      --class     Class name for --output (default: GeneratedCdef).
+      --strip     Comma-separated export/attribute macros to remove
+                  (e.g. LLAMA_API,GGML_API,GGML_CALL).
+      --validate  Parse the generated cdef with \FFI::cdef() and fail on error.
+                  Function symbols are resolved against --lib when given;
+                  without --lib only type-only headers validate cleanly.
+      --lib       Shared library path used by --validate to resolve functions.
+      --help      Show this help.
+
+    USAGE;
+
+if (isset($options['help'])) {
+    echo $usage . "\n";
+
+    exit(0);
+}
+
 if (!isset($options['header']) || $options['header'] === '') {
-    \fwrite(\STDERR, <<<'USAGE'
-        Generate an \FFI::cdef()-compatible declaration string from a C header.
-
-        Usage:
-          php bin/generate-ffi.php --header <path> [--output <path>] [--class <Name>] [--strip <A,B,C>]
-
-        Options:
-          --header  Path to the C header (e.g. llama.h).                    [required]
-          --output  Write a PHP class file instead of printing the cdef.
-          --class   Class name for --output (default: GeneratedCdef).
-          --strip   Comma-separated export/attribute macros to remove
-                    (e.g. LLAMA_API,GGML_API,GGML_CALL).
-
-        USAGE);
+    \fwrite(\STDERR, $usage . "\n");
 
     exit(1);
 }
@@ -84,6 +97,26 @@ $strip = isset($options['strip']) && $options['strip'] !== ''
     : [];
 
 $cdef = (new CdefGenerator())->generate($header, $strip);
+
+if (isset($options['validate'])) {
+    $lib = isset($options['lib']) && $options['lib'] !== '' ? $options['lib'] : null;
+
+    try {
+        $lib !== null ? \FFI::cdef($cdef, $lib) : \FFI::cdef($cdef);
+    } catch (\Throwable $e) {
+        $message = $e->getMessage();
+
+        if ($lib === null && \str_contains($message, 'resolving C function')) {
+            $message .= ' (pass --lib <path> to resolve function symbols against a shared library)';
+        }
+
+        \fwrite(\STDERR, \sprintf("Invalid cdef: %s\n", $message));
+
+        exit(1);
+    }
+
+    \fwrite(\STDERR, $lib !== null ? \sprintf("cdef valid against %s.\n", $lib) : "cdef valid.\n");
+}
 
 if (!isset($options['output']) || $options['output'] === '') {
     echo $cdef;

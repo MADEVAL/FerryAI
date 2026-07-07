@@ -11,6 +11,10 @@
             "homepage": "https://github.com/MADEVAL"
         }
     ],
+    "bin": [
+        "bin/ferry-ai",
+        "bin/generate-ffi"
+    ],
     "require": {
         "php": ">=8.5",
         "ext-ffi": "*",
@@ -104,7 +108,15 @@
             "@putenv XDEBUG_MODE=coverage",
             "@php vendor/bin/phpunit --testsuite unit --coverage-html build/coverage --coverage-text"
         ],
-        "mutation": "@php vendor/bin/infection"
+        "mutation": "@php vendor/bin/infection",
+        "benchmark-embed": "@php benchmarks/embed.php",
+        "benchmark-chat": "@php benchmarks/chat.php",
+        "benchmark-vector": "@php benchmarks/vector.php",
+        "benchmark": [
+            "@benchmark-embed",
+            "@benchmark-chat",
+            "@benchmark-vector"
+        ]
     },
     "scripts-descriptions": {
         "test": "Run all unit tests",
@@ -117,7 +129,12 @@
         "cs-fix": "Fix code style automatically",
         "lint": "Run all linters",
         "check": "Lint + test (pre-commit)",
-        "coverage": "Generate HTML coverage report"
+        "coverage": "Generate HTML coverage report",
+        "mutation": "Run mutation testing (Infection)",
+        "benchmark-embed": "Benchmark embedding throughput (needs an ONNX embedding model)",
+        "benchmark-chat": "Benchmark llama chat throughput (needs ferry_llama + a GGUF model)",
+        "benchmark-vector": "Benchmark vector store insert/search (SQLite, no model needed)",
+        "benchmark": "Run all benchmarks (embed + chat + vector)"
     },
     "config": {
         "sort-packages": true,

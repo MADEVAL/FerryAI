@@ -5,8 +5,8 @@ declare(strict_types=1);
 
 require __DIR__ . '/../vendor/autoload.php';
 
-use FerryAI\OnnxBackend\OnnxBackend;
 use FerryAI\Embedding\Embedder;
+use FerryAI\OnnxBackend\OnnxBackend;
 use FerryAI\Tokenizer\TokenizerFactory;
 
 $modelDir = getenv('FERRY_AI_MODEL_DIR') ?: 'D:\FerryAI\all-MiniLM-L6-v2-onnx';
@@ -37,7 +37,7 @@ $documents = [
 
 $docTexts = array_map(fn(array $d): string => $d['city'] . ': ' . $d['fact'], $documents);
 
-echo "Indexing " . count($documents) . " documents...\n";
+echo 'Indexing ' . count($documents) . " documents...\n";
 $docVectors = array_map(fn(string $t): array => $embedder->embed($t), $docTexts);
 echo "\n";
 
@@ -52,6 +52,7 @@ foreach ($queries as $query) {
     $queryVec = $embedder->embed($query);
 
     $scores = [];
+
     foreach ($docVectors as $i => $docVec) {
         $scores[$i] = $embedder->cosineSimilarity($queryVec, $docVec);
     }

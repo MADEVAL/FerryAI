@@ -6,13 +6,13 @@ namespace FerryAI\Tests\Verification;
 
 use FerryAI\AI;
 use FerryAI\Core\Enums\BackendType;
+use FerryAI\Core\ValueObjects\SamplingParams;
+use FerryAI\Embedding\Pooling\EosPooling;
 use FerryAI\LlamaBackend\ChatFormatter;
 use FerryAI\LlamaBackend\Grammar\GbnfGrammar;
 use FerryAI\LlamaBackend\Grammar\GbnfMatcher;
 use FerryAI\LlamaBackend\Grammar\JsonSchemaConverter;
 use FerryAI\LlamaBackend\Sampling\TopPSampler;
-use FerryAI\Core\ValueObjects\SamplingParams;
-use FerryAI\Embedding\Pooling\EosPooling;
 use FerryAI\ModelHub\Signature\Sha256Verifier;
 use FerryAI\Tokenizer\PureBpeTokenizer;
 use FerryAI\Vector\CollectionManager;

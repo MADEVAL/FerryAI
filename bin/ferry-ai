@@ -6,74 +6,394 @@ declare(strict_types=1);
 /**
  * FerryAI CLI entry point.
  *
- * Usage: php bin/ferry-ai <command>
+ * Usage: php bin/ferry-ai <command> [args] [--options]
  *
  * Commands:
- *   check         Verify environment (PHP version, extensions, backends)
- *   models:list   List cached models
- *   models:prune  Clear model cache
- *   tokenize      Tokenize input text
+ *   check [--json]                 Verify environment (PHP, extensions, backends, cache)
+ *   models:list                    List cached models
+ *   models:download <id> [ver]     Download a model from HuggingFace (with progress)
+ *   models:prune                   Clear the model cache
+ *   tokenize <text>                Tokenize input text
+ *   chat <message> [--stream]      Run a single chat turn (needs llama + GGUF model)
+ *   version                        Show the installed package version
+ *   help                           Show this help
  */
 
 require __DIR__ . '/../vendor/autoload.php';
 
-$command = $argv[1] ?? 'check';
+use FerryAI\AI;
+use FerryAI\Core\AIConfig;
+use FerryAI\Core\PlatformDetector;
 
-match ($command) {
-    'check' => check(),
-    'models:list' => modelsList(),
-    'models:prune' => modelsPrune(),
-    'tokenize' => tokenize($argv[2] ?? 'Hello world'),
-    default => printf("Unknown command: %s\nAvailable: check, models:list, models:prune, tokenize\n", $command),
-};
-
-function check(): void
+/**
+ * @return array{command: string, args: list<string>, options: array<string, string|bool>}
+ */
+function parseArgv(array $argv): array
 {
+    $args = [];
+    $options = [];
+
+    foreach (\array_slice($argv, 1) as $token) {
+        if (\str_starts_with($token, '--')) {
+            $option = \substr($token, 2);
+
+            if (\str_contains($option, '=')) {
+                [$key, $value] = \explode('=', $option, 2);
+                $options[$key] = $value;
+            } else {
+                $options[$option] = true;
+            }
+
+            continue;
+        }
+
+        $args[] = $token;
+    }
+
+    $command = $args[0] ?? 'check';
+
+    return ['command' => $command, 'args' => \array_slice($args, 1), 'options' => $options];
+}
+
+function humanBytes(int $bytes): string
+{
+    $units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    $value = (float) $bytes;
+    $unit = 0;
+
+    while ($value >= 1024.0 && $unit < \count($units) - 1) {
+        $value /= 1024.0;
+        ++$unit;
+    }
+
+    return \sprintf('%.2f %s', $value, $units[$unit]);
+}
+
+/**
+ * @return array{
+ *     php: string, os: string, arch: string,
+ *     extensions: array{required: array<string, bool>, optional: array<string, bool>},
+ *     backends: array<string, array{available: bool, version?: string}>,
+ *     cache: array{path: string, size_bytes: int},
+ *     ok: bool
+ * }
+ */
+function gatherEnvironment(): array
+{
+    $required = ['ffi', 'json', 'hash', 'fileinfo'];
+    $optional = ['zip', 'sodium', 'pdo_sqlite', 'pdo_pgsql', 'curl', 'shmop'];
+
+    $requiredStatus = [];
+
+    foreach ($required as $ext) {
+        $requiredStatus[$ext] = \extension_loaded($ext);
+    }
+
+    $optionalStatus = [];
+
+    foreach ($optional as $ext) {
+        $optionalStatus[$ext] = \extension_loaded($ext);
+    }
+
+    $backends = [
+        'onnx' => backendStatus(static fn(): object => new FerryAI\OnnxBackend\OnnxBackend(), true),
+        'llama' => backendStatus(static fn(): object => new FerryAI\LlamaBackend\LlamaBackend(), false),
+        'cpu' => backendStatus(static fn(): object => new FerryAI\CpuBackend\CpuNativeBackend(), false),
+    ];
+
+    $cachePath = AIConfig::fromArray([])->modelCache();
+    $cacheSize = 0;
+
+    try {
+        AI::config(['backend' => 'onnx']);
+        $cacheSize = AI::hub()->cacheSize();
+    } catch (\Throwable) {
+        $cacheSize = 0;
+    }
+
+    $requiredOk = !\in_array(false, $requiredStatus, true);
+    $backendOk = $backends['onnx']['available'] || $backends['llama']['available'] || $backends['cpu']['available'];
+
+    return [
+        'php' => PHP_VERSION,
+        'os' => PHP_OS_FAMILY,
+        'arch' => \php_uname('m'),
+        'extensions' => ['required' => $requiredStatus, 'optional' => $optionalStatus],
+        'backends' => $backends,
+        'cache' => ['path' => $cachePath, 'size_bytes' => $cacheSize],
+        'ok' => $requiredOk && $backendOk,
+    ];
+}
+
+/**
+ * @param callable(): object $factory
+ *
+ * @return array{available: bool, version?: string}
+ */
+function backendStatus(callable $factory, bool $withVersion): array
+{
+    try {
+        $backend = $factory();
+        $available = $backend->isAvailable();
+        $status = ['available' => $available];
+
+        if ($available && $withVersion) {
+            $status['version'] = $backend->version();
+        }
+
+        return $status;
+    } catch (\Throwable) {
+        return ['available' => false];
+    }
+}
+
+function commandCheck(bool $json): int
+{
+    $env = gatherEnvironment();
+
+    if ($json) {
+        echo \json_encode($env, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . "\n";
+
+        return $env['ok'] ? 0 : 1;
+    }
+
+    $optionalNotes = [
+        'zip' => '.ai archives',
+        'sodium' => 'Ed25519 signatures',
+        'pdo_sqlite' => 'SQLite vector store',
+        'pdo_pgsql' => 'PostgreSQL vector store',
+        'curl' => 'faster downloads',
+        'shmop' => 'model pool shared memory',
+    ];
+
     echo "FerryAI Environment Check\n";
-    echo str_repeat('=', 30) . "\n";
-    printf("PHP:       %s\n", PHP_VERSION);
-    printf("OS:        %s\n", PHP_OS_FAMILY);
-    printf("ext-ffi:   %s\n", extension_loaded('ffi') ? 'OK' : 'MISSING');
-    printf("ext-json:  %s\n", extension_loaded('json') ? 'OK' : 'MISSING');
-    printf("ext-hash:  %s\n", extension_loaded('hash') ? 'OK' : 'MISSING');
-    printf("ext-pdo:   %s\n", extension_loaded('pdo') ? 'OK' : 'MISSING');
+    echo \str_repeat('=', 30) . "\n";
+    printf("PHP:       %s\n", $env['php']);
+    printf("OS:        %s (%s)\n", $env['os'], $env['arch']);
 
-    try {
-        $onnx = new FerryAI\OnnxBackend\OnnxBackend();
-        printf("ONNX:      %s\n", $onnx->isAvailable() ? "available ({$onnx->version()})" : 'unavailable');
-    } catch (\Throwable) {
-        echo "ONNX:      unavailable\n";
+    echo "\nExtensions (required):\n";
+
+    foreach ($env['extensions']['required'] as $ext => $loaded) {
+        printf("  %-12s %s\n", $ext, $loaded ? 'OK' : 'MISSING');
     }
 
-    try {
-        $llama = new FerryAI\LlamaBackend\LlamaBackend();
-        printf("Llama:     %s\n", $llama->isAvailable() ? 'available' : 'unavailable');
-    } catch (\Throwable) {
-        echo "Llama:     unavailable\n";
+    echo "\nExtensions (optional):\n";
+
+    foreach ($env['extensions']['optional'] as $ext => $loaded) {
+        printf("  %-12s %-13s (%s)\n", $ext, $loaded ? 'OK' : 'absent', $optionalNotes[$ext] ?? '');
     }
 
-    printf("CPU:       %s\n", (new FerryAI\CpuBackend\CpuNativeBackend())->isAvailable() ? 'available' : 'unavailable');
+    echo "\nBackends:\n";
+
+    foreach ($env['backends'] as $name => $status) {
+        $label = $status['available']
+            ? 'available' . (isset($status['version']) ? " ({$status['version']})" : '')
+            : 'unavailable';
+        printf("  %-12s %s\n", $name, $label);
+    }
+
+    echo "\nModel cache:\n";
+    printf("  %-12s %s\n", 'path', $env['cache']['path']);
+    printf("  %-12s %s\n", 'size', humanBytes($env['cache']['size_bytes']));
+
+    printf("\nStatus: %s\n", $env['ok'] ? 'OK' : 'FAIL (missing required extension or no backend)');
+
+    return $env['ok'] ? 0 : 1;
 }
 
-function modelsList(): void
+function commandModelsList(): int
 {
-    \FerryAI\AI::config(['backend' => 'onnx']);
-    $models = \FerryAI\AI::hub()->list();
-    echo $models === [] ? "No cached models\n" : implode("\n", $models) . "\n";
+    AI::config(['backend' => 'onnx']);
+    $models = AI::hub()->list();
+    echo $models === [] ? "No cached models\n" : \implode("\n", $models) . "\n";
+
+    return 0;
 }
 
-function modelsPrune(): void
+function commandModelsDownload(?string $modelId, ?string $version): int
 {
-    \FerryAI\AI::config(['backend' => 'onnx']);
-    $pruned = \FerryAI\AI::hub()->prune();
+    if ($modelId === null || $modelId === '') {
+        \fwrite(STDERR, "Usage: ferry-ai models:download <model-id> [version]\n");
+
+        return 1;
+    }
+
+    AI::config(['backend' => 'onnx']);
+    $generator = AI::hub()->downloadWithProgress($modelId, $version);
+
+    foreach ($generator as $step) {
+        $total = (int) ($step['total'] ?? -1);
+        $downloaded = (int) ($step['downloaded'] ?? 0);
+
+        if ($total > 0) {
+            printf("\rDownloading %s: %s / %s (%.0f%%)", $modelId, humanBytes($downloaded), humanBytes($total), $step['progress'] * 100.0);
+        } else {
+            printf("\rDownloading %s: %s", $modelId, humanBytes($downloaded));
+        }
+    }
+
+    $path = $generator->getReturn();
+    printf("\nDownloaded: %s\n", \is_string($path) ? $path : '(unknown path)');
+
+    return 0;
+}
+
+function commandModelsPrune(): int
+{
+    AI::config(['backend' => 'onnx']);
+    $pruned = AI::hub()->prune();
     printf("Pruned %d models\n", $pruned);
+
+    return 0;
 }
 
-function tokenize(string $text): void
+function commandTokenize(?string $text): int
 {
-    \FerryAI\AI::config(['backend' => 'onnx']);
-    $modelDir = getenv('FERRY_AI_MODEL_DIR') ?: 'D:\FerryAI\all-MiniLM-L6-v2-onnx';
-    $tokenizer = \FerryAI\AI::tokenizer($modelDir . '/tokenizer.json');
+    if ($text === null || $text === '') {
+        \fwrite(STDERR, "Usage: ferry-ai tokenize <text>\n");
+
+        return 1;
+    }
+
+    AI::config(['backend' => 'onnx']);
+    $modelDir = \getenv('FERRY_AI_MODEL_DIR') ?: 'D:\FerryAI\all-MiniLM-L6-v2-onnx';
+    $tokenizerPath = $modelDir . '/tokenizer.json';
+
+    if (!\is_file($tokenizerPath)) {
+        \fwrite(STDERR, \sprintf("Tokenizer not found: %s\nSet FERRY_AI_MODEL_DIR to a directory containing tokenizer.json.\n", $tokenizerPath));
+
+        return 1;
+    }
+
+    $tokenizer = AI::tokenizer($tokenizerPath);
     $ids = $tokenizer->encode($text);
-    printf("Tokens: [%s] (%d)\n", implode(', ', array_slice($ids, 0, 20)), count($ids));
+    printf("Tokens: [%s] (%d)\n", \implode(', ', \array_slice($ids, 0, 20)), \count($ids));
+
+    return 0;
 }
+
+/**
+ * @param array<string, string|bool> $options
+ */
+function commandChat(?string $message, array $options): int
+{
+    if ($message === null || $message === '') {
+        \fwrite(STDERR, "Usage: ferry-ai chat <message> [--stream] [--max=N]\n");
+
+        return 1;
+    }
+
+    $llamaDir = \getenv('FERRY_AI_LLAMA_DIR') ?: (PHP_OS_FAMILY === 'Windows' ? 'D:\FerryAI' : '/opt/llama');
+    $wrapExt = PlatformDetector::libExtension();
+    $wrapper = $llamaDir . DIRECTORY_SEPARATOR . 'ferry_llama.' . $wrapExt;
+    $modelPath = \getenv('FERRY_AI_LLAMA_MODEL') ?: $llamaDir . DIRECTORY_SEPARATOR . 'qwen-0.5b.Q4_K_M.gguf';
+
+    if (!\is_file($wrapper) || !\is_file($modelPath)) {
+        \fwrite(STDERR, \sprintf(
+            "Cannot run chat: need ferry_llama.%s + a .gguf model in %s.\n" .
+            "Build the wrapper (native/llama-wrapper) and set FERRY_AI_LLAMA_DIR / FERRY_AI_LLAMA_MODEL.\n",
+            $wrapExt,
+            $llamaDir,
+        ));
+
+        return 1;
+    }
+
+    \putenv('FERRY_AI_LLAMA_WRAPPER=' . $wrapper);
+
+    AI::config([
+        'backend' => 'llama',
+        'device' => \getenv('FERRY_AI_LLAMA_DEVICE') ?: 'cpu',
+        'backends' => ['llama' => ['model_path' => $modelPath]],
+    ]);
+
+    $maxTokens = isset($options['max']) && \is_string($options['max']) ? (int) $options['max'] : 256;
+    $messages = [['role' => 'user', 'content' => $message]];
+    $chatOptions = ['max_tokens' => $maxTokens];
+
+    if (isset($options['stream']) && $options['stream'] === true) {
+        foreach (AI::stream($messages, $chatOptions) as $piece) {
+            echo $piece;
+        }
+
+        echo "\n";
+
+        return 0;
+    }
+
+    $result = AI::chat($messages, $chatOptions);
+    printf("%s\n", $result->text);
+    printf("\n[tokens: %d, %.0f ms]\n", $result->tokensGenerated, $result->durationMs);
+
+    return 0;
+}
+
+function commandVersion(): int
+{
+    $version = 'dev';
+
+    if (\class_exists(\Composer\InstalledVersions::class)) {
+        try {
+            $version = \Composer\InstalledVersions::getPrettyVersion('ferry-ai/php-inference') ?? 'dev';
+        } catch (\Throwable) {
+            $version = 'dev';
+        }
+    }
+
+    printf("ferry-ai/php-inference %s\n", $version);
+
+    return 0;
+}
+
+function commandHelp(): int
+{
+    echo <<<'HELP'
+        FerryAI CLI
+
+        Usage:
+          php bin/ferry-ai <command> [args] [--options]
+
+        Commands:
+          check [--json]              Verify environment (PHP, extensions, backends, cache)
+          models:list                 List cached models
+          models:download <id> [ver]  Download a model from HuggingFace (with progress)
+          models:prune                Clear the model cache
+          tokenize <text>             Tokenize input text (uses FERRY_AI_MODEL_DIR/tokenizer.json)
+          chat <message> [--stream]   Run a single chat turn (needs llama + GGUF model)
+          version                     Show the installed package version
+          help                        Show this help
+
+        HELP;
+    echo "\n";
+
+    return 0;
+}
+
+$parsed = parseArgv($argv);
+$command = $parsed['command'];
+$args = $parsed['args'];
+$options = $parsed['options'];
+
+try {
+    $exitCode = match ($command) {
+        'check' => commandCheck(isset($options['json']) && $options['json'] === true),
+        'models:list' => commandModelsList(),
+        'models:download' => commandModelsDownload($args[0] ?? null, $args[1] ?? null),
+        'models:prune' => commandModelsPrune(),
+        'tokenize' => commandTokenize($args[0] ?? null),
+        'chat' => commandChat($args[0] ?? null, $options),
+        'version' => commandVersion(),
+        'help' => commandHelp(),
+        default => (static function () use ($command): int {
+            \fwrite(STDERR, \sprintf("Unknown command: %s\nRun 'ferry-ai help' for usage.\n", $command));
+
+            return 1;
+        })(),
+    };
+} catch (\Throwable $e) {
+    \fwrite(STDERR, \sprintf("Error: %s\n", $e->getMessage()));
+
+    exit(1);
+}
+
+exit($exitCode);

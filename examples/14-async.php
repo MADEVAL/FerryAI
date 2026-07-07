@@ -5,10 +5,10 @@ declare(strict_types=1);
 
 require __DIR__ . '/../vendor/autoload.php';
 
-use FerryAI\OnnxBackend\OnnxBackend;
-use FerryAI\Embedding\Embedder;
-use FerryAI\Tokenizer\TokenizerFactory;
 use FerryAI\AsyncInference;
+use FerryAI\Embedding\Embedder;
+use FerryAI\OnnxBackend\OnnxBackend;
+use FerryAI\Tokenizer\TokenizerFactory;
 
 $modelDir = getenv('FERRY_AI_MODEL_DIR') ?: 'D:\FerryAI\all-MiniLM-L6-v2-onnx';
 $modelPath = $modelDir . '/model.onnx';
@@ -43,10 +43,12 @@ echo "--- Fiber Suspend/Resume ---\n\n";
 
 $fiber = $async->runAsync(function (): string {
     $parts = [];
+
     for ($i = 0; $i < 5; $i++) {
         $parts[] = chr(65 + $i);
         Fiber::suspend();
     }
+
     return implode('', $parts);
 });
 

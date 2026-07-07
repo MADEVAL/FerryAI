@@ -1054,6 +1054,17 @@ fi
 echo "Test fixtures ready."
 ```
 
+**Parquet fixture generator** — `scripts/generate_parquet_fixture.py` writes the DataFrame
+Parquet test fixture at `packages/dataframe/tests/Unit/IO/fixtures/simple.parquet`. It is a
+**dev-only** helper (the runtime never calls Python — see `AGENTS.md`); the generated
+`.parquet` is committed, so `pyarrow` is not required to run the test suite. Re-run it only
+when the fixture is missing or its schema changes:
+
+```bash
+pip install pyarrow
+python scripts/generate_parquet_fixture.py
+```
+
 ### 7.3. Release workflow: `.github/workflows/release.yml`
 
 ```yaml
@@ -1243,77 +1254,62 @@ composer lint
 
 ### 8.2. Quick environment check script
 
-**File:** `bin/ferry-ai` (CLI tool)
+**File:** `bin/ferry-ai` (CLI tool, registered under `composer.json` `bin`)
 
-```php
-#!/usr/bin/env php
-<?php
+Commands:
 
-declare(strict_types=1);
+| Command | Purpose |
+|---------|---------|
+| `check [--json]` (default) | PHP/OS, required + optional extensions, backend availability, model-cache path/size. `--json` for CI; exit code `1` if a required extension is missing or no backend is available |
+| `models:list` | List cached models (`AI::hub()->list()`) |
+| `models:download <id> [ver]` | Download a model from HuggingFace with progress (`AI::hub()->downloadWithProgress()`) |
+| `models:prune` | Clear the model cache (`AI::hub()->prune()`) |
+| `tokenize <text>` | Tokenize input text (uses `FERRY_AI_MODEL_DIR/tokenizer.json`) |
+| `chat <message> [--stream] [--max=N]` | Run a single chat turn (needs `ferry_llama` + a GGUF model; see `FERRY_AI_LLAMA_DIR`/`FERRY_AI_LLAMA_MODEL`) |
+| `version` | Installed package version (`Composer\InstalledVersions`) |
+| `help` | Show usage |
 
-// Minimal CLI for verification and diagnostics
-$command = $argv[1] ?? 'help';
+All commands return exit code `0` on success and `1` on failure (missing argument,
+error, or a failed `check`), so the CLI can be used as a CI gate.
 
-match ($command) {
-    'check' => checkEnvironment(),
-    'version' => echoVersion(),
-    'help' => showHelp(),
-    default => print("Unknown command: $command\nUse 'ferry-ai help'\n"),
-};
+```bash
+php bin/ferry-ai check
+# FerryAI Environment Check
+# ==============================
+# PHP:       8.5.4
+# OS:        Windows (AMD64)
+#
+# Extensions (required):
+#   ffi          OK
+#   json         OK
+#   hash         OK
+#   fileinfo     OK
+# Extensions (optional):
+#   zip          OK            (.ai archives)
+#   sodium       OK            (Ed25519 signatures)
+#   pdo_sqlite   OK            (SQLite vector store)
+#   pdo_pgsql    OK            (PostgreSQL vector store)
+#   curl         OK            (faster downloads)
+#   shmop        OK            (model pool shared memory)
+#
+# Backends:
+#   onnx         available (1.27.0)
+#   llama        unavailable
+#   cpu          available
+#
+# Model cache:
+#   path         /tmp/ferry-ai-models
+#   size         0.00 B
+#
+# Status: OK
 
-function checkEnvironment(): void
-{
-    $checks = [
-        'PHP Version' => PHP_VERSION,
-        'PHP >= 8.5' => PHP_VERSION_ID >= 80500 ? 'OK' : 'FAIL',
-        'FFI' => extension_loaded('ffi') ? 'enabled' : 'disabled',
-        'PDO SQLite' => extension_loaded('pdo_sqlite') ? 'enabled' : 'disabled',
-        'Sodium' => extension_loaded('sodium') ? 'enabled' : 'disabled',
-        'Zip' => extension_loaded('zip') ? 'enabled' : 'disabled',
-        'OPcache' => extension_loaded('Zend OPcache') ? 'enabled' : 'disabled',
-        'Hash' => extension_loaded('hash') ? 'enabled' : 'disabled',
-        'JSON' => extension_loaded('json') ? 'enabled' : 'disabled',
-        'Fileinfo' => extension_loaded('fileinfo') ? 'enabled' : 'disabled',
-        'OS' => PHP_OS_FAMILY,
-        'Arch' => php_uname('m'),
-    ];
-
-    foreach ($checks as $label => $status) {
-        printf("  %-20s %s\n", $label . ':', $status);
-    }
-
-    // Check native library availability
-    echo "\nNative libraries:\n";
-    $libs = [
-        'ONNX Runtime' => PHP_OS_FAMILY === 'Windows' ? 'onnxruntime.dll' : 'libonnxruntime.' . (PHP_OS_FAMILY === 'Darwin' ? 'dylib' : 'so'),
-        'llama.cpp' => PHP_OS_FAMILY === 'Windows' ? 'llama.dll' : 'libllama.' . (PHP_OS_FAMILY === 'Darwin' ? 'dylib' : 'so'),
-    ];
-    foreach ($libs as $name => $file) {
-        $found = shell_exec(PHP_OS_FAMILY === 'Windows'
-            ? "where $file 2>nul"
-            : "which $file 2>/dev/null || ldconfig -p | grep -q $file && echo found");
-        printf("  %-20s %s\n", $name . ':', $found ? 'found' : 'not found');
-    }
-}
-
-function echoVersion(): void
-{
-    echo "FerryAI v1.0.0\n";
-}
-
-function showHelp(): void
-{
-    echo <<<HELP
-FerryAI CLI
-
-Usage:
-  ferry-ai check     Check environment and dependencies
-  ferry-ai version   Show version
-  ferry-ai help      Show this help
-
-HELP;
-}
+php bin/ferry-ai check --json          # machine-readable, exit 1 if not OK
+php bin/ferry-ai models:list
+php bin/ferry-ai models:download sentence-transformers/all-MiniLM-L6-v2
+php bin/ferry-ai tokenize "Hello world"
+php bin/ferry-ai chat "What is PHP?" --stream
 ```
+
 
 ### 8.3. Makefile (for Linux/macOS)
 

@@ -54,6 +54,7 @@ $products->add('p4', [0.9, 0.1, 0.0], ['name' => 'Drill', 'category' => 'tools']
 printf("count: %d\n\n", $products->count());
 
 echo "--- Native KNN search (vec0 MATCH ... ORDER BY distance) ---\n\n";
+
 foreach ($products->search([0.1, 0.2, 0.3], k: 3) as $r) {
     printf("  %s  d=%.4f  %s\n", $r['id'], $r['distance'], $r['metadata']['name']);
 }
@@ -61,6 +62,7 @@ foreach ($products->search([0.1, 0.2, 0.3], k: 3) as $r) {
 echo "\n--- Filtered search (brute-force fallback keeps filter semantics) ---\n\n";
 $filtered = $products->search([0.1, 0.2, 0.3], k: 10, filter: ['category' => ['eq' => 'tools']]);
 printf("tools: %d results\n", count($filtered));
+
 foreach ($filtered as $r) {
     printf("  %s  %s\n", $r['id'], $r['metadata']['name']);
 }

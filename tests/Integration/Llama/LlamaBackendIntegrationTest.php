@@ -12,8 +12,8 @@ use PHPUnit\Framework\TestCase;
  * Real llama.cpp chat through the AI facade + ferry_llama wrapper.
  *
  * Runs in an isolated subprocess ({@see llama_chat_harness.php}) — loading the
- * native DLL runs ggml global constructors that conflict with PHPUnit
- * (docs/DEBT_REPORT.md §12). Needs FERRY_AI_LLAMA_DIR (default D:\FerryAI) with
+ * native DLL runs ggml global constructors that conflict with PHPUnit. Needs
+ * FERRY_AI_LLAMA_DIR (default D:\FerryAI) with
  * ferry_llama.dll + a .gguf model; skipped otherwise.
  */
 #[Group('integration')]

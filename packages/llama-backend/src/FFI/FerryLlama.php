@@ -11,7 +11,7 @@ use FerryAI\Core\PlatformDetector;
  *
  * The wrapper (native/llama-wrapper) exposes a flat API — no C structs cross the
  * FFI boundary — which sidesteps the struct-by-value ABI crash that breaks a
- * direct llama.dll binding (docs/DEBT_REPORT.md §12).
+ * direct llama.dll binding (see native/llama-wrapper/README.md).
  *
  * Excluded from static analysis (untyped FFI boundary). Standalone-process only:
  * loading the DLL runs ggml's global constructors, which conflict with PHPUnit.
@@ -199,7 +199,7 @@ final class FerryLlama
     /**
      * Top-k logits by token id (descending), computed natively over the full vocab.
      *
-     * @param  list<int>        $tokens
+     * @param  list<int>         $tokens
      * @return array<int, float> token id => logit
      */
     public function evalTopK(\FFI\CData $ctx, \FFI\CData $model, array $tokens, int $k): array

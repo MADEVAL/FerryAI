@@ -2,8 +2,8 @@
 
 PHP FFI cannot reliably pass llama.cpp's `llama_model_params` / `llama_context_params`
 **by value**: the struct layout PHP FFI infers mismatches the Clang-built `llama.dll`, so
-`llama_model_load_from_file` crashes (`llama-hparams.cpp` fatal error). See
-[`docs/DEBT_REPORT.md`](../../docs/DEBT_REPORT.md) §12.
+`llama_model_load_from_file` crashes (`llama-hparams.cpp` fatal error). See the
+"Why the C wrapper?" appendix in [`docs/backends/llama.md`](../../docs/backends/llama.md).
 
 This wrapper solves it: a tiny MSVC-built DLL that constructs those structs **inside C**
 (real ABI) and exposes a **flat API** — only pointers, ints, strings and byte buffers cross
@@ -114,7 +114,6 @@ void  ferry_reset(void* ctx);                          // clear KV cache
   llama.cpp resolves them next to the **host exe** (php.exe), not the DLL.
 - `ferry_eval_topk` powers greedy/top-k/top-p; `ferry_eval` (full vocab) powers grammar.
 - Wired into `FerryAI\LlamaBackend\Runtime\NativeLlamaRuntime`; verified on Windows (CPU+CUDA)
-  and Linux/WSL (CPU). See
-  `docs/DEBT_REPORT.md` §12).
+  and Linux/WSL (CPU).
 - Runs in standalone PHP; under PHPUnit the ggml global constructors conflict with the test
-  runner (§12).
+  runner — that is why the llama backend is exercised by the integration suite, not unit tests.

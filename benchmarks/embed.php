@@ -20,7 +20,7 @@ $backend = new FerryAI\OnnxBackend\OnnxBackend();
 $tokenizer = (new FerryAI\Tokenizer\TokenizerFactory())->createFromFile($tokenizerPath);
 $embedder = new FerryAI\Embedding\Embedder($modelPath, $backend, $tokenizer, 'mean', normalize: true);
 
-Profiler::reset();
+$profiler = new Profiler();
 
 echo "=== Embedding Benchmarks ===\n\n";
 
@@ -31,29 +31,32 @@ for ($i = 0; $i < $warmup; $i++) {
     $embedder->embed("warmup $i");
 }
 
-Profiler::start('single');
+$profiler->start('single');
+
 for ($i = 0; $i < $runs; $i++) {
     $embedder->embed("bench text $i");
 }
-Profiler::end('single');
+$profiler->end('single');
 
 $texts = array_map(fn(int $i): string => "batch $i", range(1, 8));
-Profiler::start('batch8');
+$profiler->start('batch8');
+
 for ($i = 0; $i < $runs; $i++) {
     $embedder->embedBatch($texts);
 }
-Profiler::end('batch8');
+$profiler->end('batch8');
 
-Profiler::start('similarity');
+$profiler->start('similarity');
+
 for ($i = 0; $i < $runs; $i++) {
     $embedder->cosineSimilarity(
         $embedder->embed("text $i"),
         $embedder->embed("compare $i"),
     );
 }
-Profiler::end('similarity');
+$profiler->end('similarity');
 
-$report = Profiler::report();
+$report = $profiler->report();
 
 printf("%-15s %6s %10s %10s %10s\n", 'Test', 'Runs', 'Total(ms)', 'Avg(ms)', 'Vecs/s');
 echo str_repeat('-', 55) . "\n";

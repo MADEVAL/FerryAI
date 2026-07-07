@@ -11,13 +11,11 @@ use FerryAI\CpuBackend\CpuNativeModel;
 use FerryAI\Metrics;
 use FerryAI\ModelPool;
 use FerryAI\Observability;
-use FerryAI\Profiler;
 use FerryAI\SharedMemoryManager;
 
 echo "=== 22 — Observability & Model Pool ===\n\n";
 
 Metrics::reset();
-Profiler::reset();
 
 echo "--- Observability wrapper (metrics + profiling + logging) ---\n\n";
 
@@ -46,7 +44,8 @@ $report = Metrics::report();
 printf("metric counters:   %s\n", implode(', ', array_keys($report['counters'])));
 printf("timing series:     %s\n", implode(', ', array_keys($report['timings'])));
 
-$profiles = Profiler::report();
+$profiles = $observability->profilerReport();
+
 foreach ($profiles as $label => $stats) {
     printf("  profile %-14s count=%d avg=%.2fms\n", $label, $stats['count'], $stats['avg_ms']);
 }

@@ -13,7 +13,7 @@ namespace FerryAI\Core\FFI;
  * dangling by the removed `extern "C" {`. What remains — typedefs, structs,
  * enums and function prototypes — is what FFI needs.
  *
- * Limitations (see docs/DEBT_REPORT.md §16): function-like macros keep their
+ * Limitations: function-like macros keep their
  * argument list; `#define` integer constants are dropped (FFI ignores them);
  * fixed-width types rely on FFI's built-in `stdint` knowledge.
  */
@@ -118,7 +118,8 @@ final class CdefGenerator
     }
 
     private static function collapseBlankLines(string $source): string
-    {        $source = \preg_replace('/[ \t]+\n/', "\n", $source) ?? $source;
+    {
+        $source = \preg_replace('/[ \t]+\n/', "\n", $source) ?? $source;
 
         return \preg_replace('/\n{3,}/', "\n\n", $source) ?? $source;
     }

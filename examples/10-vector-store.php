@@ -34,6 +34,7 @@ echo "--- Search ---\n\n";
 
 $query = [0.1, 0.2, 0.3];
 $results = $products->search($query, k: 3);
+
 foreach ($results as $r) {
     printf("  %s  d=%.4f  %s ($%d)\n", $r['id'], $r['distance'], $r['metadata']['name'], $r['metadata']['price']);
 }
@@ -47,6 +48,7 @@ $results = $products->search($query, k: 10, filter: [
     ],
 ]);
 printf("tools under $200: %d results\n", count($results));
+
 foreach ($results as $r) {
     printf("  %s  %s ($%d)\n", $r['id'], $r['metadata']['name'], $r['metadata']['price']);
 }

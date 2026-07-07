@@ -5,8 +5,8 @@ declare(strict_types=1);
 
 require __DIR__ . '/../vendor/autoload.php';
 
-use FerryAI\OnnxBackend\OnnxBackend;
 use FerryAI\Embedding\Embedder;
+use FerryAI\OnnxBackend\OnnxBackend;
 use FerryAI\Tokenizer\TokenizerFactory;
 
 $modelDir = getenv('FERRY_AI_MODEL_DIR') ?: 'D:\FerryAI\all-MiniLM-L6-v2-onnx';
@@ -37,6 +37,7 @@ echo "--- Batch Embedding ---\n\n";
 
 $batch = $embedder->embedBatch(['The cat sat on the mat', 'Dogs are loyal companions', 'Birds fly in the sky']);
 printf("Batch size: %d\n", count($batch));
+
 foreach ($batch as $i => $v) {
     printf("[%d] dim=%d  [0]=%.4f\n", $i, count($v), $v[0]);
 }

@@ -11,7 +11,7 @@ use FerryAI\Vector\SQLiteStore;
 
 echo "=== Vector Store Benchmarks ===\n\n";
 
-Profiler::reset();
+$profiler = new Profiler();
 
 $store = new SQLiteStore(':memory:');
 $manager = new CollectionManager($store);
@@ -19,23 +19,26 @@ $collection = $manager->create('bench', 384);
 
 $count = 1000;
 $vectors = [];
+
 for ($i = 0; $i < $count; $i++) {
     $vectors[] = array_map(fn(): float => mt_rand() / mt_getrandmax(), range(1, 384));
 }
 
-Profiler::start('insert');
+$profiler->start('insert');
+
 foreach ($vectors as $i => $v) {
     $collection->add("vec-$i", $v);
 }
-Profiler::end('insert');
+$profiler->end('insert');
 
-Profiler::start('search');
+$profiler->start('search');
+
 for ($i = 0; $i < 100; $i++) {
     $collection->search($vectors[$i % $count], 10);
 }
-Profiler::end('search');
+$profiler->end('search');
 
-$report = Profiler::report();
+$report = $profiler->report();
 
 printf("Inserted: %d vectors\n", $count);
 printf("Searched: 100 queries (top-10)\n\n");

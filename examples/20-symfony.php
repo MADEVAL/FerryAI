@@ -30,8 +30,10 @@ $tree = $config->getConfigTree();
 printf("ferry_ai.backend:         %s\n", $tree['ferry_ai']['backend']);
 printf("ferry_ai.device:          %s\n", $tree['ferry_ai']['device']);
 printf("ferry_ai.model_cache:     %s\n", $tree['ferry_ai']['model_cache']);
-printf("ferry_ai.backends.onnx.providers: %s\n\n",
-    implode(', ', $tree['ferry_ai']['backends']['onnx']['providers']));
+printf(
+    "ferry_ai.backends.onnx.providers: %s\n\n",
+    implode(', ', $tree['ferry_ai']['backends']['onnx']['providers']),
+);
 
 echo "--- DI Extension ---\n\n";
 

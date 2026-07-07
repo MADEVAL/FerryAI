@@ -5,7 +5,7 @@ declare(strict_types=1);
 /*
  * Standalone harness: real llama.cpp chat through the FerryAI facade + ferry_llama
  * wrapper, in its OWN process (loading the DLL runs ggml global ctors that conflict
- * with PHPUnit — DEBT_REPORT.md §12). Prints one JSON line for the test to assert.
+ * with PHPUnit). Prints one JSON line for the test to assert.
  *
  * Args: [device] [maxTokens]   e.g.  php llama_chat_harness.php cpu 16
  */

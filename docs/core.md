@@ -75,8 +75,16 @@ $result = $handler->retry(
 Turn a C header file into an `\FFI::cdef()`-compatible string (strips comments, macros, extern).
 Also available as a CLI tool:
 ```bash
-php bin/generate-ffi.php --header=llama.h --output=llama_cdef.txt
+php bin/generate-ffi --header=llama.h --output=llama_cdef.txt
+php bin/generate-ffi --header=llama.h --strip=LLAMA_API,GGML_API   # print cdef to stdout
+php bin/generate-ffi --header=llama.h --validate --lib=./llama.dll # parse via \FFI::cdef()
+php bin/generate-ffi --help
 ```
+
+`--validate` runs the generated cdef through `\FFI::cdef()`: type-only headers validate on
+their own, while headers with function declarations need `--lib <path>` to resolve the
+symbols against a real shared library.
+
 
 ## Enums (`FerryAI\Core\Enums`)
 

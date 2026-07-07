@@ -6,8 +6,8 @@ declare(strict_types=1);
 require __DIR__ . '/../vendor/autoload.php';
 
 use FerryAI\AI;
-use FerryAI\LlamaBackend\ChatFormatter;
 use FerryAI\Core\PlatformDetector;
+use FerryAI\LlamaBackend\ChatFormatter;
 
 echo "=== 03 — LLM Chat ===\n\n";
 
@@ -37,6 +37,7 @@ AI::config([
 echo "--- ChatFormatter Templates ---\n\n";
 
 $formats = ['llama3', 'chatml', 'mistral', 'gemma', 'phi'];
+
 foreach ($formats as $fmt) {
     $formatter = new ChatFormatter($fmt);
     printf("  %-8s: %s\n", $fmt, $formatter->format([
