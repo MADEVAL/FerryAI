@@ -20,3 +20,6 @@
 *.dist              text eol=lf
 *.sh                text eol=lf
 *.bat               text eol=crlf
+*.ps1               text eol=crlf
+*.c                 text eol=lf
+bin/*               text eol=lf

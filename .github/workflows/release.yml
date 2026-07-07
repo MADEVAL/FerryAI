@@ -42,7 +42,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p llama
-          asset="llama-${LLAMA_BUILD}-bin-${{ runner.os == 'Windows' && 'win-cpu-x64' || 'ubuntu-x64' }}.zip"
+          asset="llama-${LLAMA_BUILD}-bin-ubuntu24.04-x64.zip"
           url="https://github.com/ggml-org/llama.cpp/releases/download/${LLAMA_BUILD}/${asset}"
           echo "Downloading $url"
           curl -fSL -o libs.zip "$url"
