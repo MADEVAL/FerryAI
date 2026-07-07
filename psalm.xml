@@ -32,6 +32,8 @@
             <file name="packages/llama-backend/src/FFI/FerryLlama.php"/>
             <file name="packages/llama-backend/src/Runtime/NativeLlamaRuntime.php"/>
             <file name="packages/llama-backend/src/Runtime/NativeLlamaSession.php"/>
+            <!-- SharedMemoryManager references ext-shmop classes (Shmop), not always loaded -->
+            <file name="packages/ai/src/SharedMemoryManager.php"/>
             <!-- Optional RubixML library boundary (dynamic dispatch; rubix/ml not installed) -->
             <file name="packages/cpu-backend/src/RubixMLAdapter.php"/>
         </ignoreFiles>
