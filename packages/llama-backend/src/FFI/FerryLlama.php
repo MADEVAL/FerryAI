@@ -34,7 +34,7 @@ final class FerryLlama
         int ferry_tokenize(void* model, const char* text, int* out_tokens, int max_tokens, int add_bos);
         int ferry_token_to_piece(void* model, int token, char* buf, int buf_size);
         int ferry_eval(void* ctx, void* model, const int* tokens, int n_tokens, float* out, int out_size);
-        int ferry_eval_topk(void* ctx, void* model, const int* tokens, int n_tokens, int k, int* out_ids, float* out_logits);
+        int ferry_eval_topk(void* ctx, void* model, const int* tokens, int n_tokens, int k, int* out_ids, float* out_logits, int out_size);
         void ferry_reset(void* ctx);
         CDEF;
 
@@ -213,7 +213,7 @@ final class FerryLlama
 
         $ids = $this->ffi->new("int[$k]");
         $vals = $this->ffi->new("float[$k]");
-        $written = $this->ffi->ferry_eval_topk($ctx, $model, $in, $n, $k, $ids, $vals);
+        $written = $this->ffi->ferry_eval_topk($ctx, $model, $in, $n, $k, $ids, $vals, $k);
 
         if ($written < 0) {
             throw new \RuntimeException('ferry_eval_topk failed (llama_decode error)');

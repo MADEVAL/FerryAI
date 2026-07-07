@@ -17,6 +17,11 @@
  * pointers, ints, strings and byte buffers. This sidesteps the struct-by-value
  * ABI mismatch that crashes PHP FFI on model load (DEBT_REPORT.md #12).
  *
+ * Every exported function is a trust boundary: PHP passes raw pointers, sizes
+ * and counts, so each one validates its arguments (rejecting NULL pointers and
+ * non-positive sizes) before touching native memory. This prevents a bad call
+ * from segfaulting or corrupting the heap of the host PHP process.
+ *
  * Build (see build.ps1): needs llama.h + the ggml headers, plus import libs
  * generated from llama.dll and ggml.dll. Link: llama.lib ggml.lib.
  */
@@ -48,6 +53,7 @@ FERRY_API int ferry_supports_gpu_offload(void) {
 }
 
 FERRY_API struct llama_model * ferry_load_model(const char * path, int n_gpu_layers) {
+    if (!path) return NULL;
     struct llama_model_params mp = llama_model_default_params();
     mp.n_gpu_layers = n_gpu_layers;
     return llama_model_load_from_file(path, mp);
@@ -58,6 +64,7 @@ FERRY_API void ferry_free_model(struct llama_model * model) {
 }
 
 FERRY_API struct llama_context * ferry_new_context(struct llama_model * model, int n_ctx, int n_threads) {
+    if (!model || n_ctx <= 0) return NULL;
     struct llama_context_params cp = llama_context_default_params();
     cp.n_ctx = (unsigned int) n_ctx;
     if (n_threads > 0) {
@@ -72,28 +79,34 @@ FERRY_API void ferry_free_context(struct llama_context * ctx) {
 }
 
 FERRY_API int ferry_n_vocab(struct llama_model * model) {
+    if (!model) return -1;
     return llama_vocab_n_tokens(llama_model_get_vocab(model));
 }
 
 FERRY_API int ferry_n_embd(struct llama_model * model) {
+    if (!model) return -1;
     return llama_model_n_embd(model);
 }
 
 FERRY_API int ferry_n_ctx(struct llama_context * ctx) {
+    if (!ctx) return -1;
     return (int) llama_n_ctx(ctx);
 }
 
 FERRY_API int ferry_eos_token(struct llama_model * model) {
+    if (!model) return -1;
     return llama_vocab_eos(llama_model_get_vocab(model));
 }
 
 FERRY_API int ferry_token_to_piece(struct llama_model * model, int token, char * buf, int buf_size) {
+    if (!model || !buf || buf_size <= 0) return -1;
     const struct llama_vocab * vocab = llama_model_get_vocab(model);
     return llama_token_to_piece(vocab, token, buf, buf_size, 0, true);
 }
 
 /* Clears the KV cache so a fresh sequence can be generated. */
 FERRY_API void ferry_reset(struct llama_context * ctx) {
+    if (!ctx) return;
     llama_memory_clear(llama_get_memory(ctx), true);
 }
 
@@ -101,10 +114,12 @@ FERRY_API void ferry_reset(struct llama_context * ctx) {
  * Decode n_tokens and copy the next-position logits (vocab-size floats) into out.
  * Positions are tracked automatically by the context memory (call ferry_reset first
  * for a new sequence, then feed the prompt, then one token at a time). Returns the
- * number of logits written (vocab size), or -1 on decode error.
+ * number of logits written (vocab size), or -1 on decode error / invalid arguments.
  */
 FERRY_API int ferry_eval(struct llama_context * ctx, struct llama_model * model,
                          const int * tokens, int n_tokens, float * out, int out_size) {
+    if (!ctx || !model || !tokens || !out || n_tokens <= 0 || out_size <= 0) return -1;
+
     struct llama_batch batch = llama_batch_get_one((int *) tokens, n_tokens);
     if (llama_decode(ctx, batch) != 0) return -1;
 
@@ -112,13 +127,15 @@ FERRY_API int ferry_eval(struct llama_context * ctx, struct llama_model * model,
     if (n_vocab > out_size) n_vocab = out_size;
 
     float * logits = llama_get_logits_ith(ctx, -1);
+    if (!logits) return -1;
     memcpy(out, logits, (size_t) n_vocab * sizeof(float));
 
     return n_vocab;
 }
 
-/* Tokenize text into caller-allocated out_tokens; returns token count (negative on overflow). */
+/* Tokenize text into caller-allocated out_tokens; returns token count (negative on overflow / invalid arguments). */
 FERRY_API int ferry_tokenize(struct llama_model * model, const char * text, int * out_tokens, int max_tokens, int add_bos) {
+    if (!model || !text || !out_tokens || max_tokens <= 0) return -1;
     const struct llama_vocab * vocab = llama_model_get_vocab(model);
     return llama_tokenize(vocab, text, (int) strlen(text), out_tokens, max_tokens, add_bos != 0, true);
 }
@@ -126,11 +143,13 @@ FERRY_API int ferry_tokenize(struct llama_model * model, const char * text, int 
 /*
  * Greedy generation. Decodes the prompt, then argmax-samples up to max_new
  * tokens, writing decoded UTF-8 into out (NUL-terminated). Returns bytes
- * written, or -1 on decode error.
+ * written, or -1 on decode error / invalid arguments.
  */
 FERRY_API int ferry_generate_greedy(struct llama_context * ctx, struct llama_model * model,
                                     const int * prompt_tokens, int n_prompt,
                                     int max_new, char * out, int out_size) {
+    if (!ctx || !model || !prompt_tokens || !out || n_prompt <= 0 || out_size <= 0) return -1;
+
     const struct llama_vocab * vocab = llama_model_get_vocab(model);
     int n_vocab = llama_vocab_n_tokens(vocab);
     int out_len = 0;
@@ -140,6 +159,7 @@ FERRY_API int ferry_generate_greedy(struct llama_context * ctx, struct llama_mod
 
     for (int i = 0; i < max_new; i++) {
         float * logits = llama_get_logits_ith(ctx, -1);
+        if (!logits) break;
         int best = 0;
         float best_v = logits[0];
         for (int t = 1; t < n_vocab; t++) {
@@ -166,20 +186,25 @@ FERRY_API int ferry_generate_greedy(struct llama_context * ctx, struct llama_mod
 
 /*
  * Like ferry_eval, but returns only the top-k tokens by logit (descending), as parallel
- * arrays out_ids[k] / out_logits[k]. This keeps the expensive per-token work (over the full
- * ~150k vocab) in C, so PHP sampling operates on a tiny set. Returns the number written (<= k),
- * or -1 on decode error.
+ * arrays out_ids[out_size] / out_logits[out_size]. This keeps the expensive per-token work
+ * (over the full ~150k vocab) in C, so PHP sampling operates on a tiny set. out_size is the
+ * capacity of the caller-allocated arrays; at most min(k, out_size) entries are written.
+ * Returns the number written, or -1 on decode error / invalid arguments.
  */
 FERRY_API int ferry_eval_topk(struct llama_context * ctx, struct llama_model * model,
                               const int * tokens, int n_tokens, int k,
-                              int * out_ids, float * out_logits) {
+                              int * out_ids, float * out_logits, int out_size) {
+    if (!ctx || !model || !tokens || !out_ids || !out_logits || n_tokens <= 0 || out_size <= 0) return -1;
+
     struct llama_batch batch = llama_batch_get_one((int *) tokens, n_tokens);
     if (llama_decode(ctx, batch) != 0) return -1;
 
     int n_vocab = llama_vocab_n_tokens(llama_model_get_vocab(model));
     float * logits = llama_get_logits_ith(ctx, -1);
+    if (!logits) return -1;
 
     if (k > n_vocab) k = n_vocab;
+    if (k > out_size) k = out_size;
     if (k < 1) k = 1;
 
     int count = 0;
