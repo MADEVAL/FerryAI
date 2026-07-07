@@ -133,16 +133,9 @@ final class GgufInspector
             return '';
         }
 
-        $data = self::readBytes($handle, (int) $length);
-
-        $pos = \ftell($handle);
-
-        if ($pos !== false) {
-            $align = (8 - ($pos % 8)) % 8;
-            \fseek($handle, $align, \SEEK_CUR);
-        }
-
-        return $data;
+        // GGUF strings are a uint64 length followed by exactly that many bytes,
+        // written sequentially with no padding (only tensor data offsets are aligned).
+        return self::readBytes($handle, (int) $length);
     }
 
     /**
@@ -152,7 +145,7 @@ final class GgufInspector
     {
         return match ($type) {
             0 => \ord(self::readBytes($handle, 1)),
-            1 => self::readBytes($handle, 1) === '' ? 0 : \unpack('c', self::readBytes($handle, 1))[1] ?? 0,
+            1 => (($b = self::readBytes($handle, 1)) === '') ? 0 : (\unpack('c', $b)[1] ?? 0),
             2 => self::readUint16($handle),
             3 => self::readInt16($handle),
             4 => self::readUint32($handle),

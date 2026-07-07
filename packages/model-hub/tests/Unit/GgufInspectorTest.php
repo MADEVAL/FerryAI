@@ -49,7 +49,7 @@ final class GgufInspectorTest extends TestCase
         $data .= \pack('P', 0);
         $data .= \pack('P', 1);
         $key = 'general.architecture';
-        $data .= \pack('P', \strlen($key)) . $key . \str_repeat("\x00", 8 - ((\strlen($key) + 8) % 8) % 8);
+        $data .= \pack('P', \strlen($key)) . $key;
         $data .= \pack('V', 8);
         $value = 'llama';
         $data .= \pack('P', \strlen($value)) . $value;
@@ -72,5 +72,64 @@ final class GgufInspectorTest extends TestCase
         $size = GgufInspector::sizeBytes('/nonexistent/model.gguf');
 
         self::assertSame(0, $size);
+    }
+
+    public function testMetadataParsesSpecCompliantFileWithMultipleKeys(): void
+    {
+        // Per the GGUF spec, metadata fields are written sequentially WITHOUT padding.
+        $path = \sys_get_temp_dir() . '/ferry-gguf-' . \uniqid();
+
+        $string = static fn(string $s): string => \pack('P', \strlen($s)) . $s;
+
+        $data = 'GGUF';
+        $data .= \pack('V', 3);   // version
+        $data .= \pack('P', 0);   // tensor count
+        $data .= \pack('P', 2);   // kv count
+
+        // KV1: general.architecture = "llama" (string, type 8)
+        $data .= $string('general.architecture');
+        $data .= \pack('V', 8);
+        $data .= $string('llama');
+
+        // KV2: general.file_type = 15 (uint32, type 4)
+        $data .= $string('general.file_type');
+        $data .= \pack('V', 4);
+        $data .= \pack('V', 15);
+
+        \file_put_contents($path, $data);
+
+        try {
+            $metadata = GgufInspector::metadata($path);
+
+            self::assertSame('llama', $metadata['general.architecture'] ?? null);
+            self::assertSame(15, $metadata['general.file_type'] ?? null);
+        } finally {
+            @\unlink($path);
+        }
+    }
+
+    public function testMetadataParsesInt8ValueWithoutConsumingExtraByte(): void
+    {
+        $path = \sys_get_temp_dir() . '/ferry-gguf-' . \uniqid();
+
+        $data = 'GGUF';
+        $data .= \pack('V', 3);
+        $data .= \pack('P', 0);
+        $data .= \pack('P', 1);
+        $key = 'x';
+        $data .= \pack('P', \strlen($key)) . $key;
+        $data .= \pack('V', 1); // GGUF value type 1 = int8
+        $data .= \pack('c', 5); // the int8 value
+
+        \file_put_contents($path, $data);
+
+        try {
+            $metadata = GgufInspector::metadata($path);
+
+            self::assertArrayHasKey('x', $metadata);
+            self::assertSame(5, $metadata['x']);
+        } finally {
+            @\unlink($path);
+        }
     }
 }
