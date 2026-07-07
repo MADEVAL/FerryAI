@@ -117,8 +117,10 @@ final class GrammarSampler implements Sampler
         $prefix = $this->accumulated;
         $valid = [];
 
-        // Printable ASCII only — covers every BPE/WordPiece token start.
-        for ($c = 32; $c <= 126; ++$c) {
+        // Test every possible first byte (0–255), not just printable ASCII: the matcher
+        // works byte-by-byte, so multibyte UTF-8 lead bytes (>= 128) can validly continue
+        // the grammar (e.g. [^"] content) and must not be pre-filtered away.
+        for ($c = 0; $c <= 255; ++$c) {
             $ch = \chr($c);
 
             if ($this->matcher->isViable($prefix . $ch)) {

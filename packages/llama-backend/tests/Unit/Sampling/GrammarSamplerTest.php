@@ -84,4 +84,20 @@ final class GrammarSamplerTest extends TestCase
         $b = $base->bind($decoder, 0); // fresh state
         self::assertSame(6, $b->sample([6 => 9.0, 5 => 1.0], new SamplingParams()));
     }
+
+    public function testFastPathDoesNotRejectNonAsciiFirstByte(): void
+    {
+        // Grammar: root ::= "\"" [^"]* "\""  (a quoted string)
+        $grammar = GbnfGrammar::fromString('root ::= "\"" ([^"]*) "\""');
+        // Token 5 = "\"", token 300 = "\xE4\xF0" (2-byte piece whose first byte is 0xE4, > 127)
+        $decoder = static fn(int $t): string => [5 => '"', 300 => "\xE4\xF0"][$t] ?? '';
+        $sampler = (new GrammarSampler($grammar))->bind($decoder, 0);
+
+        // Consume the opening quote.
+        self::assertSame(5, $sampler->sample([5 => 9.0], new SamplingParams()));
+
+        // Now we need a non-quote continuation. Token 300 has first byte 0xE4
+        // which the old ASCII-only fast-path (32–126) would reject.
+        self::assertSame(300, $sampler->sample([300 => 9.0, 5 => 1.0], new SamplingParams()));
+    }
 }
