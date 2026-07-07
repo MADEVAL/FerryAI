@@ -7,7 +7,7 @@ require __DIR__ . '/../vendor/autoload.php';
 
 use FerryAI\Profiler;
 
-$modelDir = getenv('FERRY_AI_MODEL_DIR') ?: 'D:\FerryAI\all-MiniLM-L6-v2-onnx';
+$modelDir = getenv('FERRY_AI_MODEL_DIR') ?: dirname(__DIR__) . '/models/all-MiniLM-L6-v2-onnx';
 $modelPath = $modelDir . '/model.onnx';
 $tokenizerPath = $modelDir . '/tokenizer.json';
 

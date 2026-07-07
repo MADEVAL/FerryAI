@@ -12,40 +12,43 @@ composer install
 
 ### Models & native libraries
 
-The examples expect one of two setups:
+Paths are read from environment variables; when unset they fall back to a **repo-relative
+`models/` directory** (git-ignored). Set your own paths once — without committing them to the
+repo — by copying the template:
 
-**Windows** — everything under `D:\FerryAI` (the default):
+```bash
+cp .ferry-ai.local.php.dist .ferry-ai.local.php   # git-ignored; loaded automatically
 ```
-D:\FerryAI\
+
+Then edit `.ferry-ai.local.php`:
+```php
+putenv('FERRY_AI_MODEL_DIR=/path/to/all-MiniLM-L6-v2-onnx');
+putenv('FERRY_AI_LLAMA_DIR=/path/to/llama');       // ferry_llama.* + llama/ggml libs + *.gguf
+putenv('FERRY_AI_VEC_EXTENSION_LIB=/path/to/vec0.dll');
+```
+
+A typical layout (drop it in `models/`, or point the variables anywhere):
+```
+<dir>/
 ├── all-MiniLM-L6-v2-onnx/     model.onnx + tokenizer.json (embeddings)
-├── qwen-0.5b.Q4_K_M.gguf     GGUF model (LLM chat/stream)
-├── ferry_llama.dll            llama.cpp C wrapper
-├── llama.dll, ggml*.dll       llama.cpp build + CUDA backend
-├── vec0.dll                   sqlite-vec loadable extension
-└── onnxruntime-gpu/           ONNX Runtime GPU build (optional)
+├── qwen-0.5b.Q4_K_M.gguf      GGUF model (LLM chat/stream)
+├── ferry_llama.{dll,so}       llama.cpp C wrapper
+├── llama.{dll,so}, ggml*      llama.cpp build + backends
+└── vec0.{dll,so}              sqlite-vec loadable extension
 ```
-
-**WSL / Linux** — libraries under `/opt` (override via env vars):
-```
-/opt/llama/                    CPU llama build + ferry_llama.so
-/opt/llama-cuda/               CUDA llama build
-/opt/sqlite-vec/vec0.so        sqlite-vec
-/opt/onnxruntime-gpu/          ONNX Runtime GPU build (optional)
-/opt/rubixml/                  RubixML isolated install
-/mnt/d/FerryAI/                Models on the Windows drive
-```
-
-The examples default to these paths; override them with environment variables.
 
 ### Environment variables
 
-| Variable | Default (Windows) | Default (WSL/Linux) | What it points at |
-|----------|------------------|---------------------|-------------------|
-| `FERRY_AI_MODEL_DIR` | `D:\FerryAI\all-MiniLM-L6-v2-onnx` | `/mnt/d/FerryAI/all-MiniLM-L6-v2-onnx` | `model.onnx` + `tokenizer.json` |
-| `FERRY_AI_LLAMA_DIR` | `D:\FerryAI` | `/opt/llama` | `ferry_llama.{dll,so}` + llama/ggml libs |
-| `FERRY_AI_LLAMA_MODEL` | `D:\FerryAI\qwen-0.5b.Q4_K_M.gguf` | `/mnt/d/FerryAI/qwen-0.5b.Q4_K_M.gguf` | GGUF file |
-| `FERRY_AI_LLAMA_DEVICE` | `cpu` | `cpu` | `cpu` or `cuda` |
-| `FERRY_AI_VEC_EXTENSION_LIB` | `D:\FerryAI\vec0.dll` | `/opt/sqlite-vec/vec0.so` | sqlite-vec loadable extension |
+Defaults are relative to the repository root; override them in `.ferry-ai.local.php` (loaded
+automatically) or via real environment variables.
+
+| Variable | Default (unset) | What it points at |
+|----------|-----------------|-------------------|
+| `FERRY_AI_MODEL_DIR` | `models/all-MiniLM-L6-v2-onnx` | `model.onnx` + `tokenizer.json` |
+| `FERRY_AI_LLAMA_DIR` | `models` | `ferry_llama.{dll,so}` + llama/ggml libs |
+| `FERRY_AI_LLAMA_MODEL` | `<FERRY_AI_LLAMA_DIR>/qwen-0.5b.Q4_K_M.gguf` | GGUF file |
+| `FERRY_AI_LLAMA_DEVICE` | `cpu` | `cpu` or `cuda` |
+| `FERRY_AI_VEC_EXTENSION_LIB` | `models/vec0.dll` | sqlite-vec loadable extension |
 
 
 ## Tier 1 — Essentials
@@ -104,7 +107,7 @@ The examples default to these paths; override them with environment variables.
 ### Windows
 
 ```powershell
-# The example defaults point to D:\FerryAI — just run:
+# Defaults point to the repo `models/` dir; set your paths in .ferry-ai.local.php, then run:
 php examples/01-hello-embedding.php
 php examples/03-chat.php           # LLM chat (ferry_llama.dll + GGUF)
 php examples/23-sqlite-vec.php     # sqlite-vec native KNN
@@ -118,9 +121,9 @@ php examples/01-hello-embedding.php
 
 ```bash
 # Point at the models on the Windows drive
-export FERRY_AI_MODEL_DIR=/mnt/d/FerryAI/all-MiniLM-L6-v2-onnx
+export FERRY_AI_MODEL_DIR=/opt/models/all-MiniLM-L6-v2-onnx
 export FERRY_AI_LLAMA_DIR=/opt/llama
-export FERRY_AI_LLAMA_MODEL=/mnt/d/FerryAI/qwen-0.5b.Q4_K_M.gguf
+export FERRY_AI_LLAMA_MODEL=/opt/models/qwen-0.5b.Q4_K_M.gguf
 export FERRY_AI_VEC_EXTENSION_LIB=/opt/sqlite-vec/vec0.so
 
 # ONNX embeddings (CPU or GPU — see below)

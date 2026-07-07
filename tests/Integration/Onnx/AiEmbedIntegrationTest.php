@@ -35,7 +35,7 @@ final class AiEmbedIntegrationTest extends TestCase
             self::markTestSkipped('ONNX Runtime shared library is not available.');
         }
 
-        $this->modelDir = getenv('FERRY_AI_MODEL_DIR') ?: 'D:\\FerryAI\\all-MiniLM-L6-v2-onnx';
+        $this->modelDir = getenv('FERRY_AI_MODEL_DIR') ?: dirname(__DIR__, 3) . '/models/all-MiniLM-L6-v2-onnx';
 
         if (!\is_file($this->modelDir . '/model.onnx') || !\is_file($this->modelDir . '/tokenizer.json')) {
             self::markTestSkipped('Embedding model dir not found: ' . $this->modelDir);

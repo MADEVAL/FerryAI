@@ -175,10 +175,10 @@ dpkg-deb -x /tmp/cudnn.deb /tmp/cudnn_extract
 find /tmp/cudnn_extract -name "libcudnn*.so*" -exec cp {} "$D" \;
 
 # 3 — Add the vendor lib dir and the CUDA toolkit to LD_LIBRARY_PATH
-export LD_LIBRARY_PATH="$D:/usr/local/cuda/lib64:$LD_LIBRARY_PATH"
+export LD_LIBRARY_PATH="/usr/local/cuda/lib64:$LD_LIBRARY_PATH"
 
 # Verify
-cd /mnt/d/_DEV/FerryAI
+cd /path/to/FerryAI
 php -r "require 'vendor/autoload.php'; echo (new FerryAI\OnnxBackend\OnnxBackend())->availableDevices()[0]->value;"
 # → cuda
 ```
@@ -214,7 +214,7 @@ Copy-Item "path\to\onnxruntime-gpu\lib\onnxruntime_providers_cuda.dll" -Destinat
 Copy-Item "path\to\onnxruntime-gpu\lib\onnxruntime_providers_shared.dll" -Destination $vendorLib -Force
 
 # 2 — Copy cuDNN DLLs from NVIDIA cuDNN zip
-Copy-Item "D:\CUDNN\bin\13.3\x64\cudnn*.dll" -Destination $vendorLib
+Copy-Item "C:\cudnn\bin\13.3\x64\cudnn*.dll" -Destination $vendorLib
 
 # 3 — Download and extract curand + cufft via pip
 pip download nvidia-curand-cu12 nvidia-cufft-cu12 --no-deps -d %TEMP%\cuda_dlls
@@ -246,7 +246,7 @@ php -r "require 'vendor/autoload.php'; echo (new FerryAI\LlamaBackend\LlamaBacke
 FERRY_AI_VEC_EXTENSION_LIB=/opt/sqlite-vec/vec0.so php examples/23-sqlite-vec.php
 ```
 
-On Windows use the corresponding `D:\FerryAI\...` paths (backslashes + `PATH` instead of
+On Windows use the corresponding `C:\llama\...` paths (backslashes + `PATH` instead of
 `LD_LIBRARY_PATH`; the `OnnxBackend::load()` CPU-fallback handles missing GPU runtimes
 automatically).
 
@@ -273,7 +273,7 @@ Verified on this machine (Windows x64, RTX 4060 8 GB, driver 591.86, llama.cpp b
 dir) and add that dir to `PATH`; select the device with config `device: cpu|cuda`.
 See [`examples/03-chat.php`](examples/03-chat.php), [`examples/04-streaming.php`](examples/04-streaming.php).
 
-What you need (all in one dir, e.g. `D:\FerryAI` on Windows or `/opt/llama` on Linux, on `PATH` /
+What you need (all in one dir, e.g. `C:\llama` on Windows or `/opt/llama` on Linux, on `PATH` /
 `LD_LIBRARY_PATH` at runtime):
 
 1. **llama.cpp build** — shared libs (`llama` + `ggml*` + `ggml-cpu-*`);
@@ -290,10 +290,10 @@ Then:
 
 ```powershell
 # Build the wrapper (auto-creates llama.lib / ggml.lib import libs from the DLLs)
-powershell -File native/llama-wrapper/build.ps1 -LlamaDir D:\FerryAI
+powershell -File native/llama-wrapper/build.ps1 -LlamaDir C:\llama
 
 # Smoke-test CPU + GPU
-$env:PATH = "D:\FerryAI;" + $env:PATH
+$env:PATH = "C:\llama;" + $env:PATH
 php native/llama-wrapper/ffi-smoke.php
 ```
 
@@ -369,7 +369,7 @@ sqlite-vec & PostgreSQL/pgvector), grammar, model hub, profiling, async, model p
 observability, retry, CPU tensor math + RubixML, benchmarks, Laravel, Symfony.
 
 ```bash
-set FERRY_AI_MODEL_DIR=D:\FerryAI\all-MiniLM-L6-v2-onnx
+set FERRY_AI_MODEL_DIR=C:\llama\all-MiniLM-L6-v2-onnx
 php examples/01-hello-embedding.php
 ```
 

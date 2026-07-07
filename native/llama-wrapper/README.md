@@ -12,7 +12,7 @@ the PHP↔native boundary. Verified end to end on **CPU (~96 tok/s)** and **GPU 
 
 ## What you need
 
-Put everything in one directory (default `D:\FerryAI`), which must be on `PATH` at runtime:
+Put everything in one directory (default `C:\llama`), which must be on `PATH` at runtime:
 
 | Item | Why | Source |
 |------|-----|--------|
@@ -28,8 +28,8 @@ Put everything in one directory (default `D:\FerryAI`), which must be on `PATH` 
 ### Windows (PowerShell + MSVC)
 
 ```powershell
-powershell -File native/llama-wrapper/build.ps1 -LlamaDir D:\FerryAI
-# -> D:\FerryAI\ferry_llama.dll   (also creates llama.lib / ggml.lib if missing)
+powershell -File native/llama-wrapper/build.ps1 -LlamaDir C:\llama
+# -> C:\llama\ferry_llama.dll   (also creates llama.lib / ggml.lib if missing)
 ```
 
 ### Linux / macOS (build.sh + cc)
@@ -75,7 +75,7 @@ lives in `/usr/lib/wsl/lib` on WSL.
 
 ```powershell
 # Windows
-$env:PATH = "D:\FerryAI;" + $env:PATH
+$env:PATH = "C:\llama;" + $env:PATH
 php native/llama-wrapper/ffi-smoke.php
 # [CPU] Paris …  ~96 tok/s   [GPU] Paris …  ~250 tok/s
 ```

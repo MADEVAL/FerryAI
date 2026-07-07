@@ -2,11 +2,11 @@
 #
 # Why: PHP FFI cannot reliably pass llama.cpp structs (llama_model_params,
 # llama_context_params) BY VALUE — the layout it infers mismatches the
-# Clang-built DLL and crashes on model load (DEBT_REPORT.md #12). This wrapper
-# builds those structs inside a real C DLL (MSVC), exposing a flat API that only
-# takes pointers/ints/strings across the FFI boundary.
+# Clang-built DLL and crashes on model load (see native/llama-wrapper/README.md).
+# This wrapper builds those structs inside a real C DLL (MSVC), exposing a flat
+# API that only takes pointers/ints/strings across the FFI boundary.
 #
-# Prerequisites (place all in $LlamaDir, default D:\FerryAI):
+# Prerequisites (place all in -LlamaDir):
 #   1. llama.cpp Windows build DLLs: llama.dll, ggml.dll, ggml-base.dll,
 #      ggml-cpu-*.dll, and (for GPU) ggml-cuda.dll + CUDA runtime DLLs.
 #        Source: https://github.com/ggml-org/llama.cpp/releases
@@ -19,10 +19,11 @@
 #   4. Visual Studio 2022 (cl, lib, dumpbin).
 #
 # Usage:
-#   powershell -File build.ps1 [-LlamaDir D:\FerryAI] [-Out D:\FerryAI\ferry_llama.dll]
+#   powershell -File build.ps1 -LlamaDir <dir> [-Out <dir>\ferry_llama.dll]
 
 param(
-    [string]$LlamaDir = "D:\FerryAI",
+    [Parameter(Mandatory = $true)]
+    [string]$LlamaDir,
     [string]$Out = ""
 )
 

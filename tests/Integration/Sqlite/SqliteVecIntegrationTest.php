@@ -37,7 +37,7 @@ final class SqliteVecIntegrationTest extends TestCase
         $env = getenv('FERRY_AI_VEC_EXTENSION_LIB');
         $this->previousEnv = $env === false ? null : $env;
 
-        $this->lib = ($env !== false && $env !== '') ? $env : 'D:\\FerryAI\\vec0.dll';
+        $this->lib = ($env !== false && $env !== '') ? $env : dirname(__DIR__, 3) . '/models/vec0.dll';
 
         if (!\is_file($this->lib)) {
             self::markTestSkipped('sqlite-vec library not found: ' . $this->lib);

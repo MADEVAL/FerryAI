@@ -72,7 +72,10 @@
             "FerryAI\\Laravel\\Tests\\": "packages/laravel/tests/",
             "FerryAI\\Symfony\\Tests\\": "packages/symfony/tests/",
             "FerryAI\\Tests\\": ["tests/", "packages/ai/tests/"]
-        }
+        },
+        "files": [
+            "tests/local_env.php"
+        ]
     },
     "scripts": {
         "test": [

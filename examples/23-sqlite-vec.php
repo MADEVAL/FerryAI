@@ -17,7 +17,7 @@ if (!class_exists(\Pdo\Sqlite::class)) {
     exit(0);
 }
 
-$lib = getenv('FERRY_AI_VEC_EXTENSION_LIB') ?: 'D:\\FerryAI\\vec0.dll';
+$lib = getenv('FERRY_AI_VEC_EXTENSION_LIB') ?: dirname(__DIR__) . '/models/vec0.dll';
 
 if (!is_file($lib)) {
     echo "SKIP: sqlite-vec library not found: {$lib}\n";

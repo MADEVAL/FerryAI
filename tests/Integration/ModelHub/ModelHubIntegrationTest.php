@@ -45,7 +45,7 @@ final class ModelHubIntegrationTest extends TestCase
 
         $this->hub = new Hub($this->cacheDir);
 
-        $onnxModel = 'D:\\FerryAI\\all-MiniLM-L6-v2-onnx\\model.onnx';
+        $onnxModel = dirname(__DIR__, 3) . '/models/all-MiniLM-L6-v2-onnx/model.onnx';
         $this->existingModel = \is_file($onnxModel) ? $onnxModel : '';
     }
 

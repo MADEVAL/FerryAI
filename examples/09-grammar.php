@@ -57,7 +57,7 @@ printf("Factory(top-p):  token=%d\n\n", $factory->create('top-p')->sample($logit
 
 echo "--- Grammar vs no-grammar (needs llama.cpp) ---\n\n";
 
-$llamaDir = getenv('FERRY_AI_LLAMA_DIR') ?: (PHP_OS_FAMILY === 'Windows' ? 'D:\FerryAI' : '/opt/llama');
+$llamaDir = getenv('FERRY_AI_LLAMA_DIR') ?: dirname(__DIR__) . '/models';
 $llamaPath = getenv('FERRY_AI_LLAMA_MODEL') ?: $llamaDir . DIRECTORY_SEPARATOR . 'qwen-0.5b.Q4_K_M.gguf';
 
 if (!file_exists($llamaPath)) {

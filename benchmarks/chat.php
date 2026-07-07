@@ -11,7 +11,7 @@ use FerryAI\Profiler;
 
 echo "=== Chat Benchmark ===\n\n";
 
-$llamaDir = getenv('FERRY_AI_LLAMA_DIR') ?: (PHP_OS_FAMILY === 'Windows' ? 'D:\FerryAI' : '/opt/llama');
+$llamaDir = getenv('FERRY_AI_LLAMA_DIR') ?: dirname(__DIR__) . '/models';
 $wrapExt = PlatformDetector::libExtension();
 $wrapper = $llamaDir . DIRECTORY_SEPARATOR . 'ferry_llama.' . $wrapExt;
 $modelPath = getenv('FERRY_AI_LLAMA_MODEL') ?: $llamaDir . DIRECTORY_SEPARATOR . 'qwen-0.5b.Q4_K_M.gguf';

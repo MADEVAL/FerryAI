@@ -19,7 +19,7 @@ $maxTokens = (int) ($argv[2] ?? 16);
 $temperature = isset($argv[3]) ? (float) $argv[3] : 0.0;
 $mode = $argv[4] ?? 'single';
 
-$llamaDir = getenv('FERRY_AI_LLAMA_DIR') ?: (\PHP_OS_FAMILY === 'Windows' ? 'D:\\FerryAI' : '/opt/llama');
+$llamaDir = getenv('FERRY_AI_LLAMA_DIR') ?: dirname(__DIR__, 3) . '/models';
 $ext = \PHP_OS_FAMILY === 'Windows' ? 'dll' : (\PHP_OS_FAMILY === 'Darwin' ? 'dylib' : 'so');
 $wrapper = $llamaDir . \DIRECTORY_SEPARATOR . 'ferry_llama.' . $ext;
 $model = getenv('FERRY_AI_LLAMA_MODEL') ?: $llamaDir . \DIRECTORY_SEPARATOR . 'qwen-0.5b.Q4_K_M.gguf';

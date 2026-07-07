@@ -7,17 +7,17 @@ declare(strict_types=1);
  * CPU and GPU. Run standalone (NOT under PHPUnit; the ggml global constructors conflict
  * with PHPUnit's output/exception handling).
  *
- *   Windows:  $env:PATH = "D:\FerryAI;" + $env:PATH; php native/llama-wrapper/ffi-smoke.php
+ *   Windows:  $env:PATH = "<LLAMA_DIR>;" + $env:PATH; php native/llama-wrapper/ffi-smoke.php
  *   Linux:    FERRY_AI_LLAMA_DIR=/opt/llama FERRY_AI_GGUF=/path/model.gguf \
  *             php native/llama-wrapper/ffi-smoke.php
  *
- * Env overrides: FERRY_AI_LLAMA_DIR (default: D:\FerryAI on Windows, /opt/llama otherwise),
+ * Env overrides: FERRY_AI_LLAMA_DIR (default: <repo>/models),
  *                FERRY_AI_GGUF (default: $dir/qwen-0.5b.Q4_K_M.gguf).
  */
 
 $isWindows = \PHP_OS_FAMILY === 'Windows';
 $ext = $isWindows ? 'dll' : (\PHP_OS_FAMILY === 'Darwin' ? 'dylib' : 'so');
-$dir = getenv('FERRY_AI_LLAMA_DIR') ?: ($isWindows ? 'D:\\FerryAI' : '/opt/llama');
+$dir = getenv('FERRY_AI_LLAMA_DIR') ?: dirname(__DIR__, 2) . '/models';
 $gguf = getenv('FERRY_AI_GGUF') ?: $dir . \DIRECTORY_SEPARATOR . 'qwen-0.5b.Q4_K_M.gguf';
 $wrapper = $dir . \DIRECTORY_SEPARATOR . 'ferry_llama.' . $ext;
 

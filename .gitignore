@@ -36,6 +36,10 @@ tests/fixtures/*.json
 .env
 .env.*
 
+# Local dev config (machine-specific paths) + local model/library drop dir
+/.ferry-ai.local.php
+/models/
+
 # Temp
 /tmp/
 /TEMP/
@@ -57,3 +61,6 @@ docker-compose.override.yml
 !tests/fixtures/*.ai
 
 .php-cs-fixer.cache
+
+# Skills
+/.opencode/agents/*.md

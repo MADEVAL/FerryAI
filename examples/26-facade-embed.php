@@ -10,7 +10,7 @@ use FerryAI\StreamResponse;
 
 echo "=== 26 — Facade config-wiring (embed / similarity / stream response) ===\n\n";
 
-$modelDir = getenv('FERRY_AI_MODEL_DIR') ?: 'D:\FerryAI\all-MiniLM-L6-v2-onnx';
+$modelDir = getenv('FERRY_AI_MODEL_DIR') ?: dirname(__DIR__) . '/models/all-MiniLM-L6-v2-onnx';
 
 echo "--- AI::embed() driven entirely by config ---\n\n";
 

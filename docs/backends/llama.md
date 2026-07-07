@@ -21,7 +21,7 @@ that exposes a flat, pointer-only API.
 
 **Windows:**
 ```powershell
-powershell -File native/llama-wrapper/build.ps1 -LlamaDir D:\FerryAI
+powershell -File native/llama-wrapper/build.ps1 -LlamaDir C:\llama
 ```
 
 **Linux / WSL:**
@@ -37,15 +37,15 @@ is present.
 
 ```php
 // Point at the wrapper DLL (or set FERRY_AI_LLAMA_LIB to llama.dll in the same dir)
-putenv('FERRY_AI_LLAMA_WRAPPER=D:\FerryAI\ferry_llama.dll');
-putenv('PATH=D:\FerryAI;' . getenv('PATH'));   // DLLs must be on PATH
+putenv('FERRY_AI_LLAMA_WRAPPER=C:\llama\ferry_llama.dll');
+putenv('PATH=C:\llama;' . getenv('PATH'));   // DLLs must be on PATH
 
 AI::config([
     'backend'  => 'llama',
     'device'   => 'cuda',        // or 'cpu'
     'backends' => [
         'llama' => [
-            'model_path'     => 'D:\FerryAI\qwen-0.5b.Q4_K_M.gguf',
+            'model_path'     => 'C:\llama\qwen-0.5b.Q4_K_M.gguf',
             'n_gpu_layers'   => 25,      // how many layers to offload (0 = CPU only)
             'n_ctx'           => 2048,   // context window size
         ],

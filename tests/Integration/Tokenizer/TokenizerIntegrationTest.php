@@ -25,7 +25,7 @@ final class TokenizerIntegrationTest extends TestCase
     protected function setUp(): void
     {
         $this->tokenizerPath = getenv('FERRY_AI_TOKENIZER_JSON_PATH')
-            ?: 'D:\\FerryAI\\all-MiniLM-L6-v2-onnx\\tokenizer.json';
+            ?: dirname(__DIR__, 3) . '/models/all-MiniLM-L6-v2-onnx/tokenizer.json';
 
         if (!\is_file($this->tokenizerPath)) {
             self::markTestSkipped('tokenizer.json not found: ' . $this->tokenizerPath);

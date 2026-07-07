@@ -12,7 +12,7 @@ use FerryAI\Pipeline\Stages\FilterStage;
 use FerryAI\Pipeline\Stages\NormalizeStage;
 use FerryAI\Pipeline\Stages\TransformStage;
 
-$modelDir = getenv('FERRY_AI_MODEL_DIR') ?: 'D:\FerryAI\all-MiniLM-L6-v2-onnx';
+$modelDir = getenv('FERRY_AI_MODEL_DIR') ?: dirname(__DIR__) . '/models/all-MiniLM-L6-v2-onnx';
 $tokenizerPath = $modelDir . '/tokenizer.json';
 
 if (!file_exists($tokenizerPath)) {

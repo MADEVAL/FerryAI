@@ -13,7 +13,7 @@ use PHPUnit\Framework\TestCase;
  *
  * Runs in an isolated subprocess ({@see llama_chat_harness.php}) — loading the
  * native DLL runs ggml global constructors that conflict with PHPUnit. Needs
- * FERRY_AI_LLAMA_DIR (default D:\FerryAI) with
+ * FERRY_AI_LLAMA_DIR (default <repo>/models) with
  * ferry_llama.dll + a .gguf model; skipped otherwise.
  */
 #[Group('integration')]
@@ -29,7 +29,7 @@ final class LlamaBackendIntegrationTest extends TestCase
         }
 
         $this->harness = __DIR__ . '/llama_chat_harness.php';
-        $dir = getenv('FERRY_AI_LLAMA_DIR') ?: (\PHP_OS_FAMILY === 'Windows' ? 'D:\\FerryAI' : '/opt/llama');
+        $dir = getenv('FERRY_AI_LLAMA_DIR') ?: dirname(__DIR__, 3) . '/models';
         $ext = \PHP_OS_FAMILY === 'Windows' ? 'dll' : (\PHP_OS_FAMILY === 'Darwin' ? 'dylib' : 'so');
 
         if (!\is_file($dir . \DIRECTORY_SEPARATOR . 'ferry_llama.' . $ext)) {

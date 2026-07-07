@@ -1,4 +1,4 @@
-﻿# Safetensors → GGUF conversion guide
+# Safetensors → GGUF conversion guide
 
 FerryAI runs inference through llama.cpp (GGUF) and ONNX Runtime (ONNX). Many models
 on HuggingFace ship as **safetensors** — a weight-only format. Safetensors files contain
@@ -58,9 +58,9 @@ ls Qwen3-0.6B/
 
 ```bash
 python3 /opt/llamasrc/convert_hf_to_gguf.py \
-  /mnt/d/FerryAI/Qwen3-0.6B \
+  /opt/models/Qwen3-0.6B \
   --outtype f16 \
-  --outfile /mnt/d/FerryAI/qwen3-0.6b-f16.gguf
+  --outfile /opt/models/qwen3-0.6b-f16.gguf
 ```
 
 **Common options:**
@@ -85,12 +85,12 @@ python3 /opt/llamasrc/convert_hf_to_gguf.py --list
 # Check metadata
 python3 -c "
 from gguf import GGUFReader
-r = GGUFReader('/mnt/d/FerryAI/qwen3-0.6b-f16.gguf')
+r = GGUFReader('/opt/models/qwen3-0.6b-f16.gguf')
 for k in r.fields: print(k, '=', r.fields[k])
 "
 
 # Quick test with llama-cli (CPU)
-/opt/llama/llama-cli --model /mnt/d/FerryAI/qwen3-0.6b-f16.gguf -p "Hello" -n 10
+/opt/llama/llama-cli --model /opt/models/qwen3-0.6b-f16.gguf -p "Hello" -n 10
 ```
 
 ### 4. Use with FerryAI
@@ -98,12 +98,12 @@ for k in r.fields: print(k, '=', r.fields[k])
 ```php
 // Set the GGUF path and point at the llama wrapper
 putenv('FERRY_AI_LLAMA_WRAPPER=/opt/llama/ferry_llama.so');
-putenv('FERRY_AI_LLAMA_MODEL=/mnt/d/FerryAI/qwen3-0.6b-f16.gguf');
+putenv('FERRY_AI_LLAMA_MODEL=/opt/models/qwen3-0.6b-f16.gguf');
 
 FerryAI\AI::config([
     'backend' => 'llama',
     'device'  => 'cuda',                    // or 'cpu'
-    'backends' => ['llama' => ['model_path' => '/mnt/d/FerryAI/qwen3-0.6b-f16.gguf']],
+    'backends' => ['llama' => ['model_path' => '/opt/models/qwen3-0.6b-f16.gguf']],
 ]);
 
 $result = FerryAI\AI::chat([['role' => 'user', 'content' => 'What is PHP?']]);
@@ -114,7 +114,7 @@ Or use the examples (they auto-detect the model from `FERRY_AI_LLAMA_MODEL`):
 
 ```bash
 export FERRY_AI_LLAMA_DIR=/opt/llama-cuda
-export FERRY_AI_LLAMA_MODEL=/mnt/d/FerryAI/qwen3-0.6b-f16.gguf
+export FERRY_AI_LLAMA_MODEL=/opt/models/qwen3-0.6b-f16.gguf
 export FERRY_AI_LLAMA_DEVICE=cuda
 php examples/03-chat.php
 ```
@@ -129,9 +129,9 @@ pip install --user optimum onnx onnxruntime
 
 # Export
 python3 -m optimum.exporters.onnx \
-  --model /mnt/d/FerryAI/all-MiniLM-L6-v2-onnx \
+  --model /opt/models/all-MiniLM-L6-v2-onnx \
   --task feature-extraction \
-  /mnt/d/FerryAI/all-MiniLM-L6-v2-onnx-exported
+  /opt/models/all-MiniLM-L6-v2-onnx-exported
 ```
 
 The resulting `.onnx` file works with `FerryAI\OnnxBackend\OnnxBackend`.
