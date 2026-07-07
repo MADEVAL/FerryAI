@@ -29,8 +29,30 @@ param(
 
 if ($Out -eq "") { $Out = Join-Path $LlamaDir "ferry_llama.dll" }
 
-$vcvars = "C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat"
-if (-not (Test-Path $vcvars)) { throw "vcvars64.bat not found: $vcvars" }
+# Locate the Visual Studio VS 2022+ installation. GH Actions runners ship
+# VS Enterprise; local dev machines may have Community, Professional or BuildTools.
+# vswhere is bundled with any VS 2017+ install and is on PATH inside a VS
+# developer prompt; on GitHub runners it lives under the well-known path.
+$vswhere = if (Get-Command vswhere -ErrorAction SilentlyContinue) {
+    "vswhere"
+} else {
+    "${Env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+}
+
+$vsPath = & $vswhere -latest -products * -property installationPath 2>$null
+
+if ($vsPath) {
+    $vcvars = Join-Path $vsPath "VC\Auxiliary\Build\vcvars64.bat"
+    if (-not (Test-Path $vcvars)) {
+        throw "vcvars64.bat not found at $vcvars"
+    }
+} else {
+    # Fallback for environments where vswhere is not available
+    $vcvars = "${Env:ProgramFiles}\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat"
+    if (-not (Test-Path $vcvars)) {
+        throw "vcvars64.bat not found (tried vswhere + Community fallback). Ensure Visual Studio 2022 is installed."
+    }
+}
 
 $src = Join-Path $PSScriptRoot "ferry_llama.c"
 $bat = Join-Path $env:TEMP "ferry_build.bat"

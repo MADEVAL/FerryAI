@@ -40,7 +40,7 @@ interface ModelHub
     /**
      * Downloads a model while yielding progress.
      *
-     * @return \Generator<int, array{progress: int, downloaded: int, total: int}>
+     * @return \Generator<int, array{progress: float, downloaded: int, total: int}>
      */
     public function downloadWithProgress(string $modelId, ?string $version = null): \Generator;
 

@@ -87,12 +87,12 @@ final class Hub implements ModelHubContract
         $cached = $this->cached($modelId, $version);
 
         if ($cached !== null) {
-            yield ['progress' => 1, 'downloaded' => 0, 'total' => 0];
+            yield ['progress' => 1.0, 'downloaded' => 0, 'total' => 0];
 
             return $cached;
         }
 
-        yield ['progress' => 0, 'downloaded' => 0, 'total' => 0];
+        yield ['progress' => 0.0, 'downloaded' => 0, 'total' => 0];
 
         $files = $this->hfClient->listFiles($modelId);
 
