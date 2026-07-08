@@ -21,7 +21,7 @@ final class RetryHandler
         while ($attempt < $maxAttempts) {
             try {
                 return $fn();
-            } catch (\Throwable $e) {
+            } catch (\Exception $e) {
                 $lastException = $e;
                 $attempt++;
 
@@ -60,6 +60,10 @@ final class RetryHandler
         }
 
         if ($e instanceof \FerryAI\Core\Exception\ModelNotFoundException) {
+            return false;
+        }
+
+        if ($e instanceof \FerryAI\Core\Exception\ValidationException) {
             return false;
         }
 

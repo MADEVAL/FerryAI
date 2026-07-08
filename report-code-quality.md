@@ -71,31 +71,6 @@ if ($systemPath !== null) { return $systemPath; }
 
 ---
 
-## [ВАЖНО] RetryHandler повторяет невосстановимые ошибки (в т.ч. ValidationException)
-
-Файл: `packages/core/src/RetryHandler.php`, строки 24, 48-67
-Категория: Надёжность
-
-Проблема: `catch (\Throwable)` перехватывает и `\TypeError`/`\Error`, и валидационные ошибки. `shouldRetry()` не исключает `ValidationException` — некорректный ввод повторяется впустую (3× со сном).
-
-Доказательство:
-```php
-} catch (\Throwable $e) { $lastException = $e; $attempt++; /* ... */ if (!self::shouldRetry($e)) break; }
-```
-```php
-public static function shouldRetry(\Throwable $e): bool {
-    // ModelLoad / ShapeMismatch / Configuration / ModelNotFound исключены,
-    // но ValidationException и \Error — нет
-    return true;
-}
-```
-
-Вектор / последствие: `\TypeError` от неверных аргументов и `ValidationException` от плохих `SamplingParams` прогоняются через полный retry-цикл с задержками, хотя успех невозможен.
-
-Решение: ловить `\Exception` (не `\Throwable`), добавить `ValidationException` в список не-повторяемых.
-
----
-
 ## 🟡 УЛУЧШЕНИЕ
 
 ## [УЛУЧШЕНИЕ] RetryHandler: нет потолка backoff и бросается нативный `\RuntimeException`
