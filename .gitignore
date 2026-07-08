@@ -53,9 +53,6 @@ build/infection/
 # Benchmarks
 benchmarks/models/
 
-# Docker
-docker-compose.override.yml
-
 # Archive formats
 *.ai
 !tests/fixtures/*.ai

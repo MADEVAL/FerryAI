@@ -810,9 +810,6 @@ build/infection/
 # Benchmarks
 benchmarks/models/
 
-# Docker
-docker-compose.override.yml
-
 # Archive formats
 *.ai
 !tests/fixtures/*.ai
@@ -1498,76 +1495,7 @@ MIT License.
 
 ---
 
-## 11. DOCKER FOR TESTING
-
-### 11.1. `Dockerfile` (dev image)
-
-```dockerfile
-FROM php:8.5-cli
-
-# System dependencies
-RUN apt-get update && apt-get install -y \
-    libzip-dev \
-    libsodium-dev \
-    libsqlite3-dev \
-    wget \
-    unzip \
-    && rm -rf /var/lib/apt/lists/*
-
-# PHP extensions
-RUN docker-php-ext-install \
-    ffi \
-    zip \
-    sodium \
-    pdo_sqlite \
-    opcache \
-    fileinfo
-
-# Composer
-COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
-
-# Native libraries (copy from prebuilt)
-COPY native-binaries/linux-x86_64/*.so /usr/local/lib/
-RUN ldconfig
-
-# FFI
-RUN echo 'ffi.enable=true' >> /usr/local/etc/php/conf.d/ffi.ini
-
-WORKDIR /app
-COPY . .
-
-RUN composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
-
-CMD ["php", "-a"]
-```
-
-### 11.2. `docker-compose.yml` (dev environment)
-
-```yaml
-services:
-  php:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    volumes:
-      - .:/app
-      - composer-cache:/root/.composer
-      - model-cache:/var/cache/ferry-ai-models
-    environment:
-      FERRY_AI_BACKEND: auto
-      FERRY_AI_DEVICE: auto
-      FERRY_AI_MODEL_CACHE: /var/cache/ferry-ai-models
-      FERRY_AI_TESTING: 1
-    command: tail -f /dev/null
-
-volumes:
-  composer-cache:
-  model-cache:
-```
-
----
-
-## 12. FULL LIST OF DEV DEPENDENCIES
+## 11. FULL LIST OF DEV DEPENDENCIES
 
 | Package | Purpose | Required |
 |---|---|---|
@@ -1588,7 +1516,7 @@ volumes:
 
 ---
 
-## 13. CHECKLIST: NEW DEVELOPER
+## 12. CHECKLIST: NEW DEVELOPER
 
 After cloning the repository, a new developer performs:
 

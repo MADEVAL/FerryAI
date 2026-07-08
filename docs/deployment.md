@@ -30,12 +30,6 @@ Toolkit and cuDNN on the host, and set `device: cuda`. Supported for llama.cpp o
 For SSE, disable buffering: PHP (`ob_end_flush`), FPM, and the proxy
 (`X-Accel-Buffering: no` for Nginx). See [streaming](streaming.md).
 
-## Docker
-
-A reference `Dockerfile` (php:8.5-cli + ffi/pdo_sqlite/zip/sodium) and `docker-compose.yaml` are in
-the repo root. Add the native libraries + models via volumes or build steps for the features you
-use.
-
 ## CI
 
 `composer check` (cs-fix + PHPStan L8 + Psalm L3 + unit tests) is the gate. Native integration
