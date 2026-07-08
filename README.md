@@ -48,8 +48,8 @@ the same C APIs that Python uses. No subprocess, no shell_exec, no Python.
 
 | Backend | Status | What it does |
 |---------|--------|-------------|
-| **ONNX** | 🟢 Production | Embeddings, classification, any `.onnx`. Tested: ONNX Runtime 1.27.0, all-MiniLM-L6-v2 (384d), similarity 0.79. |
-| **Llama** | 🟢 CPU + GPU | Real chat/generation via a thin `ferry_llama` C wrapper over llama.cpp (verified: CPU ~96 tok/s, RTX 4060 ~250 tok/s). See [`native/llama-wrapper`](native/llama-wrapper) and "LLM on CPU & GPU" below. |
+| **ONNX** | 🟢 Production | Embeddings, classification, any `.onnx`. Runs on CPU (and CUDA GPU when the runtime + cuDNN/curand/cufft are present); e.g. all-MiniLM-L6-v2 produces 384d vectors. |
+| **Llama** | 🟢 CPU + GPU | Real chat/generation via a thin `ferry_llama` C wrapper over llama.cpp; runs on CPU and CUDA GPU on Windows and Linux. See [`native/llama-wrapper`](native/llama-wrapper) and "LLM on CPU & GPU" below. |
 | **CPU Native** | 🟢 Always | Pure-PHP tensor math (add/sub/mul/matmul/transpose/reshape/slice) + RubixML `.rbm` inference (optional). No native deps for tensor ops. |
 
 ---
@@ -78,8 +78,8 @@ $store->add('doc1', $vec->vector, ['lang' => 'en']);
 $hits = $store->search($query, k: 5, filter: ['lang' => ['eq' => 'en']]);
 ```
 
-Vectors live in native `vector(dim)` columns with `jsonb` metadata; verified against
-PostgreSQL 18.3 + pgvector 0.8.4. The SQLite backend transparently uses **sqlite-vec**
+Vectors live in native `vector(dim)` columns with `jsonb` metadata, using PostgreSQL +
+pgvector. The SQLite backend transparently uses **sqlite-vec**
 (vec0 virtual tables) for native KNN when the extension is available, and falls back to a
 pure-PHP brute-force scan otherwise — filters always work. See
 [`examples/21-postgres-vector.php`](examples/21-postgres-vector.php) and
@@ -130,7 +130,7 @@ omitted — always take the latest compatible build from the linked source.
 |-----------|---------------------------|-----------------------------------|-------------------------------|--------|
 | Embeddings / classification (ONNX) | `ankane/onnxruntime` (auto) + `ext-ffi` | ONNX Runtime shared lib — CPU by default. On Linux run `php -r 'OnnxRuntime\\Vendor::check();'` to auto-download. | Extract into `vendor/ankane/onnxruntime/lib/…/lib/` | github.com/microsoft/onnxruntime/releases · onnxruntime.ai |
 | ONNX model file | — | `model.onnx` + `tokenizer.json` — the actual network + vocab | Any dir; point config / `FERRY_AI_MODEL_DIR` at it | huggingface.co (e.g. `sentence-transformers/all-MiniLM-L6-v2`) |
-| GPU for ONNX (CUDA / TensorRT) | — | ONNX Runtime **GPU** build **+** CUDA Toolkit **+** cuDNN (**+** TensorRT for the TRT provider). **cuDNN** requires manual download from https://developer.nvidia.com/cudnn | Replace the CPU libs with the GPU package; see ONNX GPU on Windows / WSL sections | onnxruntime releases (gpu zip) · developer.nvidia.com/cuda-downloads · developer.nvidia.com/cudnn · developer.nvidia.com/tensorrt |
+| GPU for ONNX (CUDA / TensorRT) | — | ONNX Runtime **GPU** build **+** CUDA Toolkit **+** cuDNN (**+** TensorRT for the TRT provider). **cuDNN** requires manual download from https://developer.nvidia.com/cudnn | Replace the CPU libs with the GPU package; see ONNX GPU on Windows / Linux sections | onnxruntime releases (gpu zip) · developer.nvidia.com/cuda-downloads · developer.nvidia.com/cudnn · developer.nvidia.com/tensorrt |
 | LLM chat / streaming (llama.cpp) | `ext-ffi` | llama.cpp shared libs `llama.*` + `ggml*.*` (+ deps) — the inference engine | Extract to a dir; set `FERRY_AI_LLAMA_LIB` and add the dir to `PATH` | github.com/ggml-org/llama.cpp/releases |
 | GGUF model file | — | `*.gguf` quantized weights + tokenizer | Any dir; `backends.llama.model_path` | huggingface.co (e.g. `bartowski/*-GGUF`) |
 | GPU for llama.cpp | — | CUDA-enabled llama.cpp build (`*-bin-win-cuda-*`) **+** NVIDIA CUDA Toolkit | Same as llama.cpp above; set `backends.llama.n_gpu_layers` | github.com/ggml-org/llama.cpp/releases · developer.nvidia.com/cuda-downloads |
@@ -144,34 +144,34 @@ omitted — always take the latest compatible build from the linked source.
 | Shared model weights across workers | `ext-shmop` | — | `model_pool.shared_memory=true` | PHP bundled |
 
 > CUDA note: GPU support means shipping a **CUDA-enabled native build** alongside the
-> **NVIDIA CUDA Toolkit**. llama.cpp GPU is verified on both OSes (Windows ~250 tok/s, WSL ~176 tok/s).
-> ONNX GPU additionally needs **cuDNN + curand + cufft** (see the ONNX GPU on Windows / WSL sections).
+> **NVIDIA CUDA Toolkit**. llama.cpp GPU runs on both Windows and Linux.
+> ONNX GPU additionally needs **cuDNN + curand + cufft** (see the ONNX GPU on Windows / Linux sections).
 
-### ONNX GPU on WSL (without sudo / passwordless root)
+### ONNX GPU on Linux
 
 The ONNX Runtime Linux GPU download does **not** bundle the CUDA runtime math libraries
-(`libcurand`, `libcufft`, `libcudnn`) — those live in separate NVIDIA packages. On WSL
-the CUDA 13 dev toolkit (for llama.cpp) provides `cublas` + `cudart` but NOT the math
-libraries. They can be extracted from `.deb` packages **without root** using `apt-get download`:
+(`libcurand`, `libcufft`, `libcudnn`) — those live in separate NVIDIA packages. The
+CUDA dev toolkit provides `cublas` + `cudart` but NOT the math
+libraries. They can be extracted from `.deb` packages using `apt-get download`
+(useful when you cannot install system packages as root):
 
 ```bash
 # 1 — Place the ONNX Runtime GPU build next to the vendor lib
-cp /opt/onnxruntime-gpu/onnxruntime-linux-x64-gpu_cuda13-*/lib/libonnxruntime*.so* \
+cp /path/to/onnxruntime-gpu/onnxruntime-linux-x64-gpu_cuda13-*/lib/libonnxruntime*.so* \
    vendor/ankane/onnxruntime/lib/onnxruntime-linux-x64-*/lib/
-cp /opt/onnxruntime-gpu/onnxruntime-linux-x64-gpu_cuda13-*/lib/libonnxruntime_providers_{cuda,shared}.so \
+cp /path/to/onnxruntime-gpu/onnxruntime-linux-x64-gpu_cuda13-*/lib/libonnxruntime_providers_{cuda,shared}.so \
    vendor/ankane/onnxruntime/lib/onnxruntime-linux-x64-*/lib/
 
-# 2 — Extract CUDA runtime math libs from .deb packages (no sudo)
+# 2 — Extract CUDA runtime math libs from .deb packages (no root needed)
 D=vendor/ankane/onnxruntime/lib/onnxruntime-linux-x64-*/lib
 cd "$D"
 for pkg in libcurand-13-2 libcufft-13-2; do
   apt-get download "$pkg"
   ar x ${pkg}_*.deb && tar xf data.tar.xz -C /tmp/ && find /tmp -name "*.so*" -exec cp {} . \; && rm -f *.deb control.tar.xz data.tar.xz debian-binary
 done
-# cuDNN — latest version at https://developer.nvidia.com/cudnn
-# Below: direct CDN link for cuDNN 9.5.1 on Ubuntu 22.04/24.04
-wget "https://developer.download.nvidia.com/compute/cudnn/9.5.1/local_installers/cudnn-local-repo-ubuntu2204-9.5.1_1.0-1_amd64.deb" -O /tmp/cudnn.deb
-dpkg-deb -x /tmp/cudnn.deb /tmp/cudnn_extract
+# cuDNN — download for your CUDA version from https://developer.nvidia.com/cudnn,
+# then extract the libcudnn*.so* files into the vendor lib dir:
+dpkg-deb -x /path/to/cudnn.deb /tmp/cudnn_extract
 find /tmp/cudnn_extract -name "libcudnn*.so*" -exec cp {} "$D" \;
 
 # 3 — Add the vendor lib dir and the CUDA toolkit to LD_LIBRARY_PATH
@@ -184,9 +184,9 @@ php -r "require 'vendor/autoload.php'; echo (new FerryAI\OnnxBackend\OnnxBackend
 ```
 
 > **Why this works:** the ONNX CUDA provider `.so` links against `libcurand.so.10`,
-> `libcufft.so.12` and `libcudnn.so.9`. The CUDA 13.3 dev toolkit (installed via `apt`)
+> `libcufft.so.12` and `libcudnn.so.9`. The CUDA dev toolkit (installed via `apt`)
 > provides `cublas`/`cudart`; `apt-get download` + `ar x` + `tar xf` extracts the math
-> libraries from their `.deb` packages without ever calling `sudo`. All `.so` files land
+> libraries from their `.deb` packages without needing root. All `.so` files land
 > in the vendor lib dir and `LD_LIBRARY_PATH` points the dynamic linker at them.
 
 ### ONNX GPU on Windows
@@ -200,7 +200,7 @@ bundle `curand`, `cufft`, or `cudnn`. Those must be obtained separately.
 |-----|--------|-----------|
 | `onnxruntime.dll` + provider DLLs | ORT GPU zip (`onnxruntime-win-x64-gpu_cuda13-*.zip`) | github.com/microsoft/onnxruntime/releases |
 | `cublas64_13.dll`, `cublasLt64_13.dll`, `cudart64_13.dll` | Shipped by `ankane/onnxruntime` | Already in `vendor/ankane/onnxruntime/lib/…/lib/` |
-| `cudnn64_9.dll` + aux DLLs | **cuDNN** → https://developer.nvidia.com/cudnn | Download Windows x64 zip (CUDA 13.x), extract `bin/13.3/x64/*.dll` |
+| `cudnn64_9.dll` + aux DLLs | **cuDNN** → https://developer.nvidia.com/cudnn | Download the Windows x64 zip for your CUDA version, extract the `bin/*/x64/*.dll` files |
 | `curand64_10.dll` | pip `nvidia-curand-cu12` wheel | `pip download nvidia-curand-cu12 --no-deps` → unzip → `nvidia/curand/bin/curand64_10.dll` |
 | `cufft64_11.dll`, `cufftw64_11.dll` | pip `nvidia-cufft-cu12` wheel | `pip download nvidia-cufft-cu12 --no-deps` → unzip → `nvidia/cufft/bin/cufft64_11.dll` |
 
@@ -214,7 +214,7 @@ Copy-Item "path\to\onnxruntime-gpu\lib\onnxruntime_providers_cuda.dll" -Destinat
 Copy-Item "path\to\onnxruntime-gpu\lib\onnxruntime_providers_shared.dll" -Destination $vendorLib -Force
 
 # 2 — Copy cuDNN DLLs from NVIDIA cuDNN zip
-Copy-Item "C:\cudnn\bin\13.3\x64\cudnn*.dll" -Destination $vendorLib
+Copy-Item "C:\cudnn\bin\*\x64\cudnn*.dll" -Destination $vendorLib
 
 # 3 — Download and extract curand + cufft via pip
 pip download nvidia-curand-cu12 nvidia-cufft-cu12 --no-deps -d %TEMP%\cuda_dlls
@@ -239,11 +239,11 @@ LD_LIBRARY_PATH=vendor/ankane/onnxruntime/lib/onnxruntime-linux-x64-*/lib:/usr/l
 php -r "require 'vendor/autoload.php'; \$b=new FerryAI\OnnxBackend\OnnxBackend(); echo implode(',',array_map(fn(\$d)=>\$d->value,\$b->availableDevices()));"
 
 # llama.cpp available?
-FERRY_AI_LLAMA_LIB=/opt/llama/libllama.so LD_LIBRARY_PATH=/opt/llama:$LD_LIBRARY_PATH \
+FERRY_AI_LLAMA_LIB=/path/to/llama/libllama.so LD_LIBRARY_PATH=/path/to/llama:$LD_LIBRARY_PATH \
 php -r "require 'vendor/autoload.php'; echo (new FerryAI\LlamaBackend\LlamaBackend())->isAvailable() ? 'YES' : 'NO';"
 
 # sqlite-vec available?
-FERRY_AI_VEC_EXTENSION_LIB=/opt/sqlite-vec/vec0.so php examples/23-sqlite-vec.php
+FERRY_AI_VEC_EXTENSION_LIB=/path/to/sqlite-vec/vec0.so php examples/23-sqlite-vec.php
 ```
 
 On Windows use the corresponding `C:\llama\...` paths (backslashes + `PATH` instead of
@@ -255,17 +255,15 @@ automatically).
 
 ## LLM on CPU & GPU (llama.cpp)
 
-Verified on this machine (Windows x64, RTX 4060 8 GB, driver 591.86, llama.cpp build 9873):
+llama.cpp inference runs through PHP on both CPU and CUDA GPU, on Windows and Linux:
 
-| Path | Result |
-|------|--------|
-| Native `llama-cli` / `llama-bench` (CPU) | ✅ Qwen2.5-0.5B ~328 tok/s |
-| Native `llama-bench` (CUDA, `-ngl 99`) | ✅ ~384 tok/s, backend = CUDA |
-| **`AI::chat()` / `AI::stream()`** (CPU, Linux/WSL) | ✅ real chat via `LlamaBackend` + wrapper, ~100 tok/s |
-| **`AI::chat()` / `AI::stream()`** (GPU, Linux/WSL) | ✅ CUDA (source-built, `GGML_CUDA=ON`, `sm_89`), RTX 4060, ~176 tok/s |
-| **`AI::chat()` / `AI::stream()`** (GPU, Windows) | ✅ 25/25 layers offloaded on RTX 4060, ~250 tok/s |
-| **`AI::chat()`** (Qwen3-0.6B f16, CPU) | ✅ qwen3-0.6b-f16.gguf (1.4 GB, safetensors→GGUF conversion), ~244 ms/5 tok |
-| **ONNX embeddings** (GPU, WSL) | ✅ CUDA (`availableDevices = cuda,cpu`), all-MiniLM-L6-v2, identical output |
+| Path | Support |
+|------|---------|
+| Native `llama-cli` / `llama-bench` (CPU / CUDA) | ✅ standard llama.cpp tooling |
+| **`AI::chat()` / `AI::stream()`** (CPU) | ✅ real chat via `LlamaBackend` + wrapper, Windows and Linux |
+| **`AI::chat()` / `AI::stream()`** (GPU, CUDA) | ✅ layer offload via a CUDA-enabled llama.cpp build (`GGML_CUDA=ON`), Windows and Linux |
+| **`AI::chat()`** (safetensors→GGUF models, e.g. Qwen3-0.6B f16) | ✅ after conversion to GGUF |
+| **ONNX embeddings** (GPU, CUDA) | ✅ CUDA provider (`availableDevices = cuda,cpu`) when the runtime + math libs are present |
 
 `LlamaBackend` uses `NativeLlamaRuntime`, which drives llama.cpp through the flat
 `ferry_llama` wrapper (real CPU + GPU). Point it at the wrapper via
@@ -273,7 +271,7 @@ Verified on this machine (Windows x64, RTX 4060 8 GB, driver 591.86, llama.cpp b
 dir) and add that dir to `PATH`; select the device with config `device: cpu|cuda`.
 See [`examples/03-chat.php`](examples/03-chat.php), [`examples/04-streaming.php`](examples/04-streaming.php).
 
-What you need (all in one dir, e.g. `C:\llama` on Windows or `/opt/llama` on Linux, on `PATH` /
+What you need (all in one dir, e.g. `C:\llama` on Windows or `/path/to/llama` on Linux, on `PATH` /
 `LD_LIBRARY_PATH` at runtime):
 
 1. **llama.cpp build** — shared libs (`llama` + `ggml*` + `ggml-cpu-*`);
@@ -297,9 +295,8 @@ $env:PATH = "C:\llama;" + $env:PATH
 php native/llama-wrapper/ffi-smoke.php
 ```
 
-On Linux/macOS use `native/llama-wrapper/build.sh /opt/llama` (needs a Linux llama.cpp build +
-`cc`). Verified on WSL2 Ubuntu 24.04 / PHP 8.5.8 (CPU ~100 tok/s, full integration 5/5); Linux
-CUDA needs a CUDA-enabled llama.cpp build.
+On Linux/macOS use `native/llama-wrapper/build.sh /path/to/llama` (needs a Linux llama.cpp build +
+`cc`); Linux CUDA needs a CUDA-enabled llama.cpp build.
 
 Details, flat API and limits: [`native/llama-wrapper/README.md`](native/llama-wrapper/README.md).
 The wrapper is wired into `FerryAI\LlamaBackend` — `AI::chat()`/`AI::stream()` work on CPU and
@@ -309,23 +306,23 @@ keeps sampling fast.
 
 ---
 
-## Verified (Windows x64)
+## Capabilities
 
-| Component | Result |
+| Component | Status |
 |-----------|--------|
-| ONNX Runtime 1.27.0 FFI load | ✅ `isAvailable()`, version, CPU device |
-| ONNX inference e2e | ✅ Embed `Hello world` → 384d vector, similarity cat-kitten=0.79 |
-| llama.cpp FFI load (build 9873) | ✅ DLL loads, `llama_backend_init()` OK, `supports_mmap()`=YES |
-| llama.cpp inference via PHP FFI | ✅ CPU + GPU through the `ferry_llama` wrapper (Qwen2.5-0.5B, greedy) |
-| GPU (CUDA) — llama.cpp | ✅ RTX 4060, 25/25 layers offloaded, ~250 tok/s (native `llama-bench` ~384 tok/s) |
-| GPU (CUDA) — ONNX | ✅ CUDA provider detected; **verified on Windows** (RTX 4060, CUDA 13.1, cuDNN 9) **+ WSL** after extracting CUDA runtime libs from `.deb` packages (see ONNX GPU sections below). |
-| HuggingFace API | ✅ Qwen3-0.6B found, search works |
+| ONNX Runtime FFI load | ✅ `isAvailable()`, version, CPU device |
+| ONNX inference e2e | ✅ Embed text → 384d vector (all-MiniLM-L6-v2), cosine similarity |
+| llama.cpp FFI load | ✅ shared lib loads, `llama_backend_init()`, `supports_mmap()` |
+| llama.cpp inference via PHP FFI | ✅ CPU + GPU through the `ferry_llama` wrapper |
+| GPU (CUDA) — llama.cpp | ✅ layer offload with a CUDA-enabled llama.cpp build |
+| GPU (CUDA) — ONNX | ✅ CUDA provider on Windows and Linux (see the ONNX GPU sections below) |
+| HuggingFace API | ✅ model search + download |
 | Vector store | ✅ SQLite CRUD, brute-force + sqlite-vec (vec0) native KNN, metadata filter |
-| Vector store (Postgres) | ✅ pgvector 0.8.4 native `<=>` search, HNSW index, metadata filter |
+| Vector store (Postgres) | ✅ pgvector native `<=>` search, HNSW index, metadata filter |
 | CPU backend | ✅ Tensor math (matmul/transpose/reshape/slice); RubixML `.rbm` predict/proba (isolated) |
-| Shared memory (shmop) | ✅ Allocate 2.5B key, attach, detach |
-| Async fibers | ✅ Suspend/resume, parallel tasks, timeout 10ms |
-| Linux / WSL | ✅ 750+ unit + static analysis, all native backends verified on WSL2 Ubuntu 24.04 / PHP 8.5.8 (llama CPU+CUDA, ONNX CPU+GPU, sqlite-vec, RubixML; PostgreSQL: pg_hba.conf env blocker) |
+| Shared memory (shmop) | ✅ Allocate, attach, detach |
+| Async fibers | ✅ Suspend/resume, parallel tasks, timeout |
+| Windows / Linux | ✅ Unit tests + static analysis; native backends run on both (llama CPU+CUDA, ONNX CPU+GPU, sqlite-vec, RubixML) |
 
 ---
 
@@ -354,7 +351,7 @@ packages/
 ## Testing
 
 ```bash
-composer test                # 750+ unit tests — pure PHP
+composer test                # Unit tests — pure PHP
 composer test-integration    # Integration — needs ONNX Runtime / llama.cpp / PostgreSQL
 composer check               # cs-fix + PHPStan lvl8 + Psalm lvl3 + tests — fully green
 ```

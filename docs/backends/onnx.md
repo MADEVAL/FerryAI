@@ -80,10 +80,10 @@ For GPU inference you need a **GPU build** of ONNX Runtime plus NVIDIA dependenc
    ```
    See the [README GPU setup](../../README.md#onnx-gpu-on-windows) for exact steps.
 
-**WSL / Linux:**
+**Linux:**
 Copy the GPU `.so` files into the vendor lib dir and point `LD_LIBRARY_PATH` at it.
 The CUDA runtime math libraries (`libcurand`, `libcufft`, `libcudnn`) can be extracted
-from `.deb` packages without root — see the [README GPU setup](../../README.md#onnx-gpu-on-wsl-without-sudo--passwordless-root).
+from `.deb` packages without root — see the [README GPU setup](../../README.md#onnx-gpu-on-linux).
 
 **Verify:**
 ```bash

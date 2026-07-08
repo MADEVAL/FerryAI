@@ -7,8 +7,7 @@ PHP FFI cannot reliably pass llama.cpp's `llama_model_params` / `llama_context_p
 
 This wrapper solves it: a tiny MSVC-built DLL that constructs those structs **inside C**
 (real ABI) and exposes a **flat API** — only pointers, ints, strings and byte buffers cross
-the PHP↔native boundary. Verified end to end on **CPU (~96 tok/s)** and **GPU / RTX 4060
-(~250 tok/s)** with `qwen-0.5b.Q4_K_M.gguf`.
+the PHP↔native boundary. It drives real llama.cpp inference on both **CPU** and **CUDA GPU**.
 
 ## What you need
 
@@ -38,7 +37,7 @@ Put a Linux/macOS llama.cpp build (`libllama.so`, `libggml*.so` — e.g. the
 `llama-bXXXX-bin-ubuntu-x64.tar.gz` release) plus the matching headers in one dir, then:
 
 ```bash
-native/llama-wrapper/build.sh /opt/llama            # -> /opt/llama/ferry_llama.so
+native/llama-wrapper/build.sh /path/to/llama            # -> /path/to/llama/ferry_llama.so
 ```
 
 The `.so`/`.dylib` is linked with an `$ORIGIN`/`@loader_path` rpath, so it finds the sibling
@@ -47,8 +46,7 @@ llama/ggml libraries without setting `LD_LIBRARY_PATH`.
 ### Linux GPU (CUDA)
 
 The prebuilt `ubuntu-x64` release is CPU-only. For GPU, build llama.cpp with CUDA from source
-(needs the CUDA toolkit — `nvcc`/`cudart`/`cublas` — and cmake; on WSL2 the Windows NVIDIA driver
-provides `libcuda.so`). Verified on WSL2 Ubuntu 24.04, CUDA 12.6, RTX 4060:
+(needs the CUDA toolkit — `nvcc`/`cudart`/`cublas` — and cmake):
 
 ```bash
 git clone --depth 1 --branch b9873 https://github.com/ggml-org/llama.cpp
@@ -57,19 +55,18 @@ cmake -S llama.cpp -B build -DCMAKE_BUILD_TYPE=Release \
       -DLLAMA_CURL=OFF -DLLAMA_BUILD_EXAMPLES=OFF -DLLAMA_BUILD_SERVER=OFF -DLLAMA_BUILD_TOOLS=OFF
 cmake --build build --target ggml llama -j"$(nproc)"
 
-mkdir -p /opt/llama-cuda
-cp -a build/bin/*.so* /opt/llama-cuda/
-cp -a llama.cpp/include/llama.h llama.cpp/ggml/include/*.h /opt/llama-cuda/
-cp -a /usr/local/cuda-12.6/lib64/lib{cudart,cublas,cublasLt}.so.12* /opt/llama-cuda/   # optional
-native/llama-wrapper/build.sh /opt/llama-cuda
+mkdir -p /path/to/llama-cuda
+cp -a build/bin/*.so* /path/to/llama-cuda/
+cp -a llama.cpp/include/llama.h llama.cpp/ggml/include/*.h /path/to/llama-cuda/
+cp -a /usr/local/cuda/lib64/lib{cudart,cublas,cublasLt}.so.12* /path/to/llama-cuda/   # optional
+native/llama-wrapper/build.sh /path/to/llama-cuda
 
-FERRY_AI_LLAMA_DIR=/opt/llama-cuda \
-LD_LIBRARY_PATH=/opt/llama-cuda:/usr/lib/wsl/lib \
-    php native/llama-wrapper/ffi-smoke.php     # [GPU] ~176 tok/s on the RTX 4060
+FERRY_AI_LLAMA_DIR=/path/to/llama-cuda \
+LD_LIBRARY_PATH=/path/to/llama-cuda:/usr/local/cuda/lib64 \
+    php native/llama-wrapper/ffi-smoke.php
 ```
 
-`-DCMAKE_CUDA_ARCHITECTURES=89` targets Ada (RTX 40xx) — change for your GPU. `libcuda.so.1`
-lives in `/usr/lib/wsl/lib` on WSL.
+`-DCMAKE_CUDA_ARCHITECTURES=89` targets Ada (RTX 40xx) — change for your GPU.
 
 ## Smoke test (CPU + GPU)
 
@@ -77,12 +74,12 @@ lives in `/usr/lib/wsl/lib` on WSL.
 # Windows
 $env:PATH = "C:\llama;" + $env:PATH
 php native/llama-wrapper/ffi-smoke.php
-# [CPU] Paris …  ~96 tok/s   [GPU] Paris …  ~250 tok/s
+# [CPU] Paris …   [GPU] Paris …
 ```
 
 ```bash
-# Linux (verified: WSL2 Ubuntu 24.04, PHP 8.5.8, CPU build ~100 tok/s)
-FERRY_AI_LLAMA_DIR=/opt/llama FERRY_AI_GGUF=/path/to/model.gguf \
+# Linux
+FERRY_AI_LLAMA_DIR=/path/to/llama FERRY_AI_GGUF=/path/to/model.gguf \
     php native/llama-wrapper/ffi-smoke.php
 ```
 
@@ -132,7 +129,7 @@ powershell -File native/llama-wrapper/package-release.ps1 -LlamaDir C:\llama
 ```
 ```bash
 # Linux/macOS — builds then copies ferry_llama.so/.dylib + SHA256 into native-binaries/<target>/
-native/llama-wrapper/package-release.sh /opt/llama
+native/llama-wrapper/package-release.sh /path/to/llama
 ```
 
 ## Notes / limits
@@ -141,7 +138,7 @@ native/llama-wrapper/package-release.sh /opt/llama
 - Backends must be loaded from the llama directory (`ferry_load_backends($dir)`) because
   llama.cpp resolves them next to the **host exe** (php.exe), not the DLL.
 - `ferry_eval_topk` powers greedy/top-k/top-p; `ferry_eval` (full vocab) powers grammar.
-- Wired into `FerryAI\LlamaBackend\Runtime\NativeLlamaRuntime`; verified on Windows (CPU+CUDA)
-  and Linux/WSL (CPU).
+- Wired into `FerryAI\LlamaBackend\Runtime\NativeLlamaRuntime`; runs on Windows (CPU+CUDA)
+  and Linux (CPU).
 - Runs in standalone PHP; under PHPUnit the ggml global constructors conflict with the test
   runner — that is why the llama backend is exercised by the integration suite, not unit tests.

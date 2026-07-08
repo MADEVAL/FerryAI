@@ -4,8 +4,8 @@
 # native-binaries/<target>/
 #
 # Usage:
-#   native/llama-wrapper/package-release.sh /opt/llama
-#   native/llama-wrapper/package-release.sh /opt/llama linux-x86_64
+#   native/llama-wrapper/package-release.sh /path/to/llama
+#   native/llama-wrapper/package-release.sh /path/to/llama linux-x86_64
 #
 set -euo pipefail
 

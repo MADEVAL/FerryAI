@@ -8,7 +8,7 @@ declare(strict_types=1);
  * with PHPUnit's output/exception handling).
  *
  *   Windows:  $env:PATH = "<LLAMA_DIR>;" + $env:PATH; php native/llama-wrapper/ffi-smoke.php
- *   Linux:    FERRY_AI_LLAMA_DIR=/opt/llama FERRY_AI_GGUF=/path/model.gguf \
+ *   Linux:    FERRY_AI_LLAMA_DIR=/path/to/llama FERRY_AI_GGUF=/path/to/model.gguf \
  *             php native/llama-wrapper/ffi-smoke.php
  *
  * Env overrides: FERRY_AI_LLAMA_DIR (default: <repo>/models),

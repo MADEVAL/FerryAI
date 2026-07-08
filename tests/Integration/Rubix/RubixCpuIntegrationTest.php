@@ -31,11 +31,10 @@ final class RubixCpuIntegrationTest extends TestCase
 
         $this->harness = __DIR__ . '/rubix_harness.php';
 
-        $autoload = getenv('FERRY_AI_RUBIXML_AUTOLOAD')
-            ?: 'C:\\Users\\MASTER\\AppData\\Local\\Temp\\opencode\\rubixml\\vendor\\autoload.php';
+        $autoload = getenv('FERRY_AI_RUBIXML_AUTOLOAD') ?: '';
 
-        if (!\is_file($autoload)) {
-            self::markTestSkipped('rubix/ml autoloader not found: ' . $autoload);
+        if ($autoload === '' || !\is_file($autoload)) {
+            self::markTestSkipped('Set FERRY_AI_RUBIXML_AUTOLOAD to an isolated rubix/ml vendor/autoload.php.');
         }
     }
 

@@ -1,8 +1,7 @@
 # FerryAI Examples
 
-Standalone PHP scripts demonstrating every FerryAI capability. Each file runs independently.
-Verified on Windows (11 x64, RTX 4060) and WSL2 (Ubuntu 24.04, PHP 8.5.8) — **26/26 pass
-on both**.
+Standalone PHP scripts demonstrating every FerryAI capability. Each file runs independently
+on Windows and Linux.
 
 ## Prerequisites
 
@@ -117,14 +116,14 @@ $env:FERRY_AI_MODEL_DIR = "C:\models\all-MiniLM-L6-v2-onnx"
 php examples/01-hello-embedding.php
 ```
 
-### WSL / Linux
+### Linux
 
 ```bash
-# Point at the models on the Windows drive
-export FERRY_AI_MODEL_DIR=/opt/models/all-MiniLM-L6-v2-onnx
-export FERRY_AI_LLAMA_DIR=/opt/llama
-export FERRY_AI_LLAMA_MODEL=/opt/models/qwen-0.5b.Q4_K_M.gguf
-export FERRY_AI_VEC_EXTENSION_LIB=/opt/sqlite-vec/vec0.so
+# Point at your models and native libraries
+export FERRY_AI_MODEL_DIR=/path/to/models/all-MiniLM-L6-v2-onnx
+export FERRY_AI_LLAMA_DIR=/path/to/llama
+export FERRY_AI_LLAMA_MODEL=/path/to/models/qwen-0.5b.Q4_K_M.gguf
+export FERRY_AI_VEC_EXTENSION_LIB=/path/to/sqlite-vec/vec0.so
 
 # ONNX embeddings (CPU or GPU — see below)
 php examples/01-hello-embedding.php
@@ -132,23 +131,23 @@ php examples/01-hello-embedding.php
 # LLM chat on CPU
 FERRY_AI_LLAMA_DEVICE=cpu php examples/03-chat.php
 
-# LLM chat on CUDA (needs /opt/llama-cuda/ferry_llama.so)
-export FERRY_AI_LLAMA_DIR=/opt/llama-cuda FERRY_AI_LLAMA_DEVICE=cuda
+# LLM chat on CUDA (needs /path/to/llama-cuda/ferry_llama.so)
+export FERRY_AI_LLAMA_DIR=/path/to/llama-cuda FERRY_AI_LLAMA_DEVICE=cuda
 php examples/03-chat.php
 
 # sqlite-vec native KNN
 php examples/23-sqlite-vec.php
 ```
 
-### ONNX GPU on WSL
+### ONNX GPU on Linux
 
 The ONNX examples use whatever execution provider is available. To force GPU (CUDA):
 
 ```bash
 # Copy the GPU build into the vendor directory (do this once)
-cp /opt/onnxruntime-gpu/onnxruntime-linux-x64-gpu_cuda13-*/lib/libonnxruntime*.so* \
+cp /path/to/onnxruntime-gpu/onnxruntime-linux-x64-gpu_cuda13-*/lib/libonnxruntime*.so* \
    vendor/ankane/onnxruntime/lib/onnxruntime-linux-x64-*/lib/
-cp /opt/onnxruntime-gpu/onnxruntime-linux-x64-gpu_cuda13-*/lib/libonnxruntime_providers_*.so \
+cp /path/to/onnxruntime-gpu/onnxruntime-linux-x64-gpu_cuda13-*/lib/libonnxruntime_providers_*.so \
    vendor/ankane/onnxruntime/lib/onnxruntime-linux-x64-*/lib/
 
 # Point LD_LIBRARY_PATH at the vendor lib + CUDA toolkit
@@ -164,7 +163,7 @@ php examples/01-hello-embedding.php
 
 If the CUDA runtime libraries (`libcurand`, `libcufft`, `libcudnn`) aren't installed
 via `apt`, they can be extracted from `.deb` packages without root — see the
-**ONNX GPU on WSL** section in the main [`README.md`](../README.md).
+**ONNX GPU on Linux** section in the main [`README.md`](../README.md).
 
 All examples exit 0 on success, skip gracefully if dependencies are missing, and print
 `=== OK ===` at the end.

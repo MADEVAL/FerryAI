@@ -14,11 +14,10 @@ declare(strict_types=1);
 
 error_reporting(\E_ALL & ~\E_DEPRECATED);
 
-$autoload = getenv('FERRY_AI_RUBIXML_AUTOLOAD')
-    ?: 'C:\\Users\\MASTER\\AppData\\Local\\Temp\\opencode\\rubixml\\vendor\\autoload.php';
+$autoload = getenv('FERRY_AI_RUBIXML_AUTOLOAD') ?: '';
 
-if (!is_file($autoload)) {
-    echo json_encode(['skip' => 'rubix autoloader not found: ' . $autoload]);
+if ($autoload === '' || !is_file($autoload)) {
+    echo json_encode(['skip' => 'Set FERRY_AI_RUBIXML_AUTOLOAD to an isolated rubix/ml vendor/autoload.php.']);
     exit(0);
 }
 

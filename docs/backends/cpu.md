@@ -99,15 +99,15 @@ dependency. FerryAI therefore supports **isolated** installations:
 
 1. Install RubixML in a **separate directory** (not in FerryAI's vendor):
    ```bash
-   cd /opt/rubixml
+   cd /path/to/rubixml
    composer require rubix/ml rubix/tensor
    ```
 
 2. Set the autoloader path:
    ```bash
-   export FERRY_AI_RUBIXML_AUTOLOAD=/opt/rubixml/vendor/autoload.php
+   export FERRY_AI_RUBIXML_AUTOLOAD=/path/to/rubixml/vendor/autoload.php
    ```
-   Or in PHP: `putenv('FERRY_AI_RUBIXML_AUTOLOAD=/opt/rubixml/vendor/autoload.php');`
+   Or in PHP: `putenv('FERRY_AI_RUBIXML_AUTOLOAD=/path/to/rubixml/vendor/autoload.php');`
 
 3. The `RubixMLAdapter` conditionally loads RubixML classes through this autoloader,
    keeping FerryAI's own vendor directory clean.

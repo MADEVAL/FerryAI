@@ -23,7 +23,7 @@ models available and tuning the runtime.
 ## GPU
 
 Ship a CUDA-enabled build (ONNX Runtime GPU or a llama.cpp CUDA build) plus the NVIDIA CUDA
-Toolkit and cuDNN on the host, and set `device: cuda`. Verified for llama.cpp (RTX 4060).
+Toolkit and cuDNN on the host, and set `device: cuda`. Supported for llama.cpp on Windows and Linux.
 
 ## Streaming behind a proxy
 
@@ -41,6 +41,6 @@ use.
 `composer check` (cs-fix + PHPStan L8 + Psalm L3 + unit tests) is the gate. Native integration
 tests require the libraries/models and are skipped otherwise (`FERRY_AI_SKIP_NATIVE=1`).
 
-## Linux / WSL
+## Linux
 
-Supported target for Linux/WSL.
+Supported target for Linux.

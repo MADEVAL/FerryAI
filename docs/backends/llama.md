@@ -24,9 +24,9 @@ that exposes a flat, pointer-only API.
 powershell -File native/llama-wrapper/build.ps1 -LlamaDir C:\llama
 ```
 
-**Linux / WSL:**
+**Linux:**
 ```bash
-bash native/llama-wrapper/build.sh /opt/llama
+bash native/llama-wrapper/build.sh /path/to/llama
 ```
 
 The build script generates DLL import libs from the shared libs, compiles `ferry_llama.c`,
@@ -53,14 +53,14 @@ AI::config([
 ]);
 ```
 
-**Linux / WSL:**
+**Linux:**
 ```bash
-export FERRY_AI_LLAMA_WRAPPER=/opt/llama/ferry_llama.so
-export LD_LIBRARY_PATH=/opt/llama:$LD_LIBRARY_PATH
+export FERRY_AI_LLAMA_WRAPPER=/path/to/llama/ferry_llama.so
+export LD_LIBRARY_PATH=/path/to/llama:$LD_LIBRARY_PATH
 
 # For CUDA:
-export FERRY_AI_LLAMA_WRAPPER=/opt/llama-cuda/ferry_llama.so
-export LD_LIBRARY_PATH=/opt/llama-cuda:/usr/local/cuda/lib64:$LD_LIBRARY_PATH
+export FERRY_AI_LLAMA_WRAPPER=/path/to/llama-cuda/ferry_llama.so
+export LD_LIBRARY_PATH=/path/to/llama-cuda:/usr/local/cuda/lib64:$LD_LIBRARY_PATH
 ```
 
 ## Chat & stream
@@ -150,20 +150,15 @@ pick from the model name.
 | `LlamaContextParams` | Value object for llama context parameters |
 | `LlamaModelParams` | Value object for llama model parameters |
 
-## Verified performance
+## Performance
 
-RTX 4060, llama.cpp build 9873:
+llama.cpp inference runs on both CPU and CUDA GPU, on Windows and Linux. Native
+`llama-cli` / `llama-bench` provide the raw engine throughput; `AI::chat()` adds the
+PHP FFI layer on top. GPU offload (`n_gpu_layers`) significantly increases throughput
+over CPU-only inference.
 
-| Path | Tok/s |
-|------|-------|
-| Native `llama-cli` (CPU) | ~328 |
-| Native `llama-bench` (CUDA, `-ngl 99`) | ~384 |
-| **`AI::chat()` (CPU, Linux/WSL)** | ~100 |
-| **`AI::chat()` (GPU, WSL)** | ~176 |
-| **`AI::chat()` (GPU, Windows)** | ~250 |
-
-Model is pooled — first call ~470ms, subsequent calls ~11ms (context is re-created per
-chat but weights are shared).
+Model is pooled — the first call pays the model-load cost, subsequent calls are much
+faster (context is re-created per chat but weights are shared).
 
 ## Notes
 

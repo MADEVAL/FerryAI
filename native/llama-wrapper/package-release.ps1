@@ -1,8 +1,8 @@
 # package-release.ps1 — Build ferry_llama.dll and stage it + SHA256 in native-binaries/windows-x86_64/
 #
 # Usage:
-#   powershell -File native/llama-wrapper/package-release.ps1 -LlamaDir D:\FerryAI
-#   powershell -File native/llama-wrapper/package-release.ps1 -LlamaDir D:\FerryAI -OutDir native-binaries/windows-x86_64
+#   powershell -File native/llama-wrapper/package-release.ps1 -LlamaDir C:\llama
+#   powershell -File native/llama-wrapper/package-release.ps1 -LlamaDir C:\llama -OutDir native-binaries/windows-x86_64
 #
 # Requires Visual Studio 2022 and the llama.cpp build (DLLs + headers + .lib files) in -LlamaDir.
 

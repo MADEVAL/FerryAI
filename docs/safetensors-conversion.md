@@ -21,8 +21,8 @@ llama.cpp ships `convert_hf_to_gguf.py` — a Python script that reads HuggingFa
 models (safetensors or PyTorch `.bin`) and writes a GGUF file. FerryAI already knows how
 to load GGUF through `LlamaBackend`.
 
-The script lives in the llama.cpp source tree (`/opt/llamasrc/convert_hf_to_gguf.py`
-on WSL; cloned with `git clone https://github.com/ggml-org/llama.cpp`).
+The script lives in the llama.cpp source tree (`/path/to/llama-src/convert_hf_to_gguf.py`;
+cloned with `git clone https://github.com/ggml-org/llama.cpp`).
 
 > To add a new architecture, submit a converter to the llama.cpp project. The conversion
 > directory already supports **82 model families** (Qwen, Llama, Mistral, Phi, Gemma,
@@ -57,10 +57,10 @@ ls Qwen3-0.6B/
 ### 2. Run the converter
 
 ```bash
-python3 /opt/llamasrc/convert_hf_to_gguf.py \
-  /opt/models/Qwen3-0.6B \
+python3 /path/to/llama-src/convert_hf_to_gguf.py \
+  /path/to/models/Qwen3-0.6B \
   --outtype f16 \
-  --outfile /opt/models/qwen3-0.6b-f16.gguf
+  --outfile /path/to/models/qwen3-0.6b-f16.gguf
 ```
 
 **Common options:**
@@ -76,7 +76,7 @@ python3 /opt/llamasrc/convert_hf_to_gguf.py \
 
 For a list of all supported architectures:
 ```bash
-python3 /opt/llamasrc/convert_hf_to_gguf.py --list
+python3 /path/to/llama-src/convert_hf_to_gguf.py --list
 ```
 
 ### 3. Verify the GGUF
@@ -85,25 +85,25 @@ python3 /opt/llamasrc/convert_hf_to_gguf.py --list
 # Check metadata
 python3 -c "
 from gguf import GGUFReader
-r = GGUFReader('/opt/models/qwen3-0.6b-f16.gguf')
+r = GGUFReader('/path/to/models/qwen3-0.6b-f16.gguf')
 for k in r.fields: print(k, '=', r.fields[k])
 "
 
 # Quick test with llama-cli (CPU)
-/opt/llama/llama-cli --model /opt/models/qwen3-0.6b-f16.gguf -p "Hello" -n 10
+/path/to/llama/llama-cli --model /path/to/models/qwen3-0.6b-f16.gguf -p "Hello" -n 10
 ```
 
 ### 4. Use with FerryAI
 
 ```php
 // Set the GGUF path and point at the llama wrapper
-putenv('FERRY_AI_LLAMA_WRAPPER=/opt/llama/ferry_llama.so');
-putenv('FERRY_AI_LLAMA_MODEL=/opt/models/qwen3-0.6b-f16.gguf');
+putenv('FERRY_AI_LLAMA_WRAPPER=/path/to/llama/ferry_llama.so');
+putenv('FERRY_AI_LLAMA_MODEL=/path/to/models/qwen3-0.6b-f16.gguf');
 
 FerryAI\AI::config([
     'backend' => 'llama',
     'device'  => 'cuda',                    // or 'cpu'
-    'backends' => ['llama' => ['model_path' => '/opt/models/qwen3-0.6b-f16.gguf']],
+    'backends' => ['llama' => ['model_path' => '/path/to/models/qwen3-0.6b-f16.gguf']],
 ]);
 
 $result = FerryAI\AI::chat([['role' => 'user', 'content' => 'What is PHP?']]);
@@ -113,8 +113,8 @@ echo $result->text;
 Or use the examples (they auto-detect the model from `FERRY_AI_LLAMA_MODEL`):
 
 ```bash
-export FERRY_AI_LLAMA_DIR=/opt/llama-cuda
-export FERRY_AI_LLAMA_MODEL=/opt/models/qwen3-0.6b-f16.gguf
+export FERRY_AI_LLAMA_DIR=/path/to/llama-cuda
+export FERRY_AI_LLAMA_MODEL=/path/to/models/qwen3-0.6b-f16.gguf
 export FERRY_AI_LLAMA_DEVICE=cuda
 php examples/03-chat.php
 ```
@@ -129,9 +129,9 @@ pip install --user optimum onnx onnxruntime
 
 # Export
 python3 -m optimum.exporters.onnx \
-  --model /opt/models/all-MiniLM-L6-v2-onnx \
+  --model /path/to/models/all-MiniLM-L6-v2-onnx \
   --task feature-extraction \
-  /opt/models/all-MiniLM-L6-v2-onnx-exported
+  /path/to/models/all-MiniLM-L6-v2-onnx-exported
 ```
 
 The resulting `.onnx` file works with `FerryAI\OnnxBackend\OnnxBackend`.
@@ -158,7 +158,7 @@ echo $info['tensors']['model.embed_tokens.weight']['shape'];  // [151936, 1024]
 | Problem | Solution |
 |---------|----------|
 | `ModuleNotFoundError: torch` | `pip install --user torch` |
-| `KeyError: 'qwen2'` or unknown architecture | Update llama.cpp: `cd /opt/llamasrc && git pull` |
+| `KeyError: 'qwen2'` or unknown architecture | Update llama.cpp: `cd /path/to/llama-src && git pull` |
 | `CUDA out of memory` during conversion | Conversion is CPU-only (no GPU needed). Reduce `--outtype` to `q4_k_m` for smaller output. |
 | GGUF will not load in llama.cpp | Verify with `llama-cli --model <file> -p "test" -n 1`. Check the GGUF version compatibility. |
 | Sharded safetensors (multiple files) | The converter handles shards automatically — just point at the directory containing `model-*-of-*.safetensors`. |
