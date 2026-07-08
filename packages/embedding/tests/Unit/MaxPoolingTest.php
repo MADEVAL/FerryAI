@@ -31,7 +31,7 @@ final class MaxPoolingTest extends TestCase
         self::assertSame([4.0, 8.0, 6.0], $result);
     }
 
-    public function testPoolIgnoresAttentionMask(): void
+    public function testPoolSkipsMaskedPositions(): void
     {
         $pooling = new MaxPooling();
         $hiddenStates = [
@@ -42,7 +42,7 @@ final class MaxPoolingTest extends TestCase
 
         $result = $pooling->pool($hiddenStates, $attentionMask);
 
-        self::assertSame([10.0, 1.0], $result);
+        self::assertSame([5.0, 0.5], $result);
     }
 
     public function testPoolSingleToken(): void

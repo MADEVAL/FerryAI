@@ -38,7 +38,7 @@ final class EosPoolingTest extends TestCase
         self::assertSame([], $pooling->pool([]));
     }
 
-    public function testPoolIgnoresAttentionMask(): void
+    public function testPoolReturnsLastUnmaskedToken(): void
     {
         $pooling = new EosPooling();
         $hiddenStates = [
@@ -49,6 +49,6 @@ final class EosPoolingTest extends TestCase
 
         $result = $pooling->pool($hiddenStates, $attentionMask);
 
-        self::assertSame([3.0, 4.0], $result);
+        self::assertSame([1.0, 2.0], $result);
     }
 }

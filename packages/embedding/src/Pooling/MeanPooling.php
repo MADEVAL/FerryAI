@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace FerryAI\Embedding\Pooling;
 
-final class MeanPooling implements PoolingStrategy
+final class MeanPooling extends AbstractPooling
 {
     #[\Override]
     public function pool(array $hiddenStates, ?array $attentionMask = null): array
@@ -16,19 +16,12 @@ final class MeanPooling implements PoolingStrategy
             return [];
         }
 
-        if ($attentionMask === null) {
-            $mask = \array_fill(0, $seqLen, 1);
-        } else {
-            $mask = $attentionMask[0] ?? \array_fill(0, $seqLen, 1);
-        }
-
+        $mask = $this->maskRow($seqLen, $attentionMask);
         $result = \array_fill(0, $hiddenDim, 0.0);
         $count = 0;
 
         for ($i = 0; $i < $seqLen; $i++) {
-            $weight = $mask[$i] ?? 1;
-
-            if ($weight === 0) {
+            if ($mask[$i] === 0) {
                 continue;
             }
             $count++;

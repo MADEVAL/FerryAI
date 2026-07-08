@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace FerryAI\Embedding\Pooling;
 
-final class MaxPooling implements PoolingStrategy
+final class MaxPooling extends AbstractPooling
 {
     #[\Override]
     public function pool(array $hiddenStates, ?array $attentionMask = null): array
@@ -16,9 +16,20 @@ final class MaxPooling implements PoolingStrategy
             return [];
         }
 
-        $result = $hiddenStates[0];
+        $mask = $this->maskRow($seqLen, $attentionMask);
+        $result = null;
 
-        for ($i = 1; $i < $seqLen; $i++) {
+        for ($i = 0; $i < $seqLen; $i++) {
+            if ($mask[$i] === 0) {
+                continue;
+            }
+
+            if ($result === null) {
+                $result = $hiddenStates[$i];
+
+                continue;
+            }
+
             for ($j = 0; $j < $hiddenDim; $j++) {
                 if ($hiddenStates[$i][$j] > $result[$j]) {
                     $result[$j] = $hiddenStates[$i][$j];
@@ -26,7 +37,7 @@ final class MaxPooling implements PoolingStrategy
             }
         }
 
-        return $result;
+        return $result ?? \array_fill(0, $hiddenDim, 0.0);
     }
 
     #[\Override]

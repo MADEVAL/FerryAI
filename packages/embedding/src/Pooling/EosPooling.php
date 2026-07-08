@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace FerryAI\Embedding\Pooling;
 
-final class EosPooling implements PoolingStrategy
+final class EosPooling extends AbstractPooling
 {
     #[\Override]
     public function pool(array $hiddenStates, ?array $attentionMask = null): array
@@ -13,9 +13,16 @@ final class EosPooling implements PoolingStrategy
             return [];
         }
 
-        $lastIndex = \count($hiddenStates) - 1;
+        $seqLen = \count($hiddenStates);
+        $mask = $this->maskRow($seqLen, $attentionMask);
 
-        return $hiddenStates[$lastIndex];
+        for ($i = $seqLen - 1; $i >= 0; $i--) {
+            if ($mask[$i] !== 0) {
+                return $hiddenStates[$i];
+            }
+        }
+
+        return $hiddenStates[$seqLen - 1];
     }
 
     #[\Override]
