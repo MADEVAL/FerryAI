@@ -62,5 +62,6 @@ docker-compose.override.yml
 
 .php-cs-fixer.cache
 
-# Skills
-/.opencode/agents/*.md
+# opencode / agent tooling — local only, not part of the published package
+/.opencode/
+/AGENTS.md
