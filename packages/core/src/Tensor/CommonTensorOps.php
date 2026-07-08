@@ -27,7 +27,37 @@ trait CommonTensorOps
             $node = $key === null ? null : ($node[$key] ?? null);
         }
 
+        $product = 1;
+
+        foreach ($dims as $dim) {
+            $product *= $dim;
+        }
+
+        // A rectangular tensor has exactly product(dims) leaves; a jagged array (e.g. [[1,2],[3]])
+        // has fewer/more, which would desynchronise strides()/reshape(). Reject it explicitly.
+        if ($product !== self::countLeaves($data)) {
+            throw new \FerryAI\Core\Exception\ShapeMismatchException(
+                new \FerryAI\Core\ValueObjects\Shape($dims),
+                new \FerryAI\Core\ValueObjects\Shape([self::countLeaves($data)]),
+            );
+        }
+
         return $dims;
+    }
+
+    private static function countLeaves(mixed $node): int
+    {
+        if (!\is_array($node)) {
+            return 1;
+        }
+
+        $count = 0;
+
+        foreach ($node as $child) {
+            $count += self::countLeaves($child);
+        }
+
+        return $count;
     }
 
     /**
