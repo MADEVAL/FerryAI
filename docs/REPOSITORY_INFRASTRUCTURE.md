@@ -15,7 +15,10 @@ php-inference/
 │   ├── workflows/
 │   │   ├── ci.yml                    # Main CI: tests + static analysis
 │   │   └── release.yml               # Native binary build + GitHub Release
-│   └── dependabot.yml               # Auto-update dependencies
+│   ├── dependabot.yml               # Auto-update dependencies
+│   ├── CODE_OF_CONDUCT.md
+│   ├── CONTRIBUTING.md
+│   └── SECURITY.md
 ├── packages/
 │   ├── core/
 │   ├── tensor/
@@ -73,11 +76,9 @@ php-inference/
 ├── composer.json                     # Root: meta-package + dev dependencies
 ├── monorepo-builder.php              # Monorepo tool (symplify)
 ├── CHANGELOG.md
-├── CODE_OF_CONDUCT.md
-├── CONTRIBUTING.md
 ├── LICENSE.md
 ├── README.md
-└── SECURITY.md
+└── ...
 ```
 
 ---
@@ -1419,7 +1420,7 @@ Repository: `MADEVAL/ferry-ai-docs` (or `gh-pages` branch of the main repo).
 
 ## 10. REPOSITORY SECURITY
 
-### 10.1. `SECURITY.md`
+### 10.1. `.github/SECURITY.md`
 
 ```markdown
 # Security Policy
@@ -1447,11 +1448,11 @@ We will respond within 48 hours and publish a fix as soon as possible.
 - File system access is restricted to `model_cache` directory
 ```
 
-### 10.2. `CODE_OF_CONDUCT.md`
+### 10.2. `.github/CODE_OF_CONDUCT.md`
 
 Standard Contributor Covenant.
 
-### 10.3. `CONTRIBUTING.md`
+### 10.3. `.github/CONTRIBUTING.md`
 
 ```markdown
 # Contributing to FerryAI

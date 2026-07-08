@@ -176,7 +176,7 @@ omitted — always take the latest compatible build from the linked source.
 | ONNX model file | — | `model.onnx` + `tokenizer.json` — the actual network + vocab | Any dir; point config / `FERRY_AI_MODEL_DIR` at it | huggingface.co (e.g. `sentence-transformers/all-MiniLM-L6-v2`) |
 | LLM chat / streaming (llama.cpp) | `ext-ffi` | llama.cpp shared libs `llama.*` + `ggml*.*` (+ deps) — the inference engine | Extract to a dir; set `FERRY_AI_LLAMA_LIB` and add the dir to `PATH` | github.com/ggml-org/llama.cpp/releases |
 | GGUF model file | — | `*.gguf` quantized weights + tokenizer | Any dir; `backends.llama.model_path` | huggingface.co (e.g. `bartowski/*-GGUF`) |
-| GPU (ONNX CUDA / llama.cpp) | — | GPU-enabled native build **+** NVIDIA CUDA Toolkit (ONNX also needs cuDNN/curand/cufft) | See the GPU setup guide in [`DOCUMENTATION.md`](DOCUMENTATION.md) | onnxruntime / llama.cpp releases · developer.nvidia.com |
+| GPU (ONNX CUDA / llama.cpp) | — | GPU-enabled native build **+** NVIDIA CUDA Toolkit (ONNX also needs cuDNN/curand/cufft) | See the GPU setup guide in [`docs/DOCUMENTATION.md`](docs/DOCUMENTATION.md) | onnxruntime / llama.cpp releases · developer.nvidia.com |
 | Native HuggingFace tokenizer (**optional**; pure-PHP BPE/WordPiece works without) | `ext-ffi` | tokenizers-cpp shared lib — optional, pure-PHP BPE/WordPiece covers all types | `FERRY_AI_TOKENIZERS_LIB` | github.com/mlc-ai/tokenizers-cpp |
 | Vector store — SQLite (default) | `ext-pdo_sqlite` (bundled with PHP) | — (pure-PHP brute-force search) | works out of the box | sqlite.org (bundled) |
 | Vector ANN — sqlite-vec | `ext-pdo_sqlite` | `vec0.{dll,so,dylib}` loadable extension — native KNN in SQLite | `FERRY_AI_VEC_EXTENSION_LIB` = path to the lib | github.com/asg017/sqlite-vec/releases |
@@ -188,7 +188,7 @@ omitted — always take the latest compatible build from the linked source.
 
 > **GPU setup** (ONNX CUDA on Windows/Linux, extracting cuDNN/curand/cufft, and the full llama.cpp
 > `ferry_llama` build) has a dedicated step-by-step guide in
-> [`DOCUMENTATION.md`](DOCUMENTATION.md) → *Quick Start → GPU setup*. The `OnnxBackend::load()`
+> [`docs/DOCUMENTATION.md`](docs/DOCUMENTATION.md) → *Quick Start → GPU setup*. The `OnnxBackend::load()`
 > CPU-fallback handles a missing GPU runtime automatically.
 
 ---
@@ -218,7 +218,7 @@ echo AI::chat('Summarize FFI in PHP.');
 Sampling is per request: `temperature: 0` → greedy, `> 0` → nucleus; force one with
 `AI::chat($msgs, ['sampler' => 'top_k'])` or `['grammar' => '<gbnf>']`. Point FerryAI at the wrapper
 via `FERRY_AI_LLAMA_WRAPPER` (or `FERRY_AI_LLAMA_LIB`) and add that dir to `PATH`.
-Full build steps and the flat wrapper API: [`DOCUMENTATION.md`](DOCUMENTATION.md) and
+Full build steps and the flat wrapper API: [`docs/DOCUMENTATION.md`](docs/DOCUMENTATION.md) and
 [`native/llama-wrapper/README.md`](native/llama-wrapper/README.md). Runnable:
 [`examples/03-chat.php`](examples/03-chat.php), [`examples/04-streaming.php`](examples/04-streaming.php).
 
@@ -292,7 +292,7 @@ php examples/01-hello-embedding.php
 
 ## Documentation
 
-Start here: **[`DOCUMENTATION.md`](DOCUMENTATION.md)** — the definitive single-file reference
+Start here: **[`docs/DOCUMENTATION.md`](docs/DOCUMENTATION.md)** — the definitive single-file reference
 (architecture, facade API, contracts, GPU setup).
 
 Guides: [getting-started](docs/getting-started.md) ·
@@ -319,7 +319,7 @@ Guides: [getting-started](docs/getting-started.md) ·
 
 ## Contributing & license
 
-- **Contributing:** guidelines and workflow in [CONTRIBUTING.md](CONTRIBUTING.md).
-- **Security:** report vulnerabilities via [SECURITY.md](SECURITY.md) — please do not open public issues for them.
-- **Code of Conduct:** [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
+- **Contributing:** guidelines and workflow in [`.github/CONTRIBUTING.md`](.github/CONTRIBUTING.md).
+- **Security:** report vulnerabilities via [`.github/SECURITY.md`](.github/SECURITY.md) — please do not open public issues for them.
+- **Code of Conduct:** [`.github/CODE_OF_CONDUCT.md`](.github/CODE_OF_CONDUCT.md).
 - **License:** MIT — see [LICENSE.md](LICENSE.md).

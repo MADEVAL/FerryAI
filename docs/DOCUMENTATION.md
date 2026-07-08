@@ -92,7 +92,7 @@ On Linux/macOS use `native/llama-wrapper/build.sh /path/to/llama` (needs a Linux
 `cc`); Linux CUDA needs a CUDA-enabled llama.cpp build. Sampling is per request: `temperature: 0`
 → greedy, `> 0` → nucleus; force one with `AI::chat($msgs, ['sampler' => 'top_k'])` or
 `['grammar' => '<gbnf>']`. A native top-k pre-filter keeps sampling fast. Details, flat API and
-limits: [`native/llama-wrapper/README.md`](native/llama-wrapper/README.md).
+limits: [`native/llama-wrapper/README.md`](../native/llama-wrapper/README.md).
 
 ### ONNX GPU on Linux
 
@@ -506,7 +506,7 @@ $model->run(['input_ids' => [[101, 2023, 102]], 'attention_mask' => [[1, 1, 1]]]
 
 **Execution Providers:** `CPUExecutionProvider` (always) · `CUDAExecutionProvider` · `TensorrtExecutionProvider` · `CoreMLExecutionProvider` (macOS).
 
-For GPU, use a GPU build of ONNX Runtime + CUDA Toolkit + cuDNN. See [backends/onnx](docs/backends/onnx.md).
+For GPU, use a GPU build of ONNX Runtime + CUDA Toolkit + cuDNN. See [backends/onnx](backends/onnx.md).
 
 ### Llama
 
@@ -526,7 +526,7 @@ $sampler = (new SamplerFactory())->create('grammar', $grammar);
 **Samplers:** `GreedySampler` · `TopKSampler` · `TopPSampler` · `GrammarSampler`
 **Chat templates:** `llama3` · `chatml` · `mistral` · `gemma` · `phi`
 
-See [backends/llama](docs/backends/llama.md).
+See [backends/llama](backends/llama.md).
 
 ### CPU Native (always available)
 
@@ -579,7 +579,7 @@ $col->addBatch([
 $results = $col->search($queryVec, k: 5);
 ```
 
-**PostgreSQL + pgvector:** native ANN search with HNSW/IVFFlat indexes. See [vector-store](docs/vector-store.md).
+**PostgreSQL + pgvector:** native ANN search with HNSW/IVFFlat indexes. See [vector-store](vector-store.md).
 
 ---
 

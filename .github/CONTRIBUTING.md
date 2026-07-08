@@ -33,4 +33,4 @@ Scope: package name (core, onnx-backend, ai, ...)
 
 ## Documents
 
-See `docs/README.md` for full navigation.
+See `../docs/README.md` for full navigation.

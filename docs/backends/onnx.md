@@ -78,12 +78,12 @@ For GPU inference you need a **GPU build** of ONNX Runtime plus NVIDIA dependenc
    ```
    pip download nvidia-curand-cu12 nvidia-cufft-cu12 --no-deps
    ```
-   See the [README GPU setup](../../README.md#onnx-gpu-on-windows) for exact steps.
+    See the [GPU setup](../../docs/DOCUMENTATION.md#onnx-gpu-on-windows) for exact steps.
 
 **Linux:**
 Copy the GPU `.so` files into the vendor lib dir and point `LD_LIBRARY_PATH` at it.
 The CUDA runtime math libraries (`libcurand`, `libcufft`, `libcudnn`) can be extracted
-from `.deb` packages without root — see the [README GPU setup](../../README.md#onnx-gpu-on-linux).
+from `.deb` packages without root — see the [GPU setup](../../docs/DOCUMENTATION.md#onnx-gpu-on-linux).
 
 **Verify:**
 ```bash

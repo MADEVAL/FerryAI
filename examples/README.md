@@ -163,7 +163,7 @@ php examples/01-hello-embedding.php
 
 If the CUDA runtime libraries (`libcurand`, `libcufft`, `libcudnn`) aren't installed
 via `apt`, they can be extracted from `.deb` packages without root — see the
-**ONNX GPU on Linux** section in the main [`README.md`](../README.md).
+**ONNX GPU on Linux** section in the main [`docs/DOCUMENTATION.md`](../docs/DOCUMENTATION.md).
 
 All examples exit 0 on success, skip gracefully if dependencies are missing, and print
 `=== OK ===` at the end.
