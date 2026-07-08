@@ -28,9 +28,11 @@ final class Embedder implements EmbedderContract
         private string $modelName,
         private Backend $backend,
         private Tokenizer $tokenizer,
-        string $pooling = 'mean',
+        ?string $pooling = null,
         private bool $normalize = true,
     ) {
+        $pooling ??= EmbeddedModels::get($modelName)['pooling'] ?? 'mean';
+
         $this->poolingStrategy = match ($pooling) {
             'mean' => new MeanPooling(),
             'cls' => new ClsPooling(),

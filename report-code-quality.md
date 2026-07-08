@@ -86,28 +86,6 @@ if ($systemPath !== null) { return $systemPath; }
 
 
 
-## [УЛУЧШЕНИЕ] Реестр `EmbeddedModels` не используется — молча неверный pooling по умолчанию
-
-Файл: `packages/embedding/src/Embedder.php`, строки 34-40
-Категория: Архитектура
-
-Проблема: `Embedder` выбирает стратегию pooling только из аргумента конструктора (по умолчанию `'mean'`) и никогда не сверяется с `EmbeddedModels`, где для моделей задано рекомендуемое поле `pooling` (например `bge-*` → `cls`) и `dimension`. Реестр — мёртвые данные (используется только в собственном тесте).
-
-Доказательство:
-```php
-$this->poolingStrategy = match ($pooling) {
-    'mean' => new MeanPooling(), 'cls' => new ClsPooling(),
-    'eos'  => new EosPooling(),  'max' => new MaxPooling(),
-    default => new MeanPooling(),
-};
-```
-
-Вектор / последствие: эмбеддинг модели, требующей `cls`, с настройками по умолчанию молча получает `mean` → деградированные эмбеддинги без предупреждения.
-
-Решение: при совпадении `EmbeddedModels::get($modelName)` брать `pooling`/`dimension` из реестра, если вызывающий явно не переопределил.
-
----
-
 ## [УЛУЧШЕНИЕ] Несогласованная обработка attention-mask между стратегиями pooling
 
 Файл: `packages/embedding/src/Pooling/MaxPooling.php` (строки 21-27), `EosPooling.php` (строка 18)
