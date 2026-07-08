@@ -75,7 +75,10 @@ final class AI
         self::ensureConfigured();
 
         $backend = self::registry()->get(self::activeBackend());
-        self::modelPool()->warmup($modelIds, static fn(string $id): \FerryAI\Core\Contracts\Model => $backend->load($id));
+
+        foreach ($modelIds as $modelId) {
+            self::loadPooled($backend, $modelId, self::$activeDevice);
+        }
     }
 
     public static function reset(): void
@@ -484,7 +487,7 @@ final class AI
      */
     private static function loadPooled(\FerryAI\Core\Contracts\Backend $backend, string $modelPath, ?Device $device = null): \FerryAI\Core\Contracts\Model
     {
-        $key = $backend::class . '|' . $modelPath . '|' . ($device === null ? 'auto' : $device->value);
+        $key = self::poolKey($backend::class, $modelPath, $device);
         $pool = self::modelPool();
 
         $cached = $pool->acquire($key);
@@ -497,6 +500,14 @@ final class AI
         $pool->put($key, $model, $model->metadata()->sizeBytes);
 
         return $model;
+    }
+
+    /**
+     * Single source of truth for the pool key so warmup and lazy loads address the same entry.
+     */
+    private static function poolKey(string $backendClass, string $modelPath, ?Device $device): string
+    {
+        return $backendClass . '|' . $modelPath . '|' . ($device === null ? 'auto' : $device->value);
     }
 
     private static function poolMemoryLimit(AIConfig $config): ?int
