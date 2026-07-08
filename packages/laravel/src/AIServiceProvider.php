@@ -9,6 +9,18 @@ use FerryAI\FrameworkConfig;
 
 final class AIServiceProvider
 {
+    private ?object $app;
+
+    public function __construct(?object $app = null)
+    {
+        $this->app = $app;
+    }
+
+    public function app(): ?object
+    {
+        return $this->app;
+    }
+
     public function register(): void
     {
         AI::config($this->getConfig());

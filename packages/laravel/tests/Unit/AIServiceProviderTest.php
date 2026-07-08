@@ -97,4 +97,21 @@ final class AIServiceProviderTest extends TestCase
             \putenv('FERRY_AI_VERIFY_SIGNATURES');
         }
     }
+
+    public function testAppReturnsObjectWhenGivenOne(): void
+    {
+        $app = new \stdClass();
+        $provider = new AIServiceProvider($app);
+
+        $returned = $provider->app();
+
+        self::assertSame($app, $returned);
+    }
+
+    public function testAppReturnsNullWhenNotGiven(): void
+    {
+        $provider = new AIServiceProvider();
+
+        self::assertNull($provider->app());
+    }
 }
