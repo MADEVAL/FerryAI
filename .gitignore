@@ -65,5 +65,7 @@ docker-compose.override.yml
 # opencode / agent tooling — local only, not part of the published package
 /.opencode/
 /AGENTS.md
+/opencode.json
 
+# Internal audit report — not part of the published package
 report-code-quality.md

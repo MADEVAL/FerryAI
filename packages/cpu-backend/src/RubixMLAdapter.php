@@ -59,7 +59,10 @@ final class RubixMLAdapter implements Predictor
             throw new \FerryAI\Core\Exception\ModelLoadException($path, 'Cannot read model file');
         }
 
-        $data = \unserialize($content);
+        // Object injection guard: the raw fallback only accepts plain tabular payloads
+        // (arrays/scalars). Real RubixML estimators must use the RBX format handled above,
+        // so no arbitrary classes are ever instantiated from an untrusted model file.
+        $data = \unserialize($content, ['allowed_classes' => false]);
 
         if ($data === false) {
             throw new \FerryAI\Core\Exception\ModelLoadException($path, 'Cannot unserialize RubixML model');

@@ -49,7 +49,7 @@ final class CpuNativeBackend implements Backend
             throw new \FerryAI\Core\Exception\ModelLoadException($source, 'Cannot read model file');
         }
 
-        $data = @\unserialize($content);
+        $data = @\unserialize($content, ['allowed_classes' => false]);
 
         if ($data === false || !\is_array($data)) {
             throw new \FerryAI\Core\Exception\ModelLoadException($source, 'Invalid or unsupported RubixML model format');

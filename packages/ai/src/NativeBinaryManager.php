@@ -21,16 +21,18 @@ final class NativeBinaryManager implements LibraryResolver
     #[\Override]
     public function resolve(string $library): ?string
     {
-        $systemPath = $this->findInSystem($library);
-
-        if ($systemPath !== null) {
-            return $systemPath;
-        }
-
+        // Prefer the controlled cache over PATH: an attacker-writable early PATH entry
+        // must not be able to shadow a verified, cached binary.
         $cachedPath = $this->findInCache($library);
 
         if ($cachedPath !== null) {
             return $cachedPath;
+        }
+
+        $systemPath = $this->findInSystem($library);
+
+        if ($systemPath !== null) {
+            return $systemPath;
         }
 
         return null;
@@ -65,9 +67,34 @@ final class NativeBinaryManager implements LibraryResolver
             throw new IoException(\sprintf('Failed to download native binary: %s', $library));
         }
 
-        \file_put_contents($destPath, $data);
+        if (\file_put_contents($destPath, $data) === false) {
+            throw new IoException(\sprintf('Failed to write native binary to cache: %s', $destPath));
+        }
+
+        // Fail closed: a downloaded binary is only trusted once its SHA-256 matches the
+        // checksum published next to the artifact. A corrupted/tampered file is deleted.
+        $this->verifyDownload($destPath, $url . '.sha256', $library);
 
         return $destPath;
+    }
+
+    private function verifyDownload(string $destPath, string $sha256Url, string $library): void
+    {
+        $sha256 = @\file_get_contents($sha256Url);
+
+        if ($sha256 === false) {
+            @\unlink($destPath);
+
+            throw new IoException(\sprintf('Missing SHA-256 checksum for native binary: %s', $library));
+        }
+
+        $expected = (string) \strtok(\trim($sha256), " \t\r\n");
+
+        if ($expected === '' || !Sha256Verifier::verify($destPath, $expected)) {
+            @\unlink($destPath);
+
+            throw new IoException(\sprintf('SHA-256 verification failed for native binary: %s', $library));
+        }
     }
 
     public function verify(string $path, string $expectedSha256): bool
