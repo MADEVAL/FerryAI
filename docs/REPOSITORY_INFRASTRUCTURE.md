@@ -14,8 +14,7 @@ php-inference/
 ├── .github/
 │   ├── workflows/
 │   │   ├── ci.yml                    # Main CI: tests + static analysis
-│   │   ├── release.yml               # Binary build + Packagist
-│   │   └── docs.yml                  # Documentation generation and publication
+│   │   └── release.yml               # Native binary build + GitHub Release
 │   └── dependabot.yml               # Auto-update dependencies
 ├── packages/
 │   ├── core/
@@ -288,19 +287,19 @@ php-inference/
 | Package | Additional `require` | `provide` / `suggest` |
 |---|---|---|
 | `core` | (none) | — |
-| `tensor` | `ferry-ai/inference-core: ^1.0` | `ext-random: *` (for random-fill) |
-| `onnx-backend` | `ferry-ai/inference-core: ^1.0`, `phpmlkit/onnxruntime: ^1.0` | `ankane/onnxruntime: ^0.3` (fallback) |
-| `llama-backend` | `ferry-ai/inference-core: ^1.0` | — |
-| `cpu-backend` | `ferry-ai/inference-core: ^1.0` | `rubix/ml: ^2.0`, `rubix/tensor: ^3.0` |
-| `tokenizer` | `ferry-ai/inference-core: ^1.0` | — |
-| `embedding` | `ferry-ai/inference-core: ^1.0`, `ferry-ai/inference-onnx-backend: ^1.0`, `ferry-ai/inference-tokenizer: ^1.0` | — |
-| `pipeline` | `ferry-ai/inference-core: ^1.0` | — |
-| `model-hub` | `ferry-ai/inference-core: ^1.0`, `codewithkyrian/huggingface: ^1.0` | `ext-zip: *`, `ext-sodium: *` |
-| `vector` | `ferry-ai/inference-core: ^1.0`, `ferry-ai/inference-embedding: ^1.0` | `ext-pdo_sqlite: *` or `ext-sqlite3: *` |
-| `dataframe` | `ferry-ai/inference-core: ^1.0`, `ferry-ai/inference-tensor: ^1.0` | — |
-| `ai` | `ferry-ai/inference-core: ^1.0`, `ferry-ai/inference-onnx-backend: ^1.0`, `ferry-ai/inference-llama-backend: ^1.0`, `ferry-ai/inference-cpu-backend: ^1.0`, `ferry-ai/inference-tokenizer: ^1.0`, `ferry-ai/inference-embedding: ^1.0`, `ferry-ai/inference-pipeline: ^1.0`, `ferry-ai/inference-model-hub: ^1.0`, `ferry-ai/inference-vector: ^1.0` | `psr/http-message: ^2.0` (for StreamResponse) |
-| `laravel` | `ferry-ai/inference-ai: ^1.0`, `illuminate/support: ^12.0 \|\| ^13.0` | — |
-| `symfony` | `ferry-ai/inference-ai: ^1.0`, `symfony/http-kernel: ^7.4 \|\| ^8.0`, `symfony/config: ^7.4 \|\| ^8.0`, `symfony/dependency-injection: ^7.4 \|\| ^8.0` | — |
+| `tensor` | `ferry-ai/inference-core: ^0.1.0` | `ext-random: *` (for random-fill) |
+| `onnx-backend` | `ferry-ai/inference-core: ^0.1.0`, `phpmlkit/onnxruntime: ^1.0` | `ankane/onnxruntime: ^0.3` (fallback) |
+| `llama-backend` | `ferry-ai/inference-core: ^0.1.0` | — |
+| `cpu-backend` | `ferry-ai/inference-core: ^0.1.0` | `rubix/ml: ^2.0`, `rubix/tensor: ^3.0` |
+| `tokenizer` | `ferry-ai/inference-core: ^0.1.0` | — |
+| `embedding` | `ferry-ai/inference-core: ^0.1.0`, `ferry-ai/inference-onnx-backend: ^0.1.0`, `ferry-ai/inference-tokenizer: ^0.1.0` | — |
+| `pipeline` | `ferry-ai/inference-core: ^0.1.0` | — |
+| `model-hub` | `ferry-ai/inference-core: ^0.1.0`, `codewithkyrian/huggingface: ^1.0` | `ext-zip: *`, `ext-sodium: *` |
+| `vector` | `ferry-ai/inference-core: ^0.1.0`, `ferry-ai/inference-embedding: ^0.1.0` | `ext-pdo_sqlite: *` or `ext-sqlite3: *` |
+| `dataframe` | `ferry-ai/inference-core: ^0.1.0`, `ferry-ai/inference-tensor: ^0.1.0` | — |
+| `ai` | `ferry-ai/inference-core: ^0.1.0`, `ferry-ai/inference-onnx-backend: ^0.1.0`, `ferry-ai/inference-llama-backend: ^0.1.0`, `ferry-ai/inference-cpu-backend: ^0.1.0`, `ferry-ai/inference-tokenizer: ^0.1.0`, `ferry-ai/inference-embedding: ^0.1.0`, `ferry-ai/inference-pipeline: ^0.1.0`, `ferry-ai/inference-model-hub: ^0.1.0`, `ferry-ai/inference-vector: ^0.1.0` | `psr/http-message: ^2.0` (for StreamResponse) |
+| `laravel` | `ferry-ai/inference-ai: ^0.1.0`, `illuminate/support: ^12.0 \|\| ^13.0` | — |
+| `symfony` | `ferry-ai/inference-ai: ^0.1.0`, `symfony/http-kernel: ^7.4 \|\| ^8.0`, `symfony/config: ^7.4 \|\| ^8.0`, `symfony/dependency-injection: ^7.4 \|\| ^8.0` | — |
 
 ---
 
@@ -351,18 +350,39 @@ vendor/bin/monorepo-builder merge --dry-run
 vendor/bin/monorepo-builder release v1.0.0
 ```
 
-### 2.2. Release process for a single package
+### 2.2. Publishing packages to Packagist (manual)
 
-Each subpackage is published to Packagist **separately** via a GitHub subtree split repository or separate mirror repositories.
+Packagist publishing is **not automated in CI** — it is performed manually by the maintainer.
+CI (`release.yml`) only builds native binaries and creates the GitHub Release. Each subpackage is
+published to Packagist from its own repository, produced by a git subtree split of `packages/<name>`.
 
-**Split strategy (options):**
+**One-time setup (per package):**
+1. Create a mirror repository on GitHub, e.g. `MADEVAL/inference-core`.
+2. Register it on Packagist (Submit → repository URL) under the `ferry-ai/*` vendor.
+3. Optionally enable the Packagist GitHub webhook/integration so future pushes auto-update.
 
-**Option A: GitHub Actions + subtree split**
-- Each subpackage is automatically mirrored to its own repository
-- Packagist is subscribed to each repository separately
+**Release procedure:**
 
-**Option B: Monorepo Builder split release**
-- `monorepo-builder release` can publish each package separately
+```bash
+# 1. Sync mutual dependency constraints to the release version and tag the monorepo.
+#    monorepo-builder rewrites `ferry-ai/inference-*` requirements across all packages.
+vendor/bin/monorepo-builder validate
+vendor/bin/monorepo-builder release v0.1.0
+
+# 2. Split each package into its own branch and push it to the mirror repository.
+#    Repeat for every package under packages/ (core, tensor, onnx-backend, ... , symfony).
+git subtree split --prefix=packages/core --branch=split/core
+git push https://github.com/MADEVAL/inference-core.git split/core:main --force
+
+# 3. Tag the same version in each mirror repository (Packagist reads tags from there).
+#    Either push the tag to the mirror, or let the Packagist webhook pick up the push.
+```
+
+If a mirror is not connected via webhook, trigger a manual update from the package page on
+Packagist (the "Update" button) after pushing.
+
+> Note: `monorepo-builder merge` / `merge --dry-run` are for local development (viewing the merged
+> root `composer.json`); they do not publish anything.
 
 ---
 
@@ -1077,55 +1097,6 @@ on:
 
 jobs:
   # ============================================================
-  # Publication to Packagist (via subtree split)
-  # ============================================================
-  packagist:
-    name: "Publish to Packagist"
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        package:
-          - core
-          - tensor
-          - onnx-backend
-          - llama-backend
-          - cpu-backend
-          - tokenizer
-          - embedding
-          - pipeline
-          - model-hub
-          - vector
-          - dataframe
-          - ai
-          - laravel
-          - symfony
-
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Split ${{ matrix.package }} subtree
-        run: |
-          BRANCH="split/${{ matrix.package }}"
-          git subtree split \
-            --prefix=packages/${{ matrix.package }} \
-            --branch=$BRANCH
-
-      - name: Push ${{ matrix.package }} to its repo
-        run: |
-          git push \
-            https://x-access-token:${{ secrets.PACKAGIST_TOKEN }}@github.com/MADEVAL/${{ matrix.package }}.git \
-            split/${{ matrix.package }}:main --force
-
-      - name: Notify Packagist
-        run: |
-          curl -X POST \
-            -H 'Content-Type: application/json' \
-            -d '{"repository":{"url":"https://github.com/MADEVAL/${{ matrix.package }}"}}' \
-            https://packagist.org/api/update-package?username=php-ai&apiToken=${{ secrets.PACKAGIST_API_TOKEN }}
-
-  # ============================================================
   # Build native binaries
   # ============================================================
   build-binaries:
@@ -1179,7 +1150,7 @@ jobs:
   github-release:
     name: "Create GitHub Release"
     runs-on: ubuntu-latest
-    needs: [packagist, build-binaries]
+    needs: [build-binaries]
     steps:
       - uses: actions/checkout@v4
 
@@ -1409,7 +1380,9 @@ Each subpackage is published separately to Packagist:
 - PSR-4 autoloading
 - Git tags in format `vX.Y.Z`
 
-**Automation:** GitHub Actions workflow `release.yml` performs subtree split and push to separate repositories upon tag creation.
+**Publishing is manual** (see §2.2): `release.yml` builds native binaries and the GitHub Release
+only. Subtree split, push to the mirror repositories and the Packagist update are done by the
+maintainer.
 
 ### 9.2. Native binaries
 

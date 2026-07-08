@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="img/ferryai_banner.svg" alt="FerryAI" width="100%">
+</p>
+
 # FerryAI — native AI inference for PHP
 
 **Run ONNX, GGUF, and RubixML models directly in PHP — no Python, no HTTP microservices, no Docker sidecars.**

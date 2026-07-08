@@ -12,7 +12,7 @@
     ],
     "require": {
         "php": ">=8.5",
-        "ferry-ai/inference-core": "^1.0"
+        "ferry-ai/inference-core": "^0.1.0"
     },
     "require-dev": {
         "phpunit/phpunit": "^12.0 || ^13.0",
