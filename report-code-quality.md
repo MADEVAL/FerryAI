@@ -73,24 +73,6 @@ if ($systemPath !== null) { return $systemPath; }
 
 ## 🟡 УЛУЧШЕНИЕ
 
-## [УЛУЧШЕНИЕ] RetryHandler: нет потолка backoff и бросается нативный `\RuntimeException`
-
-Файл: `packages/core/src/RetryHandler.php`, строки 38, 45
-Категория: Надёжность / Архитектура
-
-Проблема: экспоненциальная задержка `2 ** ($attempt-1)` без ограничения — при умеренном `maxAttempts` даёт очень долгие `usleep` (напр. 512 c на 10-й попытке); при абсурдно больших `maxAttempts` `2**n` даёт `INF`, `(int) INF === 0` → мгновенный цикл. Плюс fallback `new \RuntimeException('Retry exhausted')` нарушает правило AGENTS.md «все исключения наследуют `FerryAIException`».
-
-Доказательство:
-```php
-$delay = $backoff === 'exponential' ? (int) ($delayMs * (float) (2 ** ($attempt - 1))) : $delayMs;
-// ...
-throw $lastException ?? new \RuntimeException('Retry exhausted');   // строка 45
-```
-
-Решение: ограничить `min($delay, MAX_BACKOFF_MS)`; заменить `\RuntimeException` на исключение, наследующее `FerryAIException`.
-
----
-
 ## [УЛУЧШЕНИЕ] `Hub`: утечка временного файла, `register()` игнорирует `$sha256`, необратимый ключ, потерянный путь в генераторе
 
 Файл: `packages/model-hub/src/Hub.php`, строки 42/59, 166, 179, 118
