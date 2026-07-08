@@ -52,16 +52,23 @@ final class NativeLlamaRuntime implements LlamaRuntimeInterface
         $ffi = $this->ffi();
         $model = $ffi->loadModel($modelPath, $modelParams->nGpuLayers);
         $threads = $contextParams->nThreads > 0 ? $contextParams->nThreads : 4;
-        $context = $ffi->newContext($model, $contextParams->nCtx, $threads);
 
-        return new NativeLlamaSession(
-            $ffi,
-            $model,
-            $context,
-            $ffi->nVocab($model),
-            $ffi->nCtx($context),
-            $ffi->eosToken($model),
-        );
+        try {
+            $context = $ffi->newContext($model, $contextParams->nCtx, $threads);
+
+            return new NativeLlamaSession(
+                $ffi,
+                $model,
+                $context,
+                $ffi->nVocab($model),
+                $ffi->nCtx($context),
+                $ffi->eosToken($model),
+            );
+        } catch (\Throwable $e) {
+            $ffi->freeModel($model);
+
+            throw $e;
+        }
     }
 
     public function nVocab(LlamaSession $session): int

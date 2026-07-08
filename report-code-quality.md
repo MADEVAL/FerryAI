@@ -71,26 +71,6 @@ if ($systemPath !== null) { return $systemPath; }
 
 ---
 
-## [ВАЖНО] Утечка нативной модели при ошибке создания контекста
-
-Файл: `packages/llama-backend/src/Runtime/NativeLlamaRuntime.php`, строки 53-55
-Категория: Надёжность
-
-Проблема: `ferry_load_model` выделяет нативную память, затем вызывается `newContext`. Если создание контекста завершится ошибкой/исключением, указатель модели нигде не освобождается (`freeModel` не вызывается).
-
-Доказательство:
-```php
-$model = $ffi->loadModel($modelPath, $modelParams->nGpuLayers);   // выделение
-$threads = $contextParams->nThreads > 0 ? $contextParams->nThreads : 4;
-$context = $ffi->newContext($model, $contextParams->nCtx, $threads); // при провале $model теряется
-```
-
-Вектор / последствие: повторные неудачные загрузки накапливают утёкшую RAM/VRAM.
-
-Решение: обернуть создание контекста в try/catch и вызывать `$ffi->freeModel($model)` перед пробросом исключения.
-
----
-
 ## [ВАЖНО] RetryHandler повторяет невосстановимые ошибки (в т.ч. ValidationException)
 
 Файл: `packages/core/src/RetryHandler.php`, строки 24, 48-67

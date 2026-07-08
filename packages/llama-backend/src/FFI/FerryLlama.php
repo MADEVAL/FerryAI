@@ -16,7 +16,7 @@ use FerryAI\Core\PlatformDetector;
  * Excluded from static analysis (untyped FFI boundary). Standalone-process only:
  * loading the DLL runs ggml's global constructors, which conflict with PHPUnit.
  */
-final class FerryLlama
+class FerryLlama
 {
     private const CDEF = <<<'CDEF'
         void ferry_llama_backend_init(void);
@@ -63,7 +63,9 @@ final class FerryLlama
 
     public function __destruct()
     {
-        $this->ffi->ferry_llama_backend_free();
+        if (isset($this->ffi)) {
+            $this->ffi->ferry_llama_backend_free();
+        }
     }
 
     public static function resolveWrapperPath(): ?string
