@@ -1,7 +1,7 @@
 # FerryAI — Definitive Documentation
 
 > **PHP inference runtime. ONNX + llama.cpp + RubixML. One API. No Python.**
-> Version 1.0 · 14 packages · PHP 8.5+ · MIT
+> Version 0.1.0 · 14 packages · PHP 8.5+ · MIT
 
 ---
 
@@ -55,6 +55,147 @@ AI::config([
     'backends' => ['llama' => ['model_path' => 'C:\llama\model.gguf']],
 ]);
 ```
+
+### llama.cpp full build (`ferry_llama` wrapper)
+
+Full llama.cpp inference through PHP is done via a thin `ferry_llama` C wrapper (it hides
+llama.cpp's by-value struct params, which PHP FFI cannot pass safely). `LlamaBackend` uses
+`NativeLlamaRuntime`, which drives llama.cpp through this flat wrapper (real CPU + GPU). Point it at
+the wrapper via `FERRY_AI_LLAMA_WRAPPER=…\ferry_llama.dll` (or `FERRY_AI_LLAMA_LIB=…\llama.dll` in
+the same dir) and add that dir to `PATH`; select the device with config `device: cpu|cuda`.
+
+What you need (all in one dir, e.g. `C:\llama` on Windows or `/path/to/llama` on Linux, on `PATH` /
+`LD_LIBRARY_PATH` at runtime):
+
+1. **llama.cpp build** — shared libs (`llama` + `ggml*` + `ggml-cpu-*`);
+   for GPU on Windows: `ggml-cuda.dll` + CUDA runtime; for GPU on Linux: build from source with
+   `GGML_CUDA=ON` (see `native/llama-wrapper/README.md`).
+   → https://github.com/ggml-org/llama.cpp/releases (CPU builds for all platforms; CUDA prebuilt for Windows)
+2. **NVIDIA CUDA Toolkit** (for GPU) → https://developer.nvidia.com/cuda-downloads
+3. **Matching headers** (same commit): `llama.h`, `ggml.h`, `ggml-cpu.h`, `ggml-backend.h`,
+   `ggml-alloc.h`, `ggml-opt.h`, `gguf.h` → llama.cpp repo (`include/` + `ggml/include/`).
+4. **A GGUF model** → https://huggingface.co (e.g. `bartowski/Qwen2.5-0.5B-Instruct-GGUF`).
+5. **Compiler**: Visual Studio 2022 on Windows; `cc`/`gcc`/`clang` on Linux/macOS.
+
+Then:
+
+```powershell
+# Build the wrapper (auto-creates llama.lib / ggml.lib import libs from the DLLs)
+powershell -File native/llama-wrapper/build.ps1 -LlamaDir C:\llama
+
+# Smoke-test CPU + GPU
+$env:PATH = "C:\llama;" + $env:PATH
+php native/llama-wrapper/ffi-smoke.php
+```
+
+On Linux/macOS use `native/llama-wrapper/build.sh /path/to/llama` (needs a Linux llama.cpp build +
+`cc`); Linux CUDA needs a CUDA-enabled llama.cpp build. Sampling is per request: `temperature: 0`
+→ greedy, `> 0` → nucleus; force one with `AI::chat($msgs, ['sampler' => 'top_k'])` or
+`['grammar' => '<gbnf>']`. A native top-k pre-filter keeps sampling fast. Details, flat API and
+limits: [`native/llama-wrapper/README.md`](native/llama-wrapper/README.md).
+
+### ONNX GPU on Linux
+
+The ONNX Runtime Linux GPU download does **not** bundle the CUDA runtime math libraries
+(`libcurand`, `libcufft`, `libcudnn`) — those live in separate NVIDIA packages. The
+CUDA dev toolkit provides `cublas` + `cudart` but NOT the math
+libraries. They can be extracted from `.deb` packages using `apt-get download`
+(useful when you cannot install system packages as root):
+
+```bash
+# 1 — Place the ONNX Runtime GPU build next to the vendor lib
+cp /path/to/onnxruntime-gpu/onnxruntime-linux-x64-gpu_cuda13-*/lib/libonnxruntime*.so* \
+   vendor/ankane/onnxruntime/lib/onnxruntime-linux-x64-*/lib/
+cp /path/to/onnxruntime-gpu/onnxruntime-linux-x64-gpu_cuda13-*/lib/libonnxruntime_providers_{cuda,shared}.so \
+   vendor/ankane/onnxruntime/lib/onnxruntime-linux-x64-*/lib/
+
+# 2 — Extract CUDA runtime math libs from .deb packages (no root needed)
+D=vendor/ankane/onnxruntime/lib/onnxruntime-linux-x64-*/lib
+cd "$D"
+for pkg in libcurand-13-2 libcufft-13-2; do
+  apt-get download "$pkg"
+  ar x ${pkg}_*.deb && tar xf data.tar.xz -C /tmp/ && find /tmp -name "*.so*" -exec cp {} . \; && rm -f *.deb control.tar.xz data.tar.xz debian-binary
+done
+# cuDNN — download for your CUDA version from https://developer.nvidia.com/cudnn,
+# then extract the libcudnn*.so* files into the vendor lib dir:
+dpkg-deb -x /path/to/cudnn.deb /tmp/cudnn_extract
+find /tmp/cudnn_extract -name "libcudnn*.so*" -exec cp {} "$D" \;
+
+# 3 — Add the vendor lib dir and the CUDA toolkit to LD_LIBRARY_PATH
+export LD_LIBRARY_PATH="/usr/local/cuda/lib64:$LD_LIBRARY_PATH"
+
+# Verify
+cd /path/to/FerryAI
+php -r "require 'vendor/autoload.php'; echo (new FerryAI\OnnxBackend\OnnxBackend())->availableDevices()[0]->value;"
+# → cuda
+```
+
+> **Why this works:** the ONNX CUDA provider `.so` links against `libcurand.so.10`,
+> `libcufft.so.12` and `libcudnn.so.9`. The CUDA dev toolkit (installed via `apt`)
+> provides `cublas`/`cudart`; `apt-get download` + `ar x` + `tar xf` extracts the math
+> libraries from their `.deb` packages without needing root. All `.so` files land
+> in the vendor lib dir and `LD_LIBRARY_PATH` points the dynamic linker at them.
+
+### ONNX GPU on Windows
+
+The ORT Windows GPU zip ships `onnxruntime.dll` + provider DLLs but does **not**
+bundle `curand`, `cufft`, or `cudnn`. Those must be obtained separately.
+
+**Required dependencies:**
+
+| DLL | Source | How to get |
+|-----|--------|-----------|
+| `onnxruntime.dll` + provider DLLs | ORT GPU zip (`onnxruntime-win-x64-gpu_cuda13-*.zip`) | github.com/microsoft/onnxruntime/releases |
+| `cublas64_13.dll`, `cublasLt64_13.dll`, `cudart64_13.dll` | Shipped by `ankane/onnxruntime` | Already in `vendor/ankane/onnxruntime/lib/…/lib/` |
+| `cudnn64_9.dll` + aux DLLs | **cuDNN** → https://developer.nvidia.com/cudnn | Download the Windows x64 zip for your CUDA version, extract the `bin/*/x64/*.dll` files |
+| `curand64_10.dll` | pip `nvidia-curand-cu12` wheel | `pip download nvidia-curand-cu12 --no-deps` → unzip → `nvidia/curand/bin/curand64_10.dll` |
+| `cufft64_11.dll`, `cufftw64_11.dll` | pip `nvidia-cufft-cu12` wheel | `pip download nvidia-cufft-cu12 --no-deps` → unzip → `nvidia/cufft/bin/cufft64_11.dll` |
+
+**Setup steps:**
+
+```powershell
+# 1 — Replace the CPU ONNX Runtime with the GPU build
+$vendorLib = "vendor\ankane\onnxruntime\lib\onnxruntime-win-x64-*\lib"
+Copy-Item "path\to\onnxruntime-gpu\lib\onnxruntime.dll" -Destination $vendorLib -Force
+Copy-Item "path\to\onnxruntime-gpu\lib\onnxruntime_providers_cuda.dll" -Destination $vendorLib -Force
+Copy-Item "path\to\onnxruntime-gpu\lib\onnxruntime_providers_shared.dll" -Destination $vendorLib -Force
+
+# 2 — Copy cuDNN DLLs from NVIDIA cuDNN zip
+Copy-Item "C:\cudnn\bin\*\x64\cudnn*.dll" -Destination $vendorLib
+
+# 3 — Download and extract curand + cufft via pip
+pip download nvidia-curand-cu12 nvidia-cufft-cu12 --no-deps -d %TEMP%\cuda_dlls
+# Rename .whl → .zip and extract; copy curand64_10.dll, cufft64_11.dll, cufftw64_11.dll
+Copy-Item "%TEMP%\cuda_dlls\curand_extract\nvidia\curand\bin\curand64_10.dll" -Destination $vendorLib
+Copy-Item "%TEMP%\cuda_dlls\cufft_extract\nvidia\cufft\bin\cufft64_11.dll" -Destination $vendorLib
+Copy-Item "%TEMP%\cuda_dlls\cufft_extract\nvidia\cufft\bin\cufftw64_11.dll" -Destination $vendorLib
+
+# 4 — Verify
+php -r "require 'vendor/autoload.php'; var_dump((new FerryAI\OnnxBackend\OnnxRuntimeFactory())->availableProviders());"
+# Expected: TensorrtExecutionProvider, CUDAExecutionProvider, CPUExecutionProvider
+```
+
+### Quick checks (native availability)
+
+```bash
+# ONNX Runtime available?
+php -r "require 'vendor/autoload.php'; echo (new FerryAI\OnnxBackend\OnnxBackend())->isAvailable() ? 'OK' : 'FAIL';"
+
+# ONNX GPU (should print "cuda,cpu")
+LD_LIBRARY_PATH=vendor/ankane/onnxruntime/lib/onnxruntime-linux-x64-*/lib:/usr/local/cuda/lib64:$LD_LIBRARY_PATH \
+php -r "require 'vendor/autoload.php'; \$b=new FerryAI\OnnxBackend\OnnxBackend(); echo implode(',',array_map(fn(\$d)=>\$d->value,\$b->availableDevices()));"
+
+# llama.cpp available?
+FERRY_AI_LLAMA_LIB=/path/to/llama/libllama.so LD_LIBRARY_PATH=/path/to/llama:$LD_LIBRARY_PATH \
+php -r "require 'vendor/autoload.php'; echo (new FerryAI\LlamaBackend\LlamaBackend())->isAvailable() ? 'YES' : 'NO';"
+
+# sqlite-vec available?
+FERRY_AI_VEC_EXTENSION_LIB=/path/to/sqlite-vec/vec0.so php examples/23-sqlite-vec.php
+```
+
+On Windows use the corresponding `C:\llama\...` paths (backslashes + `PATH` instead of
+`LD_LIBRARY_PATH`; the `OnnxBackend::load()` CPU-fallback handles missing GPU runtimes
+automatically).
 
 ---
 
@@ -567,4 +708,4 @@ composer cs-fix               # Auto-fix style (PER-CS 2.0)
 | `docs/deployment.md` | Production deployment |
 | `docs/laravel.md` | Laravel integration |
 | `docs/symfony.md` | Symfony integration |
-| `examples/` | 20 runnable examples |
+| `examples/` | 26 runnable examples |
