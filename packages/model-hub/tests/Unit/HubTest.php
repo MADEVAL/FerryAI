@@ -87,8 +87,9 @@ final class HubTest extends TestCase
     {
         $hub = new Hub($this->cacheDir);
         $path = $this->cacheDir . '/registered.onnx';
-        \file_put_contents($path, "\x08\x08\x12\x08" . 'data');
-        $hub->register('my-model', $path, 'abc123');
+        $content = "\x08\x08\x12\x08" . 'data';
+        \file_put_contents($path, $content);
+        $hub->register('my-model', $path, \hash('sha256', $content));
 
         $list = $hub->list();
 

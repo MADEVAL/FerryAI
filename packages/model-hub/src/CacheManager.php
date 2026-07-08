@@ -25,6 +25,22 @@ final class CacheManager
         \copy($path, $targetPath);
     }
 
+    /**
+     * Moves a caller-owned temporary file into the cache, returning its final path.
+     * Unlike {@see put()} this does not leave the source behind (no temp-file leak).
+     */
+    public function store(string $key, string $path): string
+    {
+        $targetPath = $this->getCachePath($key);
+
+        if (!@\rename($path, $targetPath)) {
+            \copy($path, $targetPath);
+            @\unlink($path);
+        }
+
+        return $targetPath;
+    }
+
     public function get(string $key): ?string
     {
         $path = $this->getCachePath($key);
@@ -157,6 +173,6 @@ final class CacheManager
 
     private function getCachePath(string $key): string
     {
-        return $this->cacheDir . '/' . \preg_replace('/[^a-zA-Z0-9_.-]/', '_', $key);
+        return $this->cacheDir . '/' . \preg_replace('/[^a-zA-Z0-9_.@%~-]/', '_', $key);
     }
 }

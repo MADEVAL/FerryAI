@@ -71,59 +71,6 @@ if ($systemPath !== null) { return $systemPath; }
 
 ---
 
-## 🟡 УЛУЧШЕНИЕ
-
-## [УЛУЧШЕНИЕ] `Hub`: утечка временного файла, `register()` игнорирует `$sha256`, необратимый ключ, потерянный путь в генераторе
-
-Файл: `packages/model-hub/src/Hub.php`, строки 42/59, 166, 179, 118
-Категория: Надёжность / Качество
-
-Проблема (несколько мелких, один файл):
-1. `download()` качает в `sys_get_temp_dir()`, затем `cache->put()` **копирует** (не перемещает) — временный файл никогда не удаляется (утечка диска).
-2. `register(string $name, string $path, ?string $sha256 = null)` принимает `$sha256`, но нигде его не использует — мёртвый параметр, ложное ощущение проверки.
-3. `checkUpdates()`: `str_replace('_', '/', $cacheKey)` не обратен к `str_replace('/', '_', ...)` — id с подчёркиваниями искажаются, суффикс версии теряется.
-4. `downloadWithProgress()`: путь назначения не отдаётся через `yield` (в кэш-ветке уходит в `getReturn()`, в live-ветке не отдаётся вовсе) — итерирующий прогресс не узнаёт, куда записан файл.
-
-Доказательство:
-```php
-$destPath = \sys_get_temp_dir() . '/' . $cacheKey . '.model'; // 42
-$this->cache->put($cacheKey, $destPath);                      // 59 — copy, temp не удалён
-```
-```php
-public function register(string $name, string $path, ?string $sha256 = null): void {
-    $this->cache->put($name, $path);                          // 168 — $sha256 не используется
-}
-```
-```php
-$modelId = \str_replace('_', '/', $cacheKey);                 // 179 — необратимо
-```
-
-Решение: `rename` вместо `copy` или `unlink` temp; либо использовать `$sha256` в `register` (проверять/сохранять), либо убрать параметр; хранить оригинальный id рядом с ключом; отдавать финальный путь через `yield`.
-
----
-
-## [УЛУЧШЕНИЕ] `AI::warmup()` не работает: ключ прогрева не совпадает с ключом выборки
-
-Файл: `packages/ai/src/AI.php`, строка 487; `packages/ai/src/ModelPool.php`, строка 45
-Категория: Надёжность
-
-Проблема: `ModelPool::warmup()` кладёт модель под голый `$modelId`, а `AI::loadPooled()` ищет по составному ключу `backendClass|path|device`. Прогретые записи никогда не находятся.
-
-Доказательство:
-```php
-// ModelPool.php:45
-$this->put($modelId, $model, $model->metadata()->sizeBytes);
-// AI.php:487
-$key = $backend::class . '|' . $modelPath . '|' . ($device === null ? 'auto' : $device->value);
-$cached = $pool->acquire($key);
-```
-
-Вектор / последствие: первый реальный запрос всё равно грузит модель «вхолодную», а прогретая копия навсегда занимает память/бюджет пула.
-
-Решение: строить один и тот же составной ключ в `warmup` и `loadPooled` через общий билдер ключа.
-
----
-
 ## [УЛУЧШЕНИЕ] Реестр `EmbeddedModels` не используется — молча неверный pooling по умолчанию
 
 Файл: `packages/embedding/src/Embedder.php`, строки 34-40

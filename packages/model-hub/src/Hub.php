@@ -56,9 +56,9 @@ final class Hub implements ModelHubContract
             }
         }
 
-        $this->cache->put($cacheKey, $destPath);
+        $this->cache->store($cacheKey, $destPath);
 
-        return $destPath;
+        return $this->cache->get($cacheKey) ?? $destPath;
     }
 
     #[\Override]
@@ -117,7 +117,9 @@ final class Hub implements ModelHubContract
 
         yield from $this->downloader->downloadWithProgress($url, $destPath);
 
-        $this->cache->put($cacheKey, $destPath);
+        $this->cache->store($cacheKey, $destPath);
+
+        return $this->cache->get($cacheKey) ?? $destPath;
     }
 
     #[\Override]
@@ -165,6 +167,10 @@ final class Hub implements ModelHubContract
 
     public function register(string $name, string $path, ?string $sha256 = null): void
     {
+        if ($sha256 !== null && !ModelVerifier::verify($path, $sha256, null, $this->publicKey)) {
+            throw new \FerryAI\Core\Exception\ModelLoadException($path, 'SHA-256 checksum mismatch');
+        }
+
         $this->cache->put($name, $path);
     }
 
@@ -176,7 +182,7 @@ final class Hub implements ModelHubContract
         $updates = [];
 
         foreach ($this->list() as $cacheKey) {
-            $modelId = \str_replace('_', '/', $cacheKey);
+            $modelId = self::decodeModelId($cacheKey);
             $updates[$cacheKey] = $this->hfClient->getModelInfo($modelId);
         }
 
@@ -185,6 +191,17 @@ final class Hub implements ModelHubContract
 
     private function cacheKey(string $modelId, ?string $version): string
     {
-        return \str_replace('/', '_', $modelId) . ($version !== null ? '-' . $version : '');
+        return \rawurlencode($modelId) . ($version !== null ? '@' . \rawurlencode($version) : '');
+    }
+
+    /**
+     * Inverse of {@see cacheKey()}: recovers the original model id from a cache key,
+     * dropping any '@version' suffix. rawurlencode never emits '@', so the split is lossless.
+     */
+    private static function decodeModelId(string $cacheKey): string
+    {
+        $encoded = \explode('@', $cacheKey, 2)[0];
+
+        return \rawurldecode($encoded);
     }
 }
