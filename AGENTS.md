@@ -7,6 +7,51 @@
   Native bridge: **PHP FFI**.
 - Namespace: `FerryAI\` · Vendor: `ferry-ai/*` · Monorepo: `packages/{name}/`
 
+## Packages (dependency direction)
+
+`core` is the base and depends on nothing internal; every other package depends on `core`. Backends
+never depend on each other — only `ai` composes them. Framework adapters depend only on `ai`.
+
+```
+core  ◄──  tensor · onnx-backend · llama-backend · cpu-backend · tokenizer ·
+           embedding · pipeline · model-hub · vector · dataframe
+ai    ──►  core + all backends + tokenizer + embedding + pipeline + model-hub + vector
+laravel · symfony  ──►  ai
+```
+
+| Package | Entry points / purpose |
+|---|---|
+| `core` | Contracts, Enums, ValueObjects, Exceptions; `PlatformDetector`, `RetryHandler`, `AIConfig`, `FFI\CdefGenerator`, `Tensor\CommonTensorOps` (trait shared with cpu-backend) |
+| `tensor` | `ArrayTensor` (pure-PHP, row-major), `TensorFactory` |
+| `onnx-backend` | `OnnxBackend` → `OnnxRuntimeInterface`/`NativeOnnxRuntime`; `OnnxModel`, `OnnxTensor`, `OnnxRuntimeFactory` |
+| `llama-backend` | `LlamaBackend` → `LlamaRuntimeInterface`/`NativeLlamaRuntime`; `LlamaModel` (`runStream()` Generator), `FFI\FerryLlama`, `ChatFormatter`, GBNF grammar + samplers |
+| `cpu-backend` | `CpuNativeBackend`/`CpuNativeModel`/`CpuNativeTensor`; optional `RubixMLAdapter` |
+| `tokenizer` | `TokenizerFactory`, `PureBpeTokenizer`/`PureWordPieceTokenizer`, native `HuggingFaceTokenizer` |
+| `embedding` | `Embedder` + `Pooling\*` (mean/cls/eos/max, `AbstractPooling`), `EmbeddedModels` registry |
+| `vector` | `Collection`/`SQLiteStore`, `PostgresCollection`/`PostgresStore`, `SqliteVecExtension`, `MetadataFilter`, `ExportImport`, `CollectionManager` |
+| `model-hub` | `Hub`, `HuggingFaceClient`, `CacheManager`, `Downloader`/`HttpStream`, `Format\*` inspectors, `Signature\*` (SHA-256 + Ed25519) |
+| `pipeline` | `Pipeline`/`FiberPipeline` + `Stages\*` (Chunk/Tokenize/Embed/Classify/Normalize/Filter/Store/Transform) |
+| `dataframe` | `DataFrame`/`Column`, `IO\{CsvReader,CsvWriter,JsonReader,ParquetReader}` |
+| `ai` | `AI` facade, `AIFactory`, `BackendRegistry`, `ModelPool`, `TaskRouter`, `Observability`, `NativeBinaryManager`, `SharedMemoryManager`, `FrameworkConfig`, `AsyncInference` |
+| `laravel` / `symfony` | thin adapters that build config via `FrameworkConfig` and call `AI::config()` |
+
+## Core Primitives (`packages/core/src/`)
+
+- **Contracts** (`Contracts/`): `Backend`, `Model`, `Tensor`, `Tokenizer`, `Embedder`, `VectorStore`, `Pipeline`, `Stage`, `DataFrame`, `ModelHub`.
+- **Enums** (`Enums/`, backed strings): `BackendType` (`onnx|llama|cpu_native`), `Device` (`cpu|cuda|rocm|metal|vulkan|directml|openvino|opencl|auto`), `DType`, `DistanceMetric`, `TokenizerType`, `IndexType`, `GraphOptimizationLevel`, `QuantizationType`.
+- **Value objects** (`ValueObjects/`, all `readonly`): `Shape`, `SamplingParams`, `ModelMetadata`, `GenerationResult`, `EmbeddingResult`, `ClassificationResult`, `ChatMessage`.
+- **Exceptions** (`Exception/`): all extend `FerryAIException`; 11 subclasses (`Inference`, `ModelLoad`, `ModelNotFound`, `BackendNotAvailable`, `DeviceNotAvailable`, `ShapeMismatch`, `Configuration`, `Validation`, `Tokenizer`, `Io`, `InvalidState`).
+
+## Public API & CLI
+
+- **Facade `FerryAI\AI`** (all-static; call `AI::config()` first): `chat`, `stream`, `streamResponse`,
+  `embed`, `similarity`, `classify`, `moderate`, `predict`, `pipeline`, `vector`, `hub`, `tokenizer`,
+  `warmup`, `backend`, `device`, `activeBackend`, `activeDevice`, `resetBackend`, `reset`.
+- **`bin/ferry-ai`**: `check` (default — env/extension/backend diagnostics, `--json`), `models:list`,
+  `models:download <id> [version]`, `models:prune`, `tokenize <text>`, `chat <message> [--stream] [--max=N]`, `version`.
+- **`bin/generate-ffi`**: turns a C header into an `\FFI::cdef()` string via `FerryAI\Core\FFI\CdefGenerator` (used to regenerate FFI bindings).
+- **CI** (`.github/workflows/`): `ci.yml` (lint + tests across OS/PHP matrix), `release.yml` (native-binary build + Packagist), `docs.yml`.
+
 ## Commands
 
 | Task | Command |
@@ -45,6 +90,8 @@ Rules:
 - Run a single integration group by path: `vendor/bin/phpunit tests/Integration/{Onnx,Llama,Postgres,Sqlite,Vector,Rubix,ModelHub,Tokenizer}`.
 - The native llama runtime is **standalone-process only** — ggml's global constructors clash with the
   PHPUnit runner, so `NativeLlamaRuntime`/`FerryLlama` are covered by a subprocess harness, never in-process.
+- `rubix/ml` integration also runs in a **subprocess with its own autoloader** (`tests/Integration/Rubix/*harness.php`)
+  because rubix's `amphp/amp` pin collides with the dev toolchain — never load `rubix/ml` in the main test process.
 
 ## Local Development (native libs, models, environment)
 
@@ -90,6 +137,7 @@ libraries and model files locally. None of them are committed.
 | `FERRY_AI_LLAMA_WRAPPER` / `FERRY_AI_LLAMA_LIB` | explicit wrapper path / llama lib path |
 | `FERRY_AI_TOKENIZERS_LIB`, `FERRY_AI_VEC_EXTENSION_LIB` | native tokenizer / sqlite-vec extension |
 | `FERRY_AI_PG_DSN`, `FERRY_AI_PG_USER`, `FERRY_AI_PG_PASSWORD` | Postgres integration |
+| `FERRY_AI_RUBIXML_AUTOLOAD` | path to an **isolated** `rubix/ml` `vendor/autoload.php` (rubix runs in a subprocess) |
 | `FERRY_AI_NATIVE_BINARIES_URL` | override prebuilt-binary download URL (`printf` pattern: version, lib, platform, ext) |
 | `FERRY_AI_TESTING` | set to `1` by the PHPUnit config |
 
@@ -111,6 +159,21 @@ auto-loaded (the PHPUnit config and `.ferry-ai.local.php` are the effective sour
 
 - Comments and PHPDoc in `.php` files and config files (`.neon`, `.xml`, `.dist`, `.gitattributes`) are written in English only.
 - All project documentation in `docs/` is English-only.
+- `declare(strict_types=1)` in **every** `.php` file. Concrete classes are `final` by default — known
+  non-final: `Pipeline`/`FiberPipeline`, FFI session handles (`*Session`), `AbstractPooling`, `FerryLlama`.
+- Every interface-method implementation carries `#[\Override]` (the analysers rely on it).
+- Value objects are `readonly`; prefer the `core` enums over raw string/int constants.
+- **FFI seam pattern** — each native backend hides FFI behind an interface (`OnnxRuntimeInterface`,
+  `LlamaRuntimeInterface`) injected into the `*Backend`, with a `Native*` production impl and a mock
+  double in unit tests. Only plain PHP values cross the seam; **never** pass `\FFI\CData` across it.
+- **Static analysis skips the FFI-boundary files** in both `phpstan.neon` and `psalm.xml`:
+  `FerryLlama`, `NativeLlama{Runtime,Session}`, `NativeOnnx{Runtime,Session}`, `OnnxRuntimeFactory`,
+  `HuggingFaceTokenizer`, `RubixMLAdapter` (plus `SharedMemoryManager` in Psalm). Code there is **not**
+  type-checked, so keep it thin; a small baseline of `ignoreErrors` also exists (don't "fix" it blindly).
+- Streaming is `\Generator`-based (`LlamaModel::runStream()`, `Pipeline::run()`); `FiberPipeline` and
+  `ai/AsyncInference` add cooperative **Fiber** scheduling.
+- GPU→CPU fallback is automatic and **silent**: `OnnxBackend::load()` retries on CPU when a non-CPU
+  device fails, so an incomplete CUDA/cuDNN install runs on CPU with no error.
 
 ## Commits
 
