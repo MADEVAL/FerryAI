@@ -89,23 +89,6 @@ if ($systemPath !== null) { return $systemPath; }
 
 
 
-
-## [УЛУЧШЕНИЕ] Logger: незачекан результат записи, нет ротации
-
-Файл: `packages/core/src/Logger.php`, строка 70
-Категория: Надёжность
-
-Проблема: результат `file_put_contents` не проверяется — при полном диске/отказе прав сообщения молча теряются; файл лога растёт без ограничения.
-
-Доказательство:
-```php
-\file_put_contents($this->logFile, $entry . "\n", FILE_APPEND | LOCK_EX);  // без проверки
-```
-
-Решение: проверять возврат, при ошибке — fallback в `error_log()`; добавить опциональную ротацию по размеру.
-
----
-
 ## [УЛУЧШЕНИЕ] `inferShape` не детектирует «рваные» (jagged) массивы
 
 Файл: `packages/core/src/Tensor/CommonTensorOps.php`, строки 19-31
