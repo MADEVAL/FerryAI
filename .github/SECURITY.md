@@ -4,8 +4,9 @@
 
 | Version | Supported |
 |---------|-----------|
-| 1.x     | ✅ Active |
-| < 1.0   | ❌ Pre-release |
+| 0.1.x   | ✅ Active (current release line) |
+
+FerryAI is pre-1.0: the latest `0.1.x` release receives security fixes.
 
 ## Reporting a Vulnerability
 
