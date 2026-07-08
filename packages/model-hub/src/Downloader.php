@@ -80,38 +80,21 @@ final class Downloader
             throw new IoException(\sprintf('Cannot write to: %s', $destination));
         }
 
-        $downloaded = 0;
+        try {
+            foreach (HttpStream::copy($handle, $outHandle, $destination) as $downloaded) {
+                /** @phpstan-ignore booleanNot.alwaysTrue */
+                if ($this->cancelled) {
+                    break;
+                }
 
-        while (!\feof($handle)) {
-            /** @phpstan-ignore booleanNot.alwaysTrue */
-            if ($this->cancelled) {
-                break;
+                if ($onProgress !== null) {
+                    $onProgress($downloaded, -1);
+                }
             }
-
-            $chunk = \fread($handle, 8192);
-
-            if ($chunk === false || $chunk === '') {
-                break;
-            }
-
-            $written = \fwrite($outHandle, $chunk);
-
-            if ($written === false || $written !== \strlen($chunk)) {
-                \fclose($outHandle);
-                \fclose($handle);
-
-                throw new IoException(\sprintf('Failed to write downloaded data to: %s', $destination));
-            }
-
-            $downloaded += \strlen($chunk);
-
-            if ($onProgress !== null) {
-                $onProgress($downloaded, -1);
-            }
+        } finally {
+            \fclose($outHandle);
+            \fclose($handle);
         }
-
-        \fclose($outHandle);
-        \fclose($handle);
 
         /** @phpstan-ignore booleanAnd.leftAlwaysFalse */
         if ($this->cancelled && \file_exists($destination)) {
@@ -158,33 +141,18 @@ final class Downloader
 
         $downloaded = 0;
 
-        while (!\feof($handle)) {
-            if ($this->cancelled) {
-                break;
+        try {
+            foreach (HttpStream::copy($handle, $outHandle, $destination) as $downloaded) {
+                if ($this->cancelled) {
+                    break;
+                }
+
+                yield ['progress' => 0.0, 'downloaded' => $downloaded, 'total' => -1];
             }
-
-            $chunk = \fread($handle, 8192);
-
-            if ($chunk === false || $chunk === '') {
-                break;
-            }
-
-            $written = \fwrite($outHandle, $chunk);
-
-            if ($written === false || $written !== \strlen($chunk)) {
-                \fclose($outHandle);
-                \fclose($handle);
-
-                throw new IoException(\sprintf('Failed to write downloaded data to: %s', $destination));
-            }
-
-            $downloaded += \strlen($chunk);
-
-            yield ['progress' => 0.0, 'downloaded' => $downloaded, 'total' => -1];
+        } finally {
+            \fclose($outHandle);
+            \fclose($handle);
         }
-
-        \fclose($outHandle);
-        \fclose($handle);
 
         if ($this->cancelled && \file_exists($destination)) {
             \unlink($destination);

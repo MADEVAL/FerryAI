@@ -5,26 +5,13 @@ declare(strict_types=1);
 namespace FerryAI\Laravel;
 
 use FerryAI\AI;
+use FerryAI\FrameworkConfig;
 
 final class AIServiceProvider
 {
-    private ?object $app;
-
-    public function __construct(?object $app = null)
-    {
-        $this->app = $app;
-    }
-
-    public function app(): ?object
-    {
-        return $this->app;
-    }
-
     public function register(): void
     {
-        $config = $this->getConfig();
-
-        AI::config($config);
+        AI::config($this->getConfig());
     }
 
     public function boot(): void
@@ -41,39 +28,8 @@ final class AIServiceProvider
      */
     public function getConfig(): array
     {
-        return [
-            'backend' => self::env('FERRY_AI_BACKEND', 'auto'),
-            'device' => self::env('FERRY_AI_DEVICE', 'auto'),
-            'model_cache' => self::env('FERRY_AI_MODEL_CACHE', \sys_get_temp_dir() . '/ferry-ai-models'),
-            'max_tokens' => (int) self::env('FERRY_AI_MAX_TOKENS', '2048'),
-            'temperature' => (float) self::env('FERRY_AI_TEMPERATURE', '0.7'),
-            'top_p' => (float) self::env('FERRY_AI_TOP_P', '1.0'),
-            'verify_signatures' => \filter_var(self::env('FERRY_AI_VERIFY_SIGNATURES', 'true'), FILTER_VALIDATE_BOOLEAN),
-            'log_level' => self::env('FERRY_AI_LOG_LEVEL', 'warning'),
-            'backends' => [
-                'onnx' => [
-                    'providers' => \explode(',', self::env('FERRY_AI_ONNX_PROVIDERS', 'CUDA,CPU')),
-                    'graph_optimization' => self::env('FERRY_AI_ONNX_OPTIMIZATION', 'ALL'),
-                ],
-                'llama' => [
-                    'model_path' => self::env('FERRY_AI_LLAMA_MODEL_PATH', ''),
-                    'n_ctx' => (int) self::env('FERRY_AI_LLAMA_N_CTX', '2048'),
-                    'n_gpu_layers' => (int) self::env('FERRY_AI_LLAMA_GPU_LAYERS', '0'),
-                ],
-            ],
-            'warmup' => \array_filter(\explode(',', self::env('FERRY_AI_WARMUP', ''))),
-            'log_channel' => self::env('FERRY_AI_LOG_CHANNEL', 'stack'),
+        return FrameworkConfig::defaults() + [
+            'log_channel' => FrameworkConfig::env('FERRY_AI_LOG_CHANNEL', 'stack'),
         ];
-    }
-
-    /**
-     * Reads an environment variable, returning $default only when the variable is unset.
-     * Unlike `getenv(...) ?: $default`, this preserves falsy-but-valid values such as "0".
-     */
-    private static function env(string $name, string $default): string
-    {
-        $value = \getenv($name);
-
-        return $value === false ? $default : $value;
     }
 }

@@ -184,29 +184,14 @@ final class HuggingFaceClient
             throw new IoException(\sprintf('Cannot write to: %s', $destination));
         }
 
-        while (!\feof($in)) {
-            $chunk = \fread($in, 8192);
-
-            if ($chunk === false) {
-                break;
+        try {
+            foreach (HttpStream::copy($in, $out, $destination) as $_) {
+                // drain: streamToFile has no progress reporting, it just persists the file.
             }
-
-            if ($chunk === '') {
-                continue;
-            }
-
-            $written = \fwrite($out, $chunk);
-
-            if ($written === false || $written !== \strlen($chunk)) {
-                \fclose($in);
-                \fclose($out);
-
-                throw new IoException(\sprintf('Failed to write downloaded data to: %s', $destination));
-            }
+        } finally {
+            \fclose($in);
+            \fclose($out);
         }
-
-        \fclose($in);
-        \fclose($out);
 
         return true;
     }

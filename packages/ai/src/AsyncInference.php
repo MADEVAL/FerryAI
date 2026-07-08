@@ -67,15 +67,43 @@ final class AsyncInference
     }
 
     /**
+     * Runs the tasks concurrently as cooperative Fibers: each is started, then suspended fibers
+     * are resumed round-robin until all terminate. Tasks that never call {@see Fiber::suspend()}
+     * simply run to completion on start. Results are keyed in the original task order.
+     *
      * @param  array<int, callable(): mixed> $tasks
      * @return array<int, mixed>
      */
     public function runParallel(array $tasks): array
     {
-        $results = [];
+        $fibers = [];
 
         foreach ($tasks as $i => $task) {
-            $results[$i] = $task();
+            $fibers[$i] = new Fiber($task);
+        }
+
+        foreach ($fibers as $fiber) {
+            $fiber->start();
+        }
+
+        do {
+            $active = false;
+
+            foreach ($fibers as $fiber) {
+                if ($fiber->isSuspended()) {
+                    $fiber->resume();
+                }
+
+                if (!$fiber->isTerminated()) {
+                    $active = true;
+                }
+            }
+        } while ($active);
+
+        $results = [];
+
+        foreach ($fibers as $i => $fiber) {
+            $results[$i] = $fiber->getReturn();
         }
 
         return $results;
