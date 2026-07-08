@@ -170,9 +170,9 @@ final class LlamaModel implements Model
     {
         $session = $this->requireSession();
         $prompt = $this->formatter->format($this->messages($inputs));
-        $promptTokens = $this->runtime->tokenize($session, $prompt, true, true);
+        $promptTokens = $this->runtime->tokenize($session, $prompt, true);
         $this->runtime->resetState($session);
-        $logits = $this->nextLogits($session, $promptTokens, 0, $sampler, $params);
+        $logits = $this->nextLogits($session, $promptTokens, $sampler, $params);
 
         return [$promptTokens, $logits];
     }
@@ -186,7 +186,6 @@ final class LlamaModel implements Model
     private function decodeLoop(array $promptTokens, array $logits, Sampler $sampler, SamplingParams $params): \Generator
     {
         $session = $this->requireSession();
-        $nPast = \count($promptTokens);
         $eos = $this->runtime->eosToken($session);
 
         // Sliding window of recent tokens (prompt tail + generated) used for penalties.
@@ -215,8 +214,7 @@ final class LlamaModel implements Model
                 array_shift($recent);
             }
 
-            $logits = $this->nextLogits($session, [$token], $nPast, $sampler, $params);
-            ++$nPast;
+            $logits = $this->nextLogits($session, [$token], $sampler, $params);
         }
     }
 
@@ -229,17 +227,17 @@ final class LlamaModel implements Model
      *
      * @return array<int, float>
      */
-    private function nextLogits(LlamaSession $session, array $tokens, int $nPast, Sampler $sampler, SamplingParams $params): array
+    private function nextLogits(LlamaSession $session, array $tokens, Sampler $sampler, SamplingParams $params): array
     {
         if ($sampler instanceof GrammarSampler) {
             $k = 4096;
 
-            return $this->runtime->evaluateTopK($session, $tokens, $nPast, $k);
+            return $this->runtime->evaluateTopK($session, $tokens, $k);
         }
 
         $k = max(256, $params->topK);
 
-        return $this->runtime->evaluateTopK($session, $tokens, $nPast, $k);
+        return $this->runtime->evaluateTopK($session, $tokens, $k);
     }
 
     /**

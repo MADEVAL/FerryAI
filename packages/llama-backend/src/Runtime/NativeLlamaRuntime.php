@@ -96,7 +96,7 @@ final class NativeLlamaRuntime implements LlamaRuntimeInterface
     /**
      * @return list<int>
      */
-    public function tokenize(LlamaSession $session, string $text, bool $addBos = true, bool $special = true): array
+    public function tokenize(LlamaSession $session, string $text, bool $addBos = true): array
     {
         $s = $this->native($session);
 
@@ -115,7 +115,7 @@ final class NativeLlamaRuntime implements LlamaRuntimeInterface
      *
      * @return list<float>
      */
-    public function evaluate(LlamaSession $session, array $tokens, int $nPast): array
+    public function evaluate(LlamaSession $session, array $tokens): array
     {
         $s = $this->native($session);
 
@@ -127,7 +127,7 @@ final class NativeLlamaRuntime implements LlamaRuntimeInterface
      *
      * @return array<int, float>
      */
-    public function evaluateTopK(LlamaSession $session, array $tokens, int $nPast, int $k): array
+    public function evaluateTopK(LlamaSession $session, array $tokens, int $k): array
     {
         $s = $this->native($session);
 

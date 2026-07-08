@@ -42,19 +42,19 @@ interface LlamaRuntimeInterface
     /**
      * @return list<int>
      */
-    public function tokenize(LlamaSession $session, string $text, bool $addBos = true, bool $special = true): array;
+    public function tokenize(LlamaSession $session, string $text, bool $addBos = true): array;
 
     public function tokenToPiece(LlamaSession $session, int $token): string;
 
     /**
-     * Evaluates the given tokens starting at position $nPast and returns the logits
-     * (length = vocab size) for the next position.
+     * Evaluates the given tokens and returns the logits (length = vocab size) for the next position.
+     * The native runtime tracks its own KV-cache position; call {@see resetState()} to rewind.
      *
      * @param list<int> $tokens
      *
      * @return list<float>
      */
-    public function evaluate(LlamaSession $session, array $tokens, int $nPast): array;
+    public function evaluate(LlamaSession $session, array $tokens): array;
 
     /**
      * Like {@see evaluate()} but returns only the top-k tokens by logit as a sparse
@@ -64,7 +64,7 @@ interface LlamaRuntimeInterface
      *
      * @return array<int, float>
      */
-    public function evaluateTopK(LlamaSession $session, array $tokens, int $nPast, int $k): array;
+    public function evaluateTopK(LlamaSession $session, array $tokens, int $k): array;
 
     /**
      * Clears the KV cache so a new sequence can be generated.

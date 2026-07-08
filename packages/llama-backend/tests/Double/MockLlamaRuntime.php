@@ -88,7 +88,7 @@ final class MockLlamaRuntime implements LlamaRuntimeInterface
     /**
      * @return list<int>
      */
-    public function tokenize(LlamaSession $session, string $text, bool $addBos = true, bool $special = true): array
+    public function tokenize(LlamaSession $session, string $text, bool $addBos = true): array
     {
         return $this->promptTokens;
     }
@@ -103,7 +103,7 @@ final class MockLlamaRuntime implements LlamaRuntimeInterface
      *
      * @return list<float>
      */
-    public function evaluate(LlamaSession $session, array $tokens, int $nPast): array
+    public function evaluate(LlamaSession $session, array $tokens): array
     {
         $mock = $this->session($session);
         $target = $mock->cursor < \count($this->scripted) ? $this->scripted[$mock->cursor] : $this->eos;
@@ -120,7 +120,7 @@ final class MockLlamaRuntime implements LlamaRuntimeInterface
      *
      * @return array<int, float>
      */
-    public function evaluateTopK(LlamaSession $session, array $tokens, int $nPast, int $k): array
+    public function evaluateTopK(LlamaSession $session, array $tokens, int $k): array
     {
         if ($this->fixedTopK !== null) {
             return $this->fixedTopK;

@@ -87,26 +87,6 @@ if ($systemPath !== null) { return $systemPath; }
 
 
 
-## [УЛУЧШЕНИЕ] Игнорируемые параметры интерфейса рантайма: `$special` и `$nPast`
-
-Файл: `packages/llama-backend/src/Runtime/NativeLlamaRuntime.php`, строки 92-97, 111-116
-Категория: Качество
-
-Проблема: `LlamaRuntimeInterface` объявляет `tokenize(..., bool $special)` и `evaluate(..., int $nPast)`, но реализация их не передаёт в FFI. Для `$nPast` это осознанно (нативный слой сам ведёт позицию KV-кэша, см. комментарий в `ferry_llama.c`), но параметр в контракте вводит в заблуждение; `$special` же просто теряется без альтернативы в нативном API.
-
-Доказательство:
-```php
-public function tokenize(LlamaSession $session, string $text, bool $addBos = true, bool $special = true): array {
-    return $s->ffi->tokenize($s->model, $text, $addBos);   // $special отброшен
-}
-public function evaluate(LlamaSession $session, array $tokens, int $nPast): array {
-    return $s->ffi->eval($s->context, $s->model, $tokens, $s->nVocab); // $nPast отброшен
-}
-```
-
-Решение: реализовать `$special` в нативной обёртке либо убрать из контракта; для `$nPast` — либо задействовать, либо удалить из сигнатуры и задокументировать автоматическое отслеживание позиции.
-
----
 
 ## [УЛУЧШЕНИЕ] Нарушение правила «все исключения наследуют FerryAIException»
 
