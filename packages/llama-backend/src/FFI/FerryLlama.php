@@ -97,7 +97,7 @@ class FerryLlama
         $model = $this->ffi->ferry_load_model($path, $nGpuLayers);
 
         if ($model === null || \FFI::isNull($model)) {
-            throw new \RuntimeException(\sprintf('ferry_load_model failed for %s', $path));
+            throw new \FerryAI\Core\Exception\ModelLoadException($path, 'ferry_load_model failed');
         }
 
         return $model;
@@ -108,7 +108,7 @@ class FerryLlama
         $ctx = $this->ffi->ferry_new_context($model, $nCtx, $nThreads);
 
         if ($ctx === null || \FFI::isNull($ctx)) {
-            throw new \RuntimeException('ferry_new_context failed');
+            throw new \FerryAI\Core\Exception\InferenceException('ferry_new_context failed');
         }
 
         return $ctx;
@@ -181,7 +181,7 @@ class FerryLlama
         $written = $this->ffi->ferry_eval($ctx, $model, $in, $n, $out, $nVocab);
 
         if ($written < 0) {
-            throw new \RuntimeException('ferry_eval failed (llama_decode error)');
+            throw new \FerryAI\Core\Exception\InferenceException('ferry_eval failed (llama_decode error)');
         }
 
         $logits = [];
@@ -218,7 +218,7 @@ class FerryLlama
         $written = $this->ffi->ferry_eval_topk($ctx, $model, $in, $n, $k, $ids, $vals, $k);
 
         if ($written < 0) {
-            throw new \RuntimeException('ferry_eval_topk failed (llama_decode error)');
+            throw new \FerryAI\Core\Exception\InferenceException('ferry_eval_topk failed (llama_decode error)');
         }
 
         $logits = [];

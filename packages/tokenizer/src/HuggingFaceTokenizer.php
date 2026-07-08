@@ -237,7 +237,7 @@ final class HuggingFaceTokenizer implements Tokenizer
     private function assertLoaded(): void
     {
         if ($this->handle === null || $this->ffi === null) {
-            throw new \RuntimeException(
+            throw new \FerryAI\Core\Exception\TokenizerException(
                 'The native tokenizer binding is not loaded. Set FERRY_AI_TOKENIZERS_LIB and ensure the shared library is available.',
             );
         }
@@ -259,7 +259,7 @@ final class HuggingFaceTokenizer implements Tokenizer
             $lib = \getenv('FERRY_AI_TOKENIZERS_LIB');
 
             if ($lib === false || $lib === '' || !\is_file($lib)) {
-                throw new \RuntimeException('FERRY_AI_TOKENIZERS_LIB is not set or the file does not exist.');
+                throw new \FerryAI\Core\Exception\TokenizerException('FERRY_AI_TOKENIZERS_LIB is not set or the file does not exist.');
             }
 
             $ffi = \FFI::cdef(self::CDEF, $lib);

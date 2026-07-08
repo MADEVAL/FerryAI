@@ -88,44 +88,7 @@ if ($systemPath !== null) { return $systemPath; }
 
 
 
-## [УЛУЧШЕНИЕ] Нарушение правила «все исключения наследуют FerryAIException»
 
-Файл: `packages/core/src/RetryHandler.php:45`; `packages/llama-backend/src/Runtime/NativeLlamaRuntime.php:149,165`; `packages/cpu-backend/src/RubixMLAdapter.php:39,80,98,102`; `packages/tokenizer/src/HuggingFaceTokenizer.php:240`
-Категория: Архитектура
-
-Проблема: AGENTS.md требует, чтобы все исключения расширяли `FerryAIException` с `errorCode()`. В указанных местах бросаются нативные `\RuntimeException`/`\InvalidArgumentException`, которые ускользают из `catch (FerryAIException)` и ломают систему кодов `FERRY_AI_*`. (Все 12 классов в `Exception/` правилу соответствуют — нарушения только в этих не-exception-классах.)
-
-Доказательство:
-```php
-throw new \RuntimeException('Retry exhausted');                 // RetryHandler.php:45
-throw new \RuntimeException('ferry_llama wrapper not found...'); // NativeLlamaRuntime.php:149
-throw new \InvalidArgumentException('NativeLlamaRuntime requires a NativeLlamaSession.'); // :165
-throw new \RuntimeException('RubixML is not installed');        // RubixMLAdapter.php:39
-```
-
-Решение: заменить на подходящие подклассы `FerryAIException` (`InvalidStateException`, `BackendNotAvailableException`, новый `RetryExhaustedException` и т.п.).
-
----
-
-## [УЛУЧШЕНИЕ] Общая память: сегменты доступны всем (0644) и коллизии ключей crc32
-
-Файл: `packages/ai/src/SharedMemoryManager.php`, строки 45, 125
-Категория: Безопасность / Надёжность
-
-Проблема: сегменты создаются с правами `0644` (читаемы любым пользователем хоста); System V-ключ берётся как `crc32($modelId) & 0x7FFFFFFF` — 32-битная контрольная сумма, разные id могут дать один ключ, при этом `allocateModel` не проверяет владельца существующего сегмента. Функция опциональна: `ModelPool::shareModel()` из фасада `AI` сейчас не вызывается, но это публичный API.
-
-Доказательство:
-```php
-$shmId = \shmop_open($key, 'c', 0644, $size);          // 45 — world-readable
-// ...
-return \crc32($modelId) & 0x7FFFFFFF;                  // 125 — узкий ключ, возможны коллизии
-```
-
-Вектор / последствие: при использовании shared memory локальный пользователь может прочитать байты модели (утечка весов); коллизия ключей → одна модель читает байты другой между FPM-воркерами.
-
-Решение: права `0600`; ключ из более широкого хэша + реестр id→key с проверкой владения; при существующем сегменте проверять/пересоздавать по несовпадению размера.
-
----
 
 ## [УЛУЧШЕНИЕ] Logger: незачекан результат записи, нет ротации
 

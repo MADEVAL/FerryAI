@@ -153,7 +153,8 @@ final class NativeLlamaRuntime implements LlamaRuntimeInterface
             $wrapper = FerryLlama::resolveWrapperPath();
 
             if ($wrapper === null) {
-                throw new \RuntimeException(
+                throw new \FerryAI\Core\Exception\BackendNotAvailableException(
+                    'llama',
                     'ferry_llama wrapper not found. Set FERRY_AI_LLAMA_WRAPPER to ferry_llama.dll, '
                     . 'or FERRY_AI_LLAMA_LIB to llama.dll in the same directory. '
                     . 'Build it with native/llama-wrapper/build.ps1.',
@@ -169,7 +170,7 @@ final class NativeLlamaRuntime implements LlamaRuntimeInterface
     private function native(LlamaSession $session): NativeLlamaSession
     {
         if (!$session instanceof NativeLlamaSession) {
-            throw new \InvalidArgumentException('NativeLlamaRuntime requires a NativeLlamaSession.');
+            throw new \FerryAI\Core\Exception\InvalidStateException('NativeLlamaRuntime requires a NativeLlamaSession.');
         }
 
         return $session;

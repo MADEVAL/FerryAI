@@ -36,7 +36,7 @@ final class RubixMLAdapter implements Predictor
     public function loadModel(string $path): mixed
     {
         if (!$this->available) {
-            throw new \RuntimeException('RubixML is not installed');
+            throw new \FerryAI\Core\Exception\BackendNotAvailableException('rubixml', 'RubixML is not installed');
         }
 
         if (!\file_exists($path)) {
@@ -77,7 +77,7 @@ final class RubixMLAdapter implements Predictor
     public function predict(mixed $model, array $samples): array
     {
         if (!$this->available) {
-            throw new \RuntimeException('RubixML is not installed');
+            throw new \FerryAI\Core\Exception\BackendNotAvailableException('rubixml', 'RubixML is not installed');
         }
 
         $unlabeled = 'Rubix\ML\Datasets\Unlabeled';
@@ -95,11 +95,11 @@ final class RubixMLAdapter implements Predictor
     public function proba(mixed $model, array $samples): array
     {
         if (!$this->available) {
-            throw new \RuntimeException('RubixML is not installed');
+            throw new \FerryAI\Core\Exception\BackendNotAvailableException('rubixml', 'RubixML is not installed');
         }
 
         if (!$model instanceof \Rubix\ML\Probabilistic) {
-            throw new \RuntimeException('The estimator does not support probability estimates');
+            throw new \FerryAI\Core\Exception\InferenceException('The estimator does not support probability estimates');
         }
 
         $unlabeled = 'Rubix\ML\Datasets\Unlabeled';

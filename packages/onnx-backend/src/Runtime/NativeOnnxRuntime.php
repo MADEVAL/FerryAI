@@ -97,7 +97,7 @@ final class NativeOnnxRuntime implements OnnxRuntimeInterface
     private function model(OnnxSession $session): OrtModel
     {
         if (!$session instanceof NativeOnnxSession) {
-            throw new \InvalidArgumentException('NativeOnnxRuntime requires a NativeOnnxSession.');
+            throw new \FerryAI\Core\Exception\InvalidStateException('NativeOnnxRuntime requires a NativeOnnxSession.');
         }
 
         return $session->model();
