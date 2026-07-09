@@ -10,13 +10,14 @@ One API, full FFI bridge to native engines. Inference-only. PHP 8.3+.
 [![CI](https://github.com/MADEVAL/FerryAI/actions/workflows/ci.yml/badge.svg)](https://github.com/MADEVAL/FerryAI/actions/workflows/ci.yml)
 [![Version](https://img.shields.io/github/v/tag/MADEVAL/FerryAI?label=version&color=blue)](https://github.com/MADEVAL/FerryAI/tags)
 [![PHP](https://img.shields.io/badge/php-8.3%2B-777BB4?logo=php&logoColor=white)](https://www.php.net/)
+[![Tests](https://img.shields.io/badge/tests-793%2F793-brightgreen)](https://github.com/MADEVAL/FerryAI/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE.md)
 [![PHPStan](https://img.shields.io/badge/PHPStan-level%208-brightgreen.svg)](phpstan.neon)
 [![Psalm](https://img.shields.io/badge/Psalm-level%203-brightgreen.svg)](psalm.xml)
 
 > **Status: early release (`v0.1.0`).** The public API is stabilizing and may change before `1.0` —
 > pin a version and skim the [CHANGELOG](CHANGELOG.md) when upgrading. Code quality is production-grade
-> (PHPStan level 8, Psalm level 3, full unit suite green on Windows + Linux).
+> (PHPStan level 8, Psalm level 3, 793 tests green on Windows + Linux).
 
 ## Contents
 
@@ -26,8 +27,7 @@ One API, full FFI bridge to native engines. Inference-only. PHP 8.3+.
 - [Vector store](#vector-store)
 - [Observability & model pool](#observability--model-pool)
 - [Install](#install)
-- [Dependencies & downloads](#dependencies--downloads)
-- [LLM on CPU & GPU (llama.cpp)](#llm-on-cpu--gpu-llamacpp)
+- [Dependencies](#dependencies)
 - [Capabilities](#capabilities)
 - [Packages](#packages)
 - [Testing](#testing)
@@ -39,37 +39,57 @@ One API, full FFI bridge to native engines. Inference-only. PHP 8.3+.
 
 ## Quick example
 
+**Embeddings & vector search** — semantic RAG in 8 lines:
+
 ```php
 use FerryAI\AI;
 
 AI::config([
     'backend' => 'onnx',
-    'device' => 'cpu',
-    'backends' => ['embedding' => ['model_path' => '/path/to/all-MiniLM-L6-v2-onnx']],
+    'backends' => ['embedding' => ['model_path' => '/models/all-MiniLM-L6-v2-onnx']],
 ]);
 
-$vec = AI::embed('Hello world');              // reads model.onnx + tokenizer.json from the dir
-echo $vec->dimension;                         // 384
-
-$sim = AI::similarity('cat', 'kitten');       // 0.79
-
+// embed → 384d vector, then store and search
+$vec = AI::embed('Hello world');
 $store = AI::vector('docs');
 $store->add('doc1', $vec->vector, ['title' => 'Getting Started']);
-$hits = $store->search(AI::embed('hello')->vector, k: 5);
+$hits = $store->search(AI::embed('semantic query')->vector, k: 5);
 
+// similarity between any two texts
+echo AI::similarity('cat', 'kitten');   // 0.79
+
+// compose a processing pipeline
 $results = AI::pipeline()
     ->pipe(new TransformStage(strtoupper(...)))
     ->pipe(new FilterStage(fn($x) => strlen($x) > 3))
     ->run(['hi', 'hello', 'hey']);
 ```
 
-Chat with a local LLM in three lines:
+**Chat & streaming** — local LLM in 3 lines:
 
 ```php
 AI::config(['backend' => 'llama', 'backends' => ['llama' => ['model_path' => '/models/qwen.gguf']]]);
 
-echo AI::chat('Explain PHP FFI in one sentence.');   // full reply
+echo AI::chat('Explain PHP FFI in one sentence.');        // full reply
 foreach (AI::stream('Write a haiku about ferries.') as $token) { echo $token; }
+
+// structured output via JSON Schema → GBNF grammar
+$json = AI::chat('List 3 famous bridges with year and city.', [
+    'grammar' => [
+        'type' => 'object',
+        'properties' => ['bridges' => [
+            'type' => 'array',
+            'items' => ['type' => 'object', 'properties' => [
+                'name' => ['type' => 'string'],
+                'year' => ['type' => 'integer'],
+                'city' => ['type' => 'string'],
+            ]],
+        ]],
+    ],
+]);
+
+// HTTP streaming response (PSR-7 SSE/NDJSON) for web apps
+return AI::streamResponse([['role' => 'user', 'content' => $prompt]]);
 ```
 
 ---
@@ -82,20 +102,52 @@ foreach (AI::stream('Write a haiku about ferries.') as $token) { echo $token; }
 | Latency | Zero-copy FFI → sub-ms overhead | HTTP round-trip per inference |
 | Memory | Shared weights across workers (shmop) | Duplicated per process |
 | Debugging | PHP stack traces, xdebug | Cross-process tracing |
+| Structured output | JSON Schema → GBNF grammar, guaranteed valid JSON | Prompt engineering + regex hacks |
+| Model cache | Built-in HuggingFace download + LRU cache + SHA-256 verify | Manual pip + custom scripts |
 | Type safety | PHPStan level 8 + Psalm level 3 | mypy (optional) |
+| Streaming | Native PHP Generator + SSE/NDJSON PSR-7 response | Flask/FastAPI streaming boilerplate |
 
 FerryAI loads native shared libraries (`onnxruntime.dll`, `llama.dll`) directly via PHP FFI —
-the same C APIs that Python uses. No subprocess, no shell_exec, no Python.
+the same C APIs that Python uses. No subprocess, no `shell_exec`, no Python. Tokenizers, vector
+search and tensor math all run in pure PHP when native equivalents are unavailable.
 
 ---
 
 ## Backends
 
-| Backend | Status | What it does |
-|---------|--------|-------------|
-| **ONNX** | 🟢 Production | Embeddings, classification, any `.onnx`. Runs on CPU (and CUDA GPU when the runtime + cuDNN/curand/cufft are present); e.g. all-MiniLM-L6-v2 produces 384d vectors. |
-| **Llama** | 🟢 CPU + GPU | Real chat/generation via a thin `ferry_llama` C wrapper over llama.cpp; runs on CPU and CUDA GPU on Windows and Linux. See [`native/llama-wrapper`](native/llama-wrapper). |
-| **CPU Native** | 🟢 Always | Pure-PHP tensor math (add/sub/mul/matmul/transpose/reshape/slice) + RubixML `.rbm` inference (optional). No native deps for tensor ops. |
+| Backend | Drives | Highlights |
+|---------|--------|-----------|
+| **ONNX Runtime** | `embed()` `similarity()` `classify()` `moderate()` | Any `.onnx` model. CPU + CUDA/ROCm/DirectML/OpenVINO GPU. Auto-fallback to CPU when GPU deps are missing. All-MiniLM-L6-v2 → 384d vectors. |
+| **llama.cpp** | `chat()` `stream()` `streamResponse()` | Real LLM chat & token-by-token streaming. Runs on CPU and CUDA GPU (Windows + Linux). Samplers: greedy, top-k, top-p, **GBNF grammar**. JSON Schema → GBNF for guaranteed structured output. ChatFormatter with 5 message templates. |
+| **CPU Native** | `predict()` + tensor ops | Pure-PHP tensor math (matmul, transpose, reshape, slice). Optional RubixML `.rbm` tabular inference. Always available, no native deps. |
+
+### LLM in detail
+
+| Path | Support |
+|------|---------|
+| `AI::chat()` / `AI::stream()` (CPU) | ✅ real chat via `LlamaBackend` + `ferry_llama` wrapper, Windows and Linux |
+| `AI::chat()` / `AI::stream()` (GPU, CUDA) | ✅ layer offload via `GGML_CUDA=ON` build |
+| Safetensors→GGUF models (e.g. Qwen3-0.6B) | ✅ one-time `convert_hf_to_gguf.py`, then native inference |
+| ONNX embeddings (GPU, CUDA) | ✅ CUDA provider auto-detected, silent CPU fallback |
+
+```php
+AI::config([
+    'backend'  => 'llama',
+    'device'   => 'cuda',   // or 'cpu'
+    'backends' => ['llama' => ['model_path' => '/models/model.gguf', 'n_gpu_layers' => 35]],
+]);
+
+echo AI::chat('Summarize FFI in PHP.');
+```
+
+Configure the wrapper via `FERRY_AI_LLAMA_WRAPPER` (or `FERRY_AI_LLAMA_LIB`), add that dir to
+`PATH`. Sampling is per-request: `temperature: 0` → greedy, `> 0` → top-p; force one with
+`['sampler' => 'top_k']` or supply a `['grammar' => '<gbnf>']` / JSON Schema.
+Build steps: [`docs/DOCUMENTATION.md`](docs/DOCUMENTATION.md) ·
+[native/llama-wrapper/README.md](native/llama-wrapper/README.md).
+Run: [`examples/03-chat.php`](examples/03-chat.php) ·
+[`examples/04-streaming.php`](examples/04-streaming.php) ·
+[`examples/09-grammar.php`](examples/09-grammar.php).
 
 ---
 
@@ -103,50 +155,47 @@ the same C APIs that Python uses. No subprocess, no shell_exec, no Python.
 
 Two interchangeable backends behind the same `VectorStore` contract — pick per environment:
 
-| Backend | Status | Search | Best for |
-|---------|--------|--------|----------|
-| **SQLite** | 🟢 Production | PHP brute-force, or native KNN via **sqlite-vec** (vec0) when `FERRY_AI_VEC_EXTENSION_LIB` is set | Dev, demos, embedded, single-file |
-| **PostgreSQL + pgvector** | 🟢 Production | Native `<=>` / `<->` / `<#>`, HNSW / IVFFlat indexes | Production, large collections, concurrent access |
+| Backend | Search | Best for |
+|---------|--------|----------|
+| **SQLite** | Brute-force, or native KNN via **sqlite-vec** (vec0 ANN) when available | Dev, demos, embedded, single-file |
+| **PostgreSQL + pgvector** | Native `<=>` / `<->` / `<#>`, HNSW / IVFFlat indexes | Production, large collections, concurrency |
 
 ```php
-use FerryAI\AI;
-
-// Opt in via config or FERRY_AI_VECTOR_DRIVER=pgsql (default: sqlite)
 AI::config(['vector' => [
-    'driver' => 'pgsql',
+    'driver' => 'pgsql',                                     // or omit for SQLite
     'dsn' => 'pgsql:host=127.0.0.1;port=5432',
     'user' => 'postgres', 'password' => 'postgres',
 ]]);
 
-$store = AI::vector('docs');                       // PostgresCollection (implements VectorStore)
+$store = AI::vector('docs');
 $store->add('doc1', $vec->vector, ['lang' => 'en']);
 $hits = $store->search($query, k: 5, filter: ['lang' => ['eq' => 'en']]);
 ```
 
-The SQLite backend transparently uses **sqlite-vec** (vec0 virtual tables) for native KNN when the
-extension is available, and falls back to a pure-PHP brute-force scan otherwise — filters always work.
-See [`examples/21-postgres-vector.php`](examples/21-postgres-vector.php) and
+SQLite transparently uses **sqlite-vec** (vec0 virtual tables) for native KNN on PHP 8.4+,
+and falls back to pure-PHP brute-force otherwise — filters always work.
+[`examples/21-postgres-vector.php`](examples/21-postgres-vector.php) ·
 [`examples/23-sqlite-vec.php`](examples/23-sqlite-vec.php).
 
 ---
 
 ## Observability & model pool
 
-Cross-cutting instrumentation is applied at the facade layer (backends stay isolated) and is
-**off by default** — enable per channel via config:
+Instrumentation lives at the facade layer (backends stay isolated). **Off by default** —
+zero overhead when disabled:
 
 ```php
 AI::config(['observability' => ['metrics' => true, 'profiling' => true, 'logging' => true]]);
 
 AI::embed('hello');                 // automatically timed, counted and logged
-print_r(FerryAI\Metrics::report()); // counters + timing histograms
-print_r(FerryAI\Profiler::report());// per-operation count/avg/min/max
+print_r(FerryAI\Metrics::report()); // counters + timing histograms per operation
+print_r(FerryAI\Profiler::report());// per-operation count / avg / min / max ms
 ```
 
-`AI::warmup([...])` preloads models into a shared `ModelPool` (memory-bounded LRU eviction);
-`classify()`/`moderate()`/`predict()`/`chat()` reuse pooled instances. Model downloads retry
-transient failures via `RetryHandler`, and `ModelPool` can opt into cross-worker weight sharing
-(`ext-shmop`). See [`examples/22-observability.php`](examples/22-observability.php).
+`AI::warmup([...])` preloads models into a memory-bounded LRU `ModelPool`;
+`classify()` / `moderate()` / `predict()` / `chat()` reuse pooled instances.
+Opt into cross-worker weight sharing via `ext-shmop`. Downloads retry transient failures.
+[`examples/22-observability.php`](examples/22-observability.php).
 
 ---
 
@@ -158,88 +207,108 @@ composer require ferry-ai/php-inference
 
 Base requirements: **PHP 8.3+**, `ext-ffi`, `ext-json`, `ext-hash`, `ext-fileinfo`.
 
-Everything else is **optional and on-demand** — install only what a feature needs.
-FerryAI degrades gracefully (pure-PHP fallback or a clear "not available") when a native
-library, extension, or model is missing. Canonical, version-checked source list:
-[`docs/SOURCES.md`](docs/SOURCES.md).
+**After install — run the diagnostic** to see what's available:
 
----
+```bash
+vendor/bin/ferry-ai check              # PHP, extensions, backends, cache — full report
+vendor/bin/ferry-ai check --json       # machine-readable
 
-## Dependencies & downloads
-
-What each capability needs, why, where it goes, and the exact source. Versions intentionally
-omitted — always take the latest compatible build from the linked source.
-
-| Capability | PHP side (composer / ext) | Native artifact to download & why | Where it goes / how to enable | Source |
-|-----------|---------------------------|-----------------------------------|-------------------------------|--------|
-| Embeddings / classification (ONNX) | `ankane/onnxruntime` (auto) + `ext-ffi` | ONNX Runtime shared lib — CPU by default. On Linux run `php -r 'OnnxRuntime\\Vendor::check();'` to auto-download. | Extract into `vendor/ankane/onnxruntime/lib/…/lib/` | github.com/microsoft/onnxruntime/releases · onnxruntime.ai |
-| ONNX model file | — | `model.onnx` + `tokenizer.json` — the actual network + vocab | Any dir; point config / `FERRY_AI_MODEL_DIR` at it | huggingface.co (e.g. `sentence-transformers/all-MiniLM-L6-v2`) |
-| LLM chat / streaming (llama.cpp) | `ext-ffi` | llama.cpp shared libs `llama.*` + `ggml*.*` (+ deps) — the inference engine | Extract to a dir; set `FERRY_AI_LLAMA_LIB` and add the dir to `PATH` | github.com/ggml-org/llama.cpp/releases |
-| GGUF model file | — | `*.gguf` quantized weights + tokenizer | Any dir; `backends.llama.model_path` | huggingface.co (e.g. `bartowski/*-GGUF`) |
-| GPU (ONNX CUDA / llama.cpp) | — | GPU-enabled native build **+** NVIDIA CUDA Toolkit (ONNX also needs cuDNN/curand/cufft) | See the GPU setup guide in [`docs/DOCUMENTATION.md`](docs/DOCUMENTATION.md) | onnxruntime / llama.cpp releases · developer.nvidia.com |
-| Native HuggingFace tokenizer (**optional**; pure-PHP BPE/WordPiece works without) | `ext-ffi` | tokenizers-cpp shared lib — optional, pure-PHP BPE/WordPiece covers all types | `FERRY_AI_TOKENIZERS_LIB` | github.com/mlc-ai/tokenizers-cpp |
-| Vector store — SQLite (default) | `ext-pdo_sqlite` (bundled with PHP) | — (pure-PHP brute-force search) | works out of the box | sqlite.org (bundled) |
-| Vector ANN — sqlite-vec | `ext-pdo_sqlite` | `vec0.{dll,so,dylib}` loadable extension — native KNN in SQLite | `FERRY_AI_VEC_EXTENSION_LIB` = path to the lib | github.com/asg017/sqlite-vec/releases |
-| Vector store — PostgreSQL | `ext-pdo_pgsql` | PostgreSQL server **+** the **pgvector** extension — production ANN (`<=>`, HNSW/IVFFlat) | `FERRY_AI_VECTOR_DRIVER=pgsql` + `FERRY_AI_PG_DSN/USER/PASSWORD` (or `vector.*` config) | postgresql.org/download · github.com/pgvector/pgvector |
-| CPU tabular ML (RubixML) | `rubix/ml` via `composer require` — **isolated** | `.rbm` serialized estimator | `FERRY_AI_RUBIXML_AUTOLOAD` = path to the isolated `vendor/autoload.php` | github.com/RubixML/ML · github.com/RubixML/Tensor |
-| Model Hub / HuggingFace download | `ext-curl`, `ext-zip`, `ext-sodium` (Ed25519 verify) | models pulled from the Hub on demand | `FERRY_AI_MODEL_CACHE` = cache dir | huggingface.co |
-| Safetensors models (conversion) | Python 3.10+, `torch`, `safetensors` | `convert_hf_to_gguf.py` from llama.cpp — converts HF safetensors to GGUF | Run once; then point `backends.llama.model_path` at the `.gguf` output | [docs/safetensors-conversion.md](docs/safetensors-conversion.md) |
-| Shared model weights across workers | `ext-shmop` | — | `model_pool.shared_memory=true` | PHP bundled |
-
-> **GPU setup** (ONNX CUDA on Windows/Linux, extracting cuDNN/curand/cufft, and the full llama.cpp
-> `ferry_llama` build) has a dedicated step-by-step guide in
-> [`docs/DOCUMENTATION.md`](docs/DOCUMENTATION.md) → *Quick Start → GPU setup*. The `OnnxBackend::load()`
-> CPU-fallback handles a missing GPU runtime automatically.
-
----
-
-## LLM on CPU & GPU (llama.cpp)
-
-llama.cpp inference runs through PHP on both CPU and CUDA GPU, on Windows and Linux:
-
-| Path | Support |
-|------|---------|
-| Native `llama-cli` / `llama-bench` (CPU / CUDA) | ✅ standard llama.cpp tooling |
-| **`AI::chat()` / `AI::stream()`** (CPU) | ✅ real chat via `LlamaBackend` + wrapper, Windows and Linux |
-| **`AI::chat()` / `AI::stream()`** (GPU, CUDA) | ✅ layer offload via a CUDA-enabled llama.cpp build (`GGML_CUDA=ON`) |
-| **`AI::chat()`** (safetensors→GGUF models, e.g. Qwen3-0.6B) | ✅ after conversion to GGUF |
-| **ONNX embeddings** (GPU, CUDA) | ✅ CUDA provider (`availableDevices = cuda,cpu`) when present |
-
-```php
-AI::config([
-    'backend'  => 'llama',
-    'device'   => 'cuda',   // or 'cpu'
-    'backends' => ['llama' => ['model_path' => 'C:\llama\model.gguf', 'n_gpu_layers' => 35]],
-]);
-
-echo AI::chat('Summarize FFI in PHP.');
+# Download models from HuggingFace and start using them immediately
+vendor/bin/ferry-ai models:download sentence-transformers/all-MiniLM-L6-v2
+vendor/bin/ferry-ai chat "Explain FFI in one sentence."
+vendor/bin/ferry-ai chat "Hello" --stream --max=100
 ```
 
-Sampling is per request: `temperature: 0` → greedy, `> 0` → nucleus; force one with
-`AI::chat($msgs, ['sampler' => 'top_k'])` or `['grammar' => '<gbnf>']`. Point FerryAI at the wrapper
-via `FERRY_AI_LLAMA_WRAPPER` (or `FERRY_AI_LLAMA_LIB`) and add that dir to `PATH`.
-Full build steps and the flat wrapper API: [`docs/DOCUMENTATION.md`](docs/DOCUMENTATION.md) and
-[`native/llama-wrapper/README.md`](native/llama-wrapper/README.md). Runnable:
-[`examples/03-chat.php`](examples/03-chat.php), [`examples/04-streaming.php`](examples/04-streaming.php).
+Everything else is **optional and on-demand** — install only what a feature needs.
+FerryAI degrades gracefully (pure-PHP fallback or a clear "not available" message) when a
+native library or model is missing.
+
+---
+
+## Dependencies
+
+What you need for each capability. Full source list with versions: [`docs/SOURCES.md`](docs/SOURCES.md).
+
+| Capability | PHP side | Native artifact | Config |
+|-----------|----------|-----------------|--------|
+| ONNX (embeddings, classification) | `ext-ffi` | ONNX Runtime lib | `FERRY_AI_MODEL_DIR` or `backends.embedding.model_path` |
+| LLM chat / streaming | `ext-ffi` | llama.cpp + `ferry_llama` wrapper | `FERRY_AI_LLAMA_DIR` / `FERRY_AI_LLAMA_LIB` |
+| GPU (ONNX CUDA / llama.cpp) | — | CUDA Toolkit + cuDNN for ONNX | `device: 'cuda'` + GPU-enabled build |
+| Vector store (SQLite) | `ext-pdo_sqlite` (bundled) | — | works out of the box |
+| Vector ANN (sqlite-vec) | `ext-pdo_sqlite` | `vec0.{dll,so,dylib}` | `FERRY_AI_VEC_EXTENSION_LIB` |
+| Vector store (PostgreSQL) | `ext-pdo_pgsql` | PostgreSQL + pgvector | `FERRY_AI_VECTOR_DRIVER=pgsql` |
+| Model Hub / HuggingFace | `ext-curl`, `ext-zip`, `ext-sodium` | — | `FERRY_AI_MODEL_CACHE` |
+| CPU tabular ML (RubixML) | `rubix/ml` (isolated) | `.rbm` estimator | `FERRY_AI_RUBIXML_AUTOLOAD` |
+| Native tokenizer (optional) | `ext-ffi` | tokenizers-cpp lib | `FERRY_AI_TOKENIZERS_LIB` |
+| Shared weights (workers) | `ext-shmop` | — | `model_pool.shared_memory=true` |
+
+GPU setup guide (CUDA/cuDNN/curand/cufft + llama.cpp build):
+[`docs/DOCUMENTATION.md`](docs/DOCUMENTATION.md) → *Quick Start → GPU setup*.
+GPU→CPU fallback is automatic and silent.
 
 ---
 
 ## Capabilities
 
-| Component | Status |
-|-----------|--------|
-| ONNX Runtime FFI load | ✅ `isAvailable()`, version, CPU device |
-| ONNX inference e2e | ✅ Embed text → 384d vector (all-MiniLM-L6-v2), cosine similarity |
-| llama.cpp inference via PHP FFI | ✅ CPU + GPU through the `ferry_llama` wrapper |
-| GPU (CUDA) — llama.cpp | ✅ layer offload with a CUDA-enabled llama.cpp build |
-| GPU (CUDA) — ONNX | ✅ CUDA provider on Windows and Linux |
-| HuggingFace API | ✅ model search + download |
-| Vector store | ✅ SQLite CRUD, brute-force + sqlite-vec (vec0) native KNN, metadata filter |
-| Vector store (Postgres) | ✅ pgvector native `<=>` search, HNSW index, metadata filter |
-| CPU backend | ✅ Tensor math (matmul/transpose/reshape/slice); RubixML `.rbm` predict/proba (isolated) |
-| Shared memory (shmop) | ✅ Allocate, attach, detach |
-| Async fibers | ✅ Suspend/resume, parallel tasks, timeout |
-| Windows / Linux | ✅ Unit tests + static analysis; native backends run on both |
+### Inference
+
+| Capability | Description |
+|-----------|-------------|
+| `AI::embed()` / `AI::similarity()` | Text → vector, cosine similarity. 4 pooling strategies (mean, cls, eos, max). Batch embedding. |
+| `AI::chat()` / `AI::stream()` | LLM chat & token-by-token streaming. Samplers: greedy, top-k, top-p, GBNF grammar. |
+| `AI::streamResponse()` | PSR-7 SSE/NDJSON streaming HTTP response for web apps. |
+| `AI::classify()` | Run classification `.onnx` models (or CPU-native fallback). |
+| `AI::moderate()` | Content moderation with per-category scores and a `flagged` boolean. |
+| `AI::predict()` | CPU-native tabular prediction via pure-PHP tensor ops or RubixML `.rbm` models. |
+
+### Structured generation
+
+| Capability | Description |
+|-----------|-------------|
+| GBNF grammar | Constrain LLM output to a formal grammar. Guaranteed valid JSON, enum values, DSLs. |
+| JSON Schema → GBNF | Pass a JSON Schema object as `grammar` — auto-converted to GBNF. No prompt engineering needed. |
+
+### Vector store
+
+| Capability | Description |
+|-----------|-------------|
+| SQLite store | CRUD, brute-force KNN, metadata filtering. Optional sqlite-vec (vec0) native ANN. |
+| PostgreSQL + pgvector | Native `<=>` / `<->` / `<#>`, HNSW/IVFFlat indexes. Metadata filtering. |
+| `AI::pipeline()` | Composable Generator-based pipeline with 8 built-in stages: chunk, tokenize, embed, classify, normalize, filter, store, transform. |
+
+### Model management
+
+| Capability | Description |
+|-----------|-------------|
+| Model Hub | Download from HuggingFace with progress. SHA-256 + Ed25519 signature verification. LRU cache with size limits. |
+| Model pool | Memory-bounded LRU eviction. Opt-in cross-worker weight sharing via `ext-shmop`. |
+| `AI::warmup()` | Preload models into the pool so first inference is instant. |
+| Auto GPU→CPU fallback | ONNX silently retries on CPU when GPU providers are missing (incomplete CUDA installs). |
+
+### Concurrency
+
+| Capability | Description |
+|-----------|-------------|
+| FiberPipeline | Pipeline with cooperative concurrency and wall-clock timeout support. |
+| AsyncInference | `runAsync()` / `runParallel()` — run multiple inferences concurrently via PHP Fibers. |
+
+### Developer experience
+
+| Capability | Description |
+|-----------|-------------|
+| `ferry-ai check` | Full environment diagnostic: PHP, extensions, backends, cache — with `--json` mode. |
+| `ferry-ai models:download` / `chat` | CLI model management and single-turn chat. |
+| Pure-PHP tokenizers | BPE and WordPiece tokenizers with zero native dependencies. |
+| Pure-PHP tensor math | matmul, transpose, reshape, slice — always available. |
+| Framework adapters | Thin Laravel ServiceProvider and Symfony Bundle included. |
+
+### Platform
+
+| | |
+|---|---|
+| **Windows** | ✅ Unit + integration (ONNX, llama.cpp, SQLite, PostgreSQL) |
+| **Linux** | ✅ Unit + integration (all backends including CUDA) |
+| **macOS** | ✅ Supported (CI-targeted, not yet in active integration matrix) |
 
 ---
 
@@ -269,22 +338,22 @@ packages/
 ## Testing
 
 ```bash
-composer test                # Unit tests — pure PHP
+composer test                # Unit tests — 793 pure-PHP tests
 composer test-integration    # Integration — needs ONNX Runtime / llama.cpp / PostgreSQL
-composer check               # cs-fix + PHPStan lvl8 + Psalm lvl3 + tests — fully green
+composer check               # Lint (CS + PHPStan lvl8 + Psalm lvl3) + unit tests — gate
 ```
 
 ---
 
 ## Examples
 
-See [`examples/`](examples/) — 26 standalone scripts covering every capability:
-embedding, tokenizer, chat, streaming, RAG, pipeline, vector store (SQLite +
-sqlite-vec & PostgreSQL/pgvector), grammar, model hub, profiling, async, model pool,
-observability, retry, CPU tensor math + RubixML, benchmarks, Laravel, Symfony.
+[`examples/`](examples/) — 26 standalone scripts covering every capability:
+embedding, tokenizer, chat, streaming, RAG, pipeline, SQLite + sqlite-vec &
+PostgreSQL/pgvector, grammar-constrained generation, model hub, profiling, async fibers,
+model pool, observability, retry, CPU tensor math + RubixML, benchmarks, Laravel, Symfony.
 
 ```bash
-set FERRY_AI_MODEL_DIR=C:\llama\all-MiniLM-L6-v2-onnx
+set FERRY_AI_MODEL_DIR=C:\models\all-MiniLM-L6-v2-onnx
 php examples/01-hello-embedding.php
 ```
 
@@ -292,7 +361,7 @@ php examples/01-hello-embedding.php
 
 ## Documentation
 
-Start here: **[`docs/DOCUMENTATION.md`](docs/DOCUMENTATION.md)** — the definitive single-file reference
+Start here: **[`docs/DOCUMENTATION.md`](docs/DOCUMENTATION.md)** — definitive single-file reference
 (architecture, facade API, contracts, GPU setup).
 
 Guides: [getting-started](docs/getting-started.md) ·

@@ -66,3 +66,4 @@ benchmarks/models/
 
 # Internal audit report — not part of the published package
 report-code-quality.md
+tools/
