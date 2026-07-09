@@ -1,7 +1,7 @@
 # ferry-ai/inference-vector
 
 Vector storage and similarity search for [FerryAI](https://github.com/MADEVAL/FerryAI), the
-inference-only runtime for PHP 8.5+. Backed by SQLite or PostgreSQL/pgvector.
+inference-only runtime for PHP 8.3+. Backed by SQLite or PostgreSQL/pgvector.
 
 ## Installation
 
@@ -20,7 +20,7 @@ composer require ferry-ai/inference-vector
 
 ## Requirements
 
-- PHP >= 8.5
+- PHP >= 8.3
 - `ferry-ai/inference-core`
 - `ext-pdo`
 - Suggested: `ext-pdo_sqlite`, `ext-pdo_pgsql`, `ext-ffi` (sqlite-vec), a running PostgreSQL + pgvector

@@ -1,7 +1,7 @@
 # ferry-ai/inference-core
 
 Core contracts, enums, value objects and exceptions for [FerryAI](https://github.com/MADEVAL/FerryAI) —
-an inference-only runtime for PHP 8.5+ with a unified API over ONNX Runtime, llama.cpp and RubixML.
+an inference-only runtime for PHP 8.3+ with a unified API over ONNX Runtime, llama.cpp and RubixML.
 
 This is the base package: every other FerryAI package depends on it, and it depends on nothing internal.
 
@@ -27,7 +27,7 @@ composer require ferry-ai/inference-core
 
 ## Requirements
 
-- PHP >= 8.5
+- PHP >= 8.3
 
 ## License
 

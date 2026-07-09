@@ -1,6 +1,6 @@
 # ferry-ai/inference-tokenizer
 
-Tokenizers for [FerryAI](https://github.com/MADEVAL/FerryAI), the inference-only runtime for PHP 8.5+.
+Tokenizers for [FerryAI](https://github.com/MADEVAL/FerryAI), the inference-only runtime for PHP 8.3+.
 Ships pure-PHP BPE and WordPiece implementations plus a native HuggingFace tokenizer binding.
 
 ## Installation
@@ -20,7 +20,7 @@ The pure-PHP tokenizers work with no native dependency; the native binding is us
 
 ## Requirements
 
-- PHP >= 8.5
+- PHP >= 8.3
 - `ferry-ai/inference-core`
 - `ext-ffi` at runtime (only for the native HuggingFace tokenizer)
 

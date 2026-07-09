@@ -1,7 +1,7 @@
 # ferry-ai/inference-tensor
 
 Pure-PHP tensor implementation for [FerryAI](https://github.com/MADEVAL/FerryAI), the inference-only
-runtime for PHP 8.5+.
+runtime for PHP 8.3+.
 
 ## Installation
 
@@ -20,7 +20,7 @@ composer require ferry-ai/inference-tensor
 
 ## Requirements
 
-- PHP >= 8.5
+- PHP >= 8.3
 - `ferry-ai/inference-core`
 
 ## License

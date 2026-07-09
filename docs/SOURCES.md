@@ -7,9 +7,10 @@
 
 ## 1. PHP Language and Runtime
 
+- PHP 8.3 (release): https://www.php.net/releases/8.3/
+- PHP 8.3 (migration): https://www.php.net/manual/en/migration83.php
+- PHP 8.4 (migration): https://www.php.net/manual/en/migration84.php
 - PHP 8.5 (release): https://www.php.net/releases/8.5/
-- PHP 8.5 (migration): https://www.php.net/manual/en/migration85.php
-- PHP 8.4 (migration, Property Hooks, etc.): https://www.php.net/manual/en/migration84.php
 - PHP RFC Index: https://wiki.php.net/rfc
 - PHP Internals (discussions, 8.6): https://externals.io/
 

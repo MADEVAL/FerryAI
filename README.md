@@ -5,11 +5,11 @@
 # FerryAI — native AI inference for PHP
 
 **Run ONNX, GGUF, and RubixML models directly in PHP — no Python, no HTTP microservices, no Docker sidecars.**
-One API, full FFI bridge to native engines. Inference-only. PHP 8.5+.
+One API, full FFI bridge to native engines. Inference-only. PHP 8.3+.
 
 [![CI](https://github.com/MADEVAL/FerryAI/actions/workflows/ci.yml/badge.svg)](https://github.com/MADEVAL/FerryAI/actions/workflows/ci.yml)
 [![Version](https://img.shields.io/github/v/tag/MADEVAL/FerryAI?label=version&color=blue)](https://github.com/MADEVAL/FerryAI/tags)
-[![PHP](https://img.shields.io/badge/php-8.5%2B-777BB4?logo=php&logoColor=white)](https://www.php.net/)
+[![PHP](https://img.shields.io/badge/php-8.3%2B-777BB4?logo=php&logoColor=white)](https://www.php.net/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE.md)
 [![PHPStan](https://img.shields.io/badge/PHPStan-level%208-brightgreen.svg)](phpstan.neon)
 [![Psalm](https://img.shields.io/badge/Psalm-level%203-brightgreen.svg)](psalm.xml)
@@ -156,7 +156,7 @@ transient failures via `RetryHandler`, and `ModelPool` can opt into cross-worker
 composer require ferry-ai/php-inference
 ```
 
-Base requirements: **PHP 8.5+**, `ext-ffi`, `ext-json`, `ext-hash`, `ext-fileinfo`.
+Base requirements: **PHP 8.3+**, `ext-ffi`, `ext-json`, `ext-hash`, `ext-fileinfo`.
 
 Everything else is **optional and on-demand** — install only what a feature needs.
 FerryAI degrades gracefully (pure-PHP fallback or a clear "not available") when a native

@@ -12,7 +12,7 @@ use FerryAI\Vector\SqliteVecExtension;
 echo "=== 23 — SQLite + sqlite-vec (vec0) ANN ===\n\n";
 
 if (!class_exists(\Pdo\Sqlite::class)) {
-    echo "SKIP: Pdo\\Sqlite is not available (needs PHP 8.4+).\n";
+    echo "SKIP: Pdo\\Sqlite::loadExtension is not available (PHP 8.4+ required for native ANN).\n";
     echo "=== OK ===\n";
     exit(0);
 }

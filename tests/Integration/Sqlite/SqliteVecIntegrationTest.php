@@ -31,7 +31,7 @@ final class SqliteVecIntegrationTest extends TestCase
         }
 
         if (!\class_exists(\Pdo\Sqlite::class)) {
-            self::markTestSkipped('Pdo\\Sqlite is not available.');
+            self::markTestSkipped('Pdo\\Sqlite::loadExtension is not available (PHP 8.4+ required for native ANN).');
         }
 
         $env = getenv('FERRY_AI_VEC_EXTENSION_LIB');

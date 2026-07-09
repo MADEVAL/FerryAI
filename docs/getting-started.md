@@ -5,7 +5,7 @@ sidecars. This guide gets you from install to a first embedding and chat.
 
 ## Requirements
 
-- PHP **8.5+** with `ext-ffi`, `ext-json`, `ext-hash`, `ext-fileinfo`.
+- PHP **8.3+** with `ext-ffi`, `ext-json`, `ext-hash`, `ext-fileinfo`.
 - Optional native libraries / models per capability — see the
   [Dependencies & downloads](../README.md#dependencies--downloads) matrix.
 

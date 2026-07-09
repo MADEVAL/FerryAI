@@ -1,7 +1,7 @@
 # ferry-ai/inference-llama-backend
 
 llama.cpp inference backend for [FerryAI](https://github.com/MADEVAL/FerryAI), the inference-only
-runtime for PHP 8.5+. Provides LLM chat, token streaming, sampling and grammar-constrained generation.
+runtime for PHP 8.3+. Provides LLM chat, token streaming, sampling and grammar-constrained generation.
 
 ## Installation
 
@@ -20,7 +20,7 @@ composer require ferry-ai/inference-llama-backend
 
 ## Requirements
 
-- PHP >= 8.5
+- PHP >= 8.3
 - `ferry-ai/inference-core`
 - `ext-ffi` at runtime
 - Native libraries: the `ferry_llama` wrapper plus `libllama` / `libggml*`, and a `.gguf` model.

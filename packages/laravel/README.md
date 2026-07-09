@@ -1,7 +1,7 @@
 # ferry-ai/inference-laravel
 
 Laravel integration for [FerryAI](https://github.com/MADEVAL/FerryAI), the inference-only runtime for
-PHP 8.5+. A thin adapter that wires FerryAI into the Laravel container.
+PHP 8.3+. A thin adapter that wires FerryAI into the Laravel container.
 
 ## Installation
 
@@ -18,7 +18,7 @@ Configuration is published to the app config directory; set model paths and back
 
 ## Requirements
 
-- PHP >= 8.5
+- PHP >= 8.3
 - `ferry-ai/inference-ai`
 - Suggested: `laravel/framework` / `illuminate/support`
 

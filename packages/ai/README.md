@@ -1,7 +1,7 @@
 # ferry-ai/inference-ai
 
 The unified facade for [FerryAI](https://github.com/MADEVAL/FerryAI), the inference-only runtime for
-PHP 8.5+. This package composes the core primitives and every backend into a single, static API.
+PHP 8.3+. This package composes the core primitives and every backend into a single, static API.
 
 ## Installation
 
@@ -39,7 +39,7 @@ Call `AI::config()` once before any other method.
 
 ## Requirements
 
-- PHP >= 8.5
+- PHP >= 8.3
 - `ext-ffi`
 - Suggested: a PSR-17 factory (`nyholm/psr7` or `guzzlehttp/psr7`) for `AI::streamResponse()`
 

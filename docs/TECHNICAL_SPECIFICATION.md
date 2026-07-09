@@ -1,6 +1,6 @@
 ﻿# Technical Specification
 
-FerryAI is an **inference-only** runtime for PHP 8.5+ that presents a single API over three
+FerryAI is an **inference-only** runtime for PHP 8.3+ that presents a single API over three
 native engines (ONNX Runtime, llama.cpp, RubixML/Tensor). This document describes the
 architecture; the per-file map is in [`FILE_TREE.md`](FILE_TREE.md) and the exact signatures
 in [`INTERFACE_CONTRACTS.md`](INTERFACE_CONTRACTS.md).

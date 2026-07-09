@@ -1,7 +1,7 @@
 # ferry-ai/inference-cpu-backend
 
 CPU-native inference backend for [FerryAI](https://github.com/MADEVAL/FerryAI), the inference-only
-runtime for PHP 8.5+. Runs table-based prediction models in pure PHP, with optional RubixML support.
+runtime for PHP 8.3+. Runs table-based prediction models in pure PHP, with optional RubixML support.
 
 ## Installation
 
@@ -18,7 +18,7 @@ composer require ferry-ai/inference-cpu-backend
 
 ## Requirements
 
-- PHP >= 8.5
+- PHP >= 8.3
 - `ferry-ai/inference-core`
 - `rubix/ml` (optional) — required only for `.rbm` model inference
 

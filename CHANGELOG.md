@@ -6,7 +6,7 @@ All notable changes to FerryAI. Format loosely follows [Keep a Changelog](https:
 
 ## [0.1.0] - 2026-07-08
 
-First public release. Inference-only runtime for PHP 8.5+ with a unified API over
+First public release. Inference-only runtime for PHP 8.3+ with a unified API over
 ONNX Runtime, llama.cpp and RubixML/Tensor engines.
 
 ### Added

@@ -1,7 +1,7 @@
 # ferry-ai/inference-symfony
 
 Symfony integration for [FerryAI](https://github.com/MADEVAL/FerryAI), the inference-only runtime for
-PHP 8.5+. A thin bundle that wires FerryAI into the Symfony container.
+PHP 8.3+. A thin bundle that wires FerryAI into the Symfony container.
 
 ## Installation
 
@@ -17,7 +17,7 @@ composer require ferry-ai/inference-symfony
 
 ## Requirements
 
-- PHP >= 8.5
+- PHP >= 8.3
 - `ferry-ai/inference-ai`
 - Suggested: `symfony/http-kernel`, `symfony/config`, `symfony/dependency-injection`
 

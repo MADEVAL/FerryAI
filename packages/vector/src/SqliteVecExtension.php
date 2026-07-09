@@ -8,9 +8,9 @@ namespace FerryAI\Vector;
  * Optional ANN acceleration backed by the sqlite-vec loadable extension (vec0).
  *
  * Enabled only when FERRY_AI_VEC_EXTENSION_LIB points at the sqlite-vec shared
- * library and the connection is a {@see \Pdo\Sqlite} (PHP 8.4+, which exposes
- * loadExtension). When unavailable, every method is a graceful no-op / empty
- * result and callers fall back to {@see BruteForceIndex}.
+ * library and the connection supports loadExtension (PHP 8.4+ via
+ * {@see \Pdo\Sqlite::loadExtension}). When unavailable, every method is a
+ * graceful no-op / empty result and callers fall back to {@see BruteForceIndex}.
  *
  * vec0 virtual tables key rows by integer rowid, so a side table maps the store's
  * TEXT ids to integer rowids: `vecmap_{collection}(rowid, ext_id)` alongside the
@@ -22,7 +22,7 @@ final class SqliteVecExtension
 
     public function isAvailable(): bool
     {
-        return \class_exists(\Pdo\Sqlite::class) && $this->libraryPath() !== null;
+        return $this->libraryPath() !== null;
     }
 
     public function isLoaded(): bool
@@ -34,7 +34,7 @@ final class SqliteVecExtension
     {
         $lib = $this->libraryPath();
 
-        if ($lib === null || !\class_exists(\Pdo\Sqlite::class)) {
+        if ($lib === null) {
             $this->loaded = false;
 
             return false;
@@ -42,7 +42,13 @@ final class SqliteVecExtension
 
         $pdo = $store->pdo();
 
-        if (!$pdo instanceof \Pdo\Sqlite) {
+        if ($pdo->getAttribute(\PDO::ATTR_DRIVER_NAME) !== 'sqlite') {
+            $this->loaded = false;
+
+            return false;
+        }
+
+        if (!\method_exists($pdo, 'loadExtension')) {
             $this->loaded = false;
 
             return false;

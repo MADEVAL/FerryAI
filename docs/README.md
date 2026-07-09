@@ -1,6 +1,6 @@
 # FerryAI — Documentation Navigator
 
-> **FerryAI** is a complete inference runtime for PHP 8.5+.
+> **FerryAI** is a complete inference runtime for PHP 8.3+.
 > ONNX Runtime, llama.cpp, and RubixML backends — one API, zero Python.
 
 ---

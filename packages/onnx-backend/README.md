@@ -1,7 +1,7 @@
 # ferry-ai/inference-onnx-backend
 
 ONNX Runtime inference backend for [FerryAI](https://github.com/MADEVAL/FerryAI), the inference-only
-runtime for PHP 8.5+.
+runtime for PHP 8.3+.
 
 ## Installation
 
@@ -22,7 +22,7 @@ retries on CPU.
 
 ## Requirements
 
-- PHP >= 8.5
+- PHP >= 8.3
 - `ferry-ai/inference-core`
 - `ankane/onnxruntime` (bundles the native ONNX Runtime library per platform)
 - `ext-ffi` at runtime

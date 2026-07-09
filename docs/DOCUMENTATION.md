@@ -1,7 +1,7 @@
 # FerryAI — Definitive Documentation
 
 > **PHP inference runtime. ONNX + llama.cpp + RubixML. One API. No Python.**
-> Version 0.1.0 · 14 packages · PHP 8.5+ · MIT
+> Version 0.1.0 · 14 packages · PHP 8.3+ · MIT
 
 ---
 

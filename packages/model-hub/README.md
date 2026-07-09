@@ -1,7 +1,7 @@
 # ferry-ai/inference-model-hub
 
 Model download, caching, verification and inspection for [FerryAI](https://github.com/MADEVAL/FerryAI),
-the inference-only runtime for PHP 8.5+.
+the inference-only runtime for PHP 8.3+.
 
 ## Installation
 
@@ -20,7 +20,7 @@ composer require ferry-ai/inference-model-hub
 
 ## Requirements
 
-- PHP >= 8.5
+- PHP >= 8.3
 - `ferry-ai/inference-core`
 - `ext-hash`, `ext-zip`
 - Suggested: `ext-sodium` (Ed25519 signatures), `ext-curl` (faster downloads)

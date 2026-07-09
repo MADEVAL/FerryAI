@@ -5,7 +5,7 @@ models available and tuning the runtime.
 
 ## Runtime prerequisites
 
-- PHP 8.5+ with `ext-ffi` enabled (`ffi.enable=1` in `php.ini`; for CLI it is usually on).
+- PHP 8.3+ with `ext-ffi` enabled (`ffi.enable=1` in `php.ini`; for CLI it is usually on).
 - The native shared libraries a feature needs, on `PATH` (Windows) / `LD_LIBRARY_PATH` (Linux):
   ONNX Runtime, `ferry_llama.dll` + llama/ggml DLLs, sqlite-vec, etc. See the
   [Dependencies & downloads](../README.md#dependencies--downloads) matrix.

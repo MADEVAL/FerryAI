@@ -16,7 +16,7 @@ $out = AI::pipeline()
 
 `run()` accepts a single value, an array, or a `Generator` and returns a `Generator`.
 A stage whose `process()` returns `null` filters the item out. A `Pipeline` itself is
-invokable (`__invoke`), so it works with the PHP 8.5 pipe operator: `$input |> $pipeline`.
+invokable (`__invoke`), compatible with the proposed pipe operator (`$input |> $pipeline`).
 
 ## Contract
 

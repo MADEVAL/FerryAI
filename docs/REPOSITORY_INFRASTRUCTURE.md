@@ -102,7 +102,7 @@ php-inference/
         }
     ],
     "require": {
-        "php": ">=8.5",
+        "php": ">=8.3",
         "ext-ffi": "*",
         "ext-json": "*",
         "ext-hash": "*",
@@ -258,7 +258,7 @@ php-inference/
         }
     ],
     "require": {
-        "php": ">=8.5"
+        "php": ">=8.3"
     },
     "require-dev": {
         "phpunit/phpunit": "^13.0",
@@ -918,8 +918,7 @@ jobs:
 
       - uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.5'
-          extensions: ffi, json, hash, fileinfo, pdo_sqlite, sodium, zip, opcache
+          php-version: '8.3'
           coverage: none
 
       - run: composer install --no-progress --no-interaction --prefer-dist
@@ -944,7 +943,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        php: ['8.5', '8.6']
+        php: ['8.3', '8.5']
 
     steps:
       - uses: actions/checkout@v4
@@ -981,14 +980,14 @@ jobs:
           vendor/bin/phpunit --testsuite integration --no-coverage
 
       - name: Upload coverage to Codecov
-        if: matrix.os == 'ubuntu-latest' && matrix.php == '8.5'
+        if: matrix.os == 'ubuntu-latest' && matrix.php == '8.3'
         uses: codecov/codecov-action@v4
         with:
           files: build/coverage/clover.xml
           token: ${{ secrets.CODECOV_TOKEN }}
 
   # ============================================================
-  # Mutation testing (Linux only, 8.5 only)
+  # Mutation testing (Linux only, 8.3 only)
   # ============================================================
   mutation:
     name: "Mutation Testing"

@@ -1,7 +1,7 @@
 # ferry-ai/inference-dataframe
 
 Tabular data handling for [FerryAI](https://github.com/MADEVAL/FerryAI), the inference-only runtime
-for PHP 8.5+. Typed columns, CSV/JSON I/O and Tensor conversion.
+for PHP 8.3+. Typed columns, CSV/JSON I/O and Tensor conversion.
 
 ## Installation
 
@@ -19,7 +19,7 @@ composer require ferry-ai/inference-dataframe
 
 ## Requirements
 
-- PHP >= 8.5
+- PHP >= 8.3
 - `ferry-ai/inference-core`
 - `ferry-ai/inference-tensor`
 
