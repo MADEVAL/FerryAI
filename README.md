@@ -15,7 +15,7 @@ One API, full FFI bridge to native engines. Inference-only. PHP 8.3+.
 [![PHPStan](https://img.shields.io/badge/PHPStan-level%208-brightgreen.svg)](phpstan.neon)
 [![Psalm](https://img.shields.io/badge/Psalm-level%203-brightgreen.svg)](psalm.xml)
 
-> **Status: early release (`v0.1.0`).** The public API is stabilizing and may change before `1.0` —
+> **Status: early release (`v0.1.1`).** The public API is stabilizing and may change before `1.0` —
 > pin a version and skim the [CHANGELOG](CHANGELOG.md) when upgrading. Code quality is production-grade
 > (PHPStan level 8, Psalm level 3, 793 tests green on Windows + Linux).
 

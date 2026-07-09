@@ -4,6 +4,25 @@ All notable changes to FerryAI. Format loosely follows [Keep a Changelog](https:
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-07-09
+
+### Security
+- Harden `.ai` archive deserialization and native-binary integrity checks
+  (`ai`, `cpu-backend`).
+
+### Changed
+- Reorganize repository root: move community-health files to `.github/` and
+  documentation into `docs/`.
+- Drop the PHP baseline to 8.3 (replace `\Pdo\Sqlite` with `\PDO` +
+  `getAttribute()` + `method_exists()` runtime checks).
+- Remove Docker files (native FFI runtime needs no container sidecars).
+
+### Fixed
+- CI: auto-detect the VS2022 toolchain path, correct the release asset name and
+  line-ending normalization, and exclude `SharedMemoryManager` from Psalm
+  (ext-shmop `Shmop` class not recognized).
+- Documentation: correct the supported-versions table for the 0.1.x pre-1.0 line.
+
 ## [0.1.0] - 2026-07-08
 
 First public release. Inference-only runtime for PHP 8.3+ with a unified API over

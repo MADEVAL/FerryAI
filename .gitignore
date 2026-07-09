@@ -67,3 +67,7 @@ benchmarks/models/
 # Internal audit report — not part of the published package
 report-code-quality.md
 tools/
+
+# Stray scratch files
+/query
+/PHP_VERSION_ANALYSIS.md
