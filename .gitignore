@@ -1,0 +1,73 @@
+# Composer
+/vendor/
+packages/*/vendor/
+composer.lock
+
+# Build
+/build/
+/native-binaries/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Test
+.phpunit.result.cache
+.phpunit.cache/
+phpunit.xml
+.psalm-cache/
+build/phpunit/
+build/psalm/
+build/coverage/
+tests/fixtures/*.onnx
+tests/fixtures/*.gguf
+tests/fixtures/*.json
+!tests/fixtures/.gitkeep
+
+# Env
+.env
+.env.*
+
+# Local dev config (machine-specific paths) + local model/library drop dir
+/.ferry-ai.local.php
+/models/
+
+# Temp
+/tmp/
+/TEMP/
+*.tmp
+*.bak
+
+# Infection
+infection.log
+build/infection/
+
+# Benchmarks
+benchmarks/models/
+
+# Archive formats
+*.ai
+!tests/fixtures/*.ai
+
+.php-cs-fixer.cache
+
+# opencode / agent tooling — local only, not part of the published package
+/.opencode/
+/AGENTS.md
+/opencode.json
+
+# Internal audit report — not part of the published package
+report-code-quality.md
+tools/
+
+# Stray scratch files
+/query
+/PHP_VERSION_ANALYSIS.md

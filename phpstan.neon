@@ -1,0 +1,54 @@
+parameters:
+    level: 8
+    paths:
+        - packages/core/src
+        - packages/tensor/src
+        - packages/onnx-backend/src
+        - packages/llama-backend/src
+        - packages/tokenizer/src
+        - packages/embedding/src
+        - packages/vector/src
+        - packages/model-hub/src
+        - packages/pipeline/src
+        - packages/cpu-backend/src
+        - packages/laravel/src
+        - packages/symfony/src
+        - packages/ai/src
+    excludePaths:
+        analyseAndScan:
+            - packages/*/tests/*
+            - packages/*/vendor/*
+        analyse:
+            # Native ONNX Runtime FFI boundary (ankane/onnxruntime is untyped);
+            # covered by the integration suite, not by static analysis.
+            - packages/onnx-backend/src/OnnxRuntimeFactory.php
+            - packages/onnx-backend/src/Runtime/NativeOnnxRuntime.php
+            - packages/onnx-backend/src/Runtime/NativeOnnxSession.php
+            # Native tokenizers-cpp FFI boundary
+            - packages/tokenizer/src/HuggingFaceTokenizer.php
+            # Native llama.cpp FFI boundary
+            - packages/llama-backend/src/FFI/FerryLlama.php
+            - packages/llama-backend/src/Runtime/NativeLlamaRuntime.php
+            - packages/llama-backend/src/Runtime/NativeLlamaSession.php
+            # Optional RubixML library boundary (dynamic dispatch; rubix/ml not installed)
+            - packages/cpu-backend/src/RubixMLAdapter.php
+    treatPhpDocTypesAsCertain: false
+    reportUnmatchedIgnoredErrors: false
+    parallel:
+        maximumNumberOfProcesses: 4
+    ignoreErrors:
+        # FFI calls cannot be fully typed
+        - '#Cannot access property \$cdata on mixed#'
+        - '#Call to an undefined method .*\\FFI::new\(\)#'
+        - '#Parameter \#1 \$ptr of function .* expects .*FFI\\CData#'
+
+        # Pre-existing baseline errors (to be addressed in dedicated fixes)
+        - '#If condition is always false#'               # Downloader.php
+        - '#Left side of \&\& is always false#'          # Downloader.php
+        - '#Parameter \#2 \$length of function fread expects int<1, max>, int given#'  # GgufInspector + Safetensors
+        - '#Parameter \#1 \$array of function array_values expects array, array\|false given#'  # GgufInspector
+        - '#should return array\{format: string.*tensor_count: int.*\} but returns array\{\}#'  # SafetensorsInspector
+        - '#has parameter \$flat with no value type specified#'                  # ArrayTensor.php
+        - '#PHPDoc tag @param references unknown parameter: \$data#'             # ArrayTensor.php
+        - '#Method FerryAI\\Tensor\\ArrayTensor::buildNested\(\) should return array<int> but returns#'  # ArrayTensor.php
+        - '#has parameter \$dims with no value type specified#'                  # ArrayTensor.php

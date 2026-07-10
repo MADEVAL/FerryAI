@@ -1,0 +1,72 @@
+<?php
+
+declare(strict_types=1);
+
+namespace FerryAI\CpuBackend;
+
+use FerryAI\Core\Contracts\Backend;
+use FerryAI\Core\Contracts\Model;
+use FerryAI\Core\Enums\Device;
+
+final class CpuNativeBackend implements Backend
+{
+    #[\Override]
+    public function availableDevices(): array
+    {
+        return [Device::CPU];
+    }
+
+    #[\Override]
+    public function load(string $source, ?Device $device = null): Model
+    {
+        if (!\file_exists($source)) {
+            throw new \FerryAI\Core\Exception\ModelNotFoundException($source);
+        }
+
+        $adapter = new RubixMLAdapter();
+
+        if ($adapter->isAvailable()) {
+            try {
+                $loaded = $adapter->loadModel($source);
+
+                if (\is_object($loaded)) {
+                    return new CpuNativeModel($source, [], $loaded, $adapter);
+                }
+
+                if (\is_array($loaded)) {
+                    return new CpuNativeModel($source, $loaded);
+                }
+            } catch (\FerryAI\Core\Exception\ModelNotFoundException $e) {
+                throw $e;
+            } catch (\Throwable) {
+                // Not a RubixML/serialized payload we can read — fall back below.
+            }
+        }
+
+        $content = \file_get_contents($source);
+
+        if ($content === false) {
+            throw new \FerryAI\Core\Exception\ModelLoadException($source, 'Cannot read model file');
+        }
+
+        $data = @\unserialize($content, ['allowed_classes' => false]);
+
+        if ($data === false || !\is_array($data)) {
+            throw new \FerryAI\Core\Exception\ModelLoadException($source, 'Invalid or unsupported RubixML model format');
+        }
+
+        return new CpuNativeModel($source, $data);
+    }
+
+    #[\Override]
+    public function version(): string
+    {
+        return 'cpu-native-1.0';
+    }
+
+    #[\Override]
+    public function isAvailable(): bool
+    {
+        return true;
+    }
+}

@@ -1,0 +1,23 @@
+<?php
+
+declare(strict_types=1);
+
+/*
+ * Local path overrides for examples, benchmarks and integration tests.
+ *
+ * Copy this file to `.ferry-ai.local.php` (git-ignored) and point the variables at your
+ * local models and native libraries. Any variable left unset falls back to the repo-relative
+ * `models/` directory; the code then skips gracefully when the asset is missing.
+ */
+
+// Directory with an ONNX embedding model (must contain model.onnx + tokenizer.json).
+putenv('FERRY_AI_MODEL_DIR=/path/to/all-MiniLM-L6-v2-onnx');
+
+// Directory with ferry_llama.{dll,so,dylib} + llama/ggml libraries + a .gguf model.
+putenv('FERRY_AI_LLAMA_DIR=/path/to/llama');
+
+// Optional: explicit GGUF model file (otherwise <FERRY_AI_LLAMA_DIR>/qwen-0.5b.Q4_K_M.gguf).
+// putenv('FERRY_AI_LLAMA_MODEL=/path/to/model.gguf');
+
+// Optional: sqlite-vec extension binary (vec0.{dll,so,dylib}).
+// putenv('FERRY_AI_VEC_EXTENSION_LIB=/path/to/vec0.dll');

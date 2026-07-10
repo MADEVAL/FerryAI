@@ -1,0 +1,42 @@
+{
+    "name": "ferry-ai/inference-symfony",
+    "description": "FerryAI Symfony integration: bundle and DI extension",
+    "type": "library",
+    "license": "MIT",
+    "homepage": "https://github.com/MADEVAL/FerryAI",
+    "authors": [
+        {
+            "name": "Yevhen Leonidov",
+            "homepage": "https://github.com/MADEVAL"
+        }
+    ],
+    "require": {
+        "php": ">=8.3",
+        "ferry-ai/inference-ai": "^0.1.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^12.0 || ^13.0",
+        "phpstan/phpstan": "^2.0",
+        "vimeo/psalm": "^6.0"
+    },
+    "suggest": {
+        "symfony/http-kernel": "For Symfony bundle integration",
+        "symfony/config": "For Symfony configuration tree",
+        "symfony/dependency-injection": "For Symfony DI extension"
+    },
+    "autoload": {
+        "psr-4": {
+            "FerryAI\\Symfony\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "FerryAI\\Symfony\\Tests\\": "tests/"
+        }
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

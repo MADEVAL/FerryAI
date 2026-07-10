@@ -1,0 +1,51 @@
+{
+    "name": "ferry-ai/inference-ai",
+    "description": "FerryAI facade: unified AI API, backend registry, task routing",
+    "type": "library",
+    "license": "MIT",
+    "homepage": "https://github.com/MADEVAL/FerryAI",
+    "authors": [
+        {
+            "name": "Yevhen Leonidov",
+            "homepage": "https://github.com/MADEVAL"
+        }
+    ],
+    "require": {
+        "php": ">=8.3",
+        "ferry-ai/inference-core": "^0.1.0",
+        "ferry-ai/inference-cpu-backend": "^0.1.0",
+        "ferry-ai/inference-embedding": "^0.1.0",
+        "ferry-ai/inference-llama-backend": "^0.1.0",
+        "ferry-ai/inference-model-hub": "^0.1.0",
+        "ferry-ai/inference-onnx-backend": "^0.1.0",
+        "ferry-ai/inference-pipeline": "^0.1.0",
+        "ferry-ai/inference-tokenizer": "^0.1.0",
+        "ferry-ai/inference-vector": "^0.1.0",
+        "psr/http-factory": "^1.0",
+        "psr/http-message": "^1.1 || ^2.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^12.0 || ^13.0",
+        "phpstan/phpstan": "^2.0",
+        "vimeo/psalm": "^6.0"
+    },
+    "suggest": {
+        "nyholm/psr7": "PSR-17 factory for AI::streamResponse() / StreamResponse::create()",
+        "guzzlehttp/psr7": "Alternative PSR-17 factory for AI::streamResponse()"
+    },
+    "autoload": {
+        "psr-4": {
+            "FerryAI\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "FerryAI\\Tests\\": "tests/"
+        }
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}

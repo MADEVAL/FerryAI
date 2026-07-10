@@ -1,0 +1,151 @@
+{
+    "name": "ferry-ai/php-inference",
+    "description": "FerryAI — unified inference API for PHP applications",
+    "type": "project",
+    "keywords": ["ai", "ml", "onnx", "llama", "embedding", "llm", "vector-store", "rag"],
+    "homepage": "https://github.com/MADEVAL/FerryAI",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Yevhen Leonidov",
+            "homepage": "https://github.com/MADEVAL"
+        }
+    ],
+    "bin": [
+        "bin/ferry-ai",
+        "bin/generate-ffi"
+    ],
+    "require": {
+        "php": ">=8.3",
+        "ext-ffi": "*",
+        "ext-fileinfo": "*",
+        "ext-hash": "*",
+        "ext-json": "*",
+        "ankane/onnxruntime": "^0.3.0",
+        "psr/http-factory": "^1.1",
+        "psr/http-message": "^1.1 || ^2.0"
+    },
+    "require-dev": {
+        "captainhook/captainhook": "5.29",
+        "ergebnis/composer-normalize": "^2.52",
+        "infection/infection": "0.34",
+        "nyholm/psr7": "^1.8",
+        "php-cs-fixer/shim": "^3.0",
+        "phpstan/phpstan": "^2.0",
+        "phpstan/phpstan-deprecation-rules": "^2.0",
+        "phpstan/phpstan-strict-rules": "^2.0",
+        "phpunit/phpunit": "^12.0 || ^13.0",
+        "symplify/monorepo-builder": "*",
+        "vimeo/psalm": "^6.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "FerryAI\\Core\\": "packages/core/src/",
+            "FerryAI\\Tensor\\": "packages/tensor/src/",
+            "FerryAI\\OnnxBackend\\": "packages/onnx-backend/src/",
+            "FerryAI\\LlamaBackend\\": "packages/llama-backend/src/",
+            "FerryAI\\Tokenizer\\": "packages/tokenizer/src/",
+            "FerryAI\\Embedding\\": "packages/embedding/src/",
+            "FerryAI\\Vector\\": "packages/vector/src/",
+            "FerryAI\\ModelHub\\": "packages/model-hub/src/",
+            "FerryAI\\Pipeline\\": "packages/pipeline/src/",
+            "FerryAI\\CpuBackend\\": "packages/cpu-backend/src/",
+            "FerryAI\\DataFrame\\": "packages/dataframe/src/",
+            "FerryAI\\Laravel\\": "packages/laravel/src/",
+            "FerryAI\\Symfony\\": "packages/symfony/src/",
+            "FerryAI\\": "packages/ai/src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "FerryAI\\Core\\Tests\\": "packages/core/tests/",
+            "FerryAI\\Tensor\\Tests\\": "packages/tensor/tests/",
+            "FerryAI\\OnnxBackend\\Tests\\": "packages/onnx-backend/tests/",
+            "FerryAI\\LlamaBackend\\Tests\\": "packages/llama-backend/tests/",
+            "FerryAI\\Tokenizer\\Tests\\": "packages/tokenizer/tests/",
+            "FerryAI\\Embedding\\Tests\\": "packages/embedding/tests/",
+            "FerryAI\\Vector\\Tests\\": "packages/vector/tests/",
+            "FerryAI\\ModelHub\\Tests\\": "packages/model-hub/tests/",
+            "FerryAI\\Pipeline\\Tests\\": "packages/pipeline/tests/",
+            "FerryAI\\CpuBackend\\Tests\\": "packages/cpu-backend/tests/",
+            "FerryAI\\DataFrame\\Tests\\": "packages/dataframe/tests/",
+            "FerryAI\\Laravel\\Tests\\": "packages/laravel/tests/",
+            "FerryAI\\Symfony\\Tests\\": "packages/symfony/tests/",
+            "FerryAI\\Tests\\": ["tests/", "packages/ai/tests/"]
+        },
+        "files": [
+            "tests/local_env.php"
+        ]
+    },
+    "scripts": {
+        "test": [
+            "@putenv FERRY_AI_TESTING=1",
+            "@php vendor/bin/phpunit --testsuite unit"
+        ],
+        "test-integration": [
+            "@putenv FERRY_AI_TESTING=1",
+            "@putenv FERRY_AI_INTEGRATION=1",
+            "@php vendor/bin/phpunit --testsuite integration"
+        ],
+        "verify": [
+            "@putenv FERRY_AI_TESTING=1",
+            "@php vendor/bin/phpunit --testsuite verification"
+        ],
+        "stan": "@php vendor/bin/phpstan analyse --memory-limit=512M",
+        "psalm": "@php vendor/bin/psalm --no-cache",
+        "analyse": [
+            "@stan",
+            "@psalm"
+        ],
+        "cs-check": "@php vendor/bin/php-cs-fixer check --diff",
+        "cs-fix": "@php vendor/bin/php-cs-fixer fix",
+        "lint": [
+            "@cs-check",
+            "@analyse"
+        ],
+        "check": [
+            "@lint",
+            "@test"
+        ],
+        "coverage": [
+            "@putenv XDEBUG_MODE=coverage",
+            "@php vendor/bin/phpunit --testsuite unit --coverage-html build/coverage --coverage-text"
+        ],
+        "mutation": "@php vendor/bin/infection",
+        "benchmark-embed": "@php benchmarks/embed.php",
+        "benchmark-chat": "@php benchmarks/chat.php",
+        "benchmark-vector": "@php benchmarks/vector.php",
+        "benchmark": [
+            "@benchmark-embed",
+            "@benchmark-chat",
+            "@benchmark-vector"
+        ]
+    },
+    "scripts-descriptions": {
+        "test": "Run all unit tests",
+        "test-integration": "Run integration tests (requires ONNX Runtime / llama.cpp)",
+        "verify": "Run runtime bug/audit verification tests (tests/Verification, @coversNothing)",
+        "stan": "PHPStan static analysis (level 8)",
+        "psalm": "Psalm static analysis (level 3)",
+        "analyse": "Run both PHPStan and Psalm",
+        "cs-check": "Check code style (PER-CS 2.0)",
+        "cs-fix": "Fix code style automatically",
+        "lint": "Run all linters",
+        "check": "Lint + test (pre-commit)",
+        "coverage": "Generate HTML coverage report",
+        "mutation": "Run mutation testing (Infection)",
+        "benchmark-embed": "Benchmark embedding throughput (needs an ONNX embedding model)",
+        "benchmark-chat": "Benchmark llama chat throughput (needs ferry_llama + a GGUF model)",
+        "benchmark-vector": "Benchmark vector store insert/search (SQLite, no model needed)",
+        "benchmark": "Run all benchmarks (embed + chat + vector)"
+    },
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "phpstan/extension-installer": true,
+            "infection/extension-installer": true
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
