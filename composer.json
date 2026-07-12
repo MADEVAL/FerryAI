@@ -26,7 +26,7 @@
         "psr/http-message": "^1.1 || ^2.0"
     },
     "require-dev": {
-        "captainhook/captainhook": "5.29",
+        "captainhook/captainhook": "5.29.2",
         "ergebnis/composer-normalize": "^2.52",
         "infection/infection": "0.34",
         "nyholm/psr7": "^1.8",
